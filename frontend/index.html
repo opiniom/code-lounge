@@ -1132,17 +1132,9 @@ a{color:inherit;}
       <div class="auth-card card">
         <div class="auth-logo">sync<span>/</span></div>
         <p class="auth-tag">팀 프로젝트를 위한 AI 워크스페이스</p>
-        <div class="mode-switch auth-modeswitch">
-          <button class="active" id="authLoginBtn" onclick="setAuthMode('login')">로그인</button>
-          <button id="authSignupBtn" onclick="setAuthMode('signup')">회원가입</button>
-        </div>
         <p class="auth-desc" id="authDesc">간편 로그인으로 팀 워크스페이스를 바로 이어서 진행하세요.</p>
         
         <form class="auth-form-box" id="authForm" onsubmit="handleAuthSubmit(event)">
-          <div class="auth-input-field" id="authUsernameField" hidden>
-            <label for="authUsernameInput">닉네임 / 이름</label>
-            <input type="text" id="authUsernameInput" placeholder="예: 김개발">
-          </div>
           <div class="auth-input-field">
             <label for="authEmailInput">이메일 주소</label>
             <input type="email" id="authEmailInput" placeholder="name@example.com" required value="developer@university.ac.kr">
@@ -2051,18 +2043,6 @@ function playHomeIntro(){
 }
 
 /* ---- auth ---- */
-function setAuthMode(mode){
-  var isLogin = (mode==='login');
-  document.getElementById('authLoginBtn').classList.toggle('active', isLogin);
-  document.getElementById('authSignupBtn').classList.toggle('active', !isLogin);
-  document.getElementById('authDesc').textContent = isLogin
-    ? '간편 로그인으로 팀 워크스페이스를 바로 이어서 진행하세요.'
-    : '간편 가입 후 바로 팀 워크스페이스를 시작할 수 있어요.';
-  var usernameField = document.getElementById('authUsernameField');
-  if(usernameField) usernameField.hidden = isLogin;
-  var submitBtn = document.getElementById('authSubmitBtn');
-  if(submitBtn) submitBtn.textContent = isLogin ? '로그인' : '회원가입';
-}
 var isAdmin = false;
 var savedMyProjects = null;
 var savedProjPageIndex = 0;
@@ -2102,73 +2082,36 @@ async function handleSocialLogin(provider){
     var confRes = await fetch(API_BASE + '/api/auth/config');
     var conf = confRes.ok ? await confRes.json() : {};
     
-    if (provider === 'Google' && conf.google_enabled) {
-      window.location.href = API_BASE + '/api/auth/google/login';
-      return;
+    if (provider === 'Google') {
+      if (conf.google_enabled) {
+        window.location.href = API_BASE + '/api/auth/google/login';
+        return;
+      } else {
+        alert('Google 소셜 로그인 설정이 아직 등록되지 않았습니다.\n.env 파일에 GOOGLE_CLIENT_ID 및 GOOGLE_CLIENT_SECRET을 설정해주세요.\n(자세한 방법은 docs/social_login_setup.md 참조)');
+        return;
+      }
     }
-    if (provider === 'Naver' && conf.naver_enabled) {
-      window.location.href = API_BASE + '/api/auth/naver/login';
-      return;
-    }
-
-    // .env에 Client ID가 아직 등록되지 않은 경우:
-    // 백엔드의 소셜 인증 엔드포인트(/api/auth/social)를 통해 JWT 발급 및 SQLite 유저 등록
-    var mockPayload = {
-      provider: provider.toLowerCase(),
-      email: provider === 'Google' ? 'google_dev@gmail.com' : 'naver_dev@naver.com',
-      username: provider === 'Google' ? 'Google 사용자' : '네이버 사용자',
-      oauth_id: provider.toLowerCase() + '_id_12345'
-    };
-
-    var res = await fetch(API_BASE + '/api/auth/social', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(mockPayload)
-    });
-
-    if (res.ok) {
-      var data = await res.json();
-      authToken = data.access_token;
-      currentUser = data.user;
-      localStorage.setItem('sync_auth_token', authToken);
-      localStorage.setItem('sync_auth_user', JSON.stringify(currentUser));
-      myProfile.name = currentUser.username;
-      myProfile.role = currentUser.email;
-      var pn = document.getElementById('profileName');
-      if (pn) pn.textContent = myProfile.name;
-      
-      isAdmin = (provider === 'Naver');
-      document.getElementById('adminBadge').hidden = !isAdmin;
-      document.getElementById('teamManageMenuItem').hidden = !isAdmin;
-      homeLandingActive = false;
-      restoreDemoState();
-      goView('home');
-      loadSubmissions();
-      
-      pushToast('✨', provider + ' 로그인 완료', provider + ' 소셜 계정으로 로그인되었습니다.\n(.env에 Client ID를 입력하면 실제 OAuth 2.0으로 자동 연결됩니다)');
-    } else {
-      mockLogin(provider);
+    if (provider === 'Naver') {
+      if (conf.naver_enabled) {
+        window.location.href = API_BASE + '/api/auth/naver/login';
+        return;
+      } else {
+        alert('네이버 로그인 설정이 아직 등록되지 않았습니다.\n.env 파일에 NAVER_CLIENT_ID 및 NAVER_CLIENT_SECRET을 설정해주세요.\n(자세한 방법은 docs/social_login_setup.md 참조)');
+        return;
+      }
     }
   } catch(e) {
-    mockLogin(provider);
+    alert('소셜 로그인 서버 연결에 실패했습니다: ' + e.message);
   }
 }
 
 function mockLogin(provider){
-  isAdmin = (provider==='Naver');
-  document.getElementById('adminBadge').hidden = !isAdmin;
-  document.getElementById('teamManageMenuItem').hidden = !isAdmin;
-  homeLandingActive = (provider==='Google');
-  if(provider==='Google'){ resetToNewMemberState(); } else { restoreDemoState(); }
-  applyHomeLandingState();
+  isAdmin = false;
+  document.getElementById('adminBadge').hidden = true;
+  document.getElementById('teamManageMenuItem').hidden = true;
+  restoreDemoState();
   goView('home');
-  if(provider!=='게스트'){
-    setTimeout(function(){ pushToast('👋','로그인 완료', provider+' 계정으로 로그인했어요'+(isAdmin?' · 관리자 권한이 적용됐어요':'')); }, 300);
-  }
-  if(provider!=='Google'){
-    setTimeout(function(){ pushToast('🤖','AI 일정 감지','캡스톤 채팅방에서 "오늘 밤 캐싱 작업" 일정을 찾았어요'); }, 3200);
-    setTimeout(function(){ pushToast('🏆','공모전 마감 임박','D-3 · 2026 대학생 AI 해커톤 접수가 곧 마감돼요'); }, 7200);
-  }
+  pushToast('👋', '게스트 접속', '게스트 모드로 둘러봅니다.');
 }
 function mockLogout(){
   isAdmin = false;
@@ -3403,25 +3346,21 @@ async function checkBackendHealth() {
 
 async function handleAuthSubmit(e) {
   e.preventDefault();
-  var isSignup = document.getElementById('authSignupBtn').classList.contains('active');
   var email = document.getElementById('authEmailInput').value.trim();
   var password = document.getElementById('authPasswordInput').value;
-  var username = document.getElementById('authUsernameInput').value.trim() || email.split('@')[0];
   var submitBtn = document.getElementById('authSubmitBtn');
   submitBtn.disabled = true;
-  submitBtn.textContent = '인증 중...';
+  submitBtn.textContent = '로그인 중...';
 
   try {
-    var endpoint = isSignup ? (API_BASE + '/api/auth/signup') : (API_BASE + '/api/auth/login');
-    var payload = isSignup ? { email: email, password: password, username: username } : { email: email, password: password };
-    var res = await fetch(endpoint, {
+    var res = await fetch(API_BASE + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ email: email, password: password })
     });
     var data = await res.json();
     if (!res.ok) {
-      throw new Error(data.detail || '인증 처리에 실패했습니다.');
+      throw new Error(data.detail || '로그인에 실패했습니다.');
     }
     authToken = data.access_token;
     currentUser = data.user;
@@ -3434,13 +3373,13 @@ async function handleAuthSubmit(e) {
     if (pn) pn.textContent = myProfile.name;
 
     goView('home');
-    pushToast('🎉', '로그인 성공', myProfile.name + '님 환영합니다! (JWT 토큰 발급됨)');
+    pushToast('🎉', '로그인 성공', myProfile.name + '님 환영합니다!');
     loadSubmissions();
   } catch(err) {
     alert(err.message);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = isSignup ? '회원가입' : '로그인';
+    submitBtn.textContent = '로그인';
   }
 }
 
