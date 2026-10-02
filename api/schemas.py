@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     email: str
     username: str
     is_active: bool
+    oauth_provider: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -49,6 +50,12 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class SocialLoginRequest(BaseModel):
+    provider: str = Field(..., description="google 또는 naver")
+    email: EmailStr = Field(..., description="소셜 계정 이메일")
+    username: str = Field(..., description="사용자 닉네임 또는 이름")
+    oauth_id: Optional[str] = Field(default=None, description="소셜 플랫폼 고유 사용자 ID")
 
 # ================================
 # 실행 히스토리 스키마

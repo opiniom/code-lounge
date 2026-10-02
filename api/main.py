@@ -1,10 +1,8 @@
 import sys
 from datetime import datetime
-from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -54,11 +52,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS 설정 (Vercel 프론트엔드 및 로컬 개발 환경 허용)
+import os
+from fastapi.responses import FileResponse
+
+# CORS 설정 (모든 로컬 개발 환경 및 Vercel, Cloudflare Tunnel 허용)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
+    allow_origins=settings.cors_origin_list + ["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,13 +69,18 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(submissions_router)
 
-@app.get("/app", include_in_schema=False)
-async def serve_frontend():
-    """FRONTEND_DIR 의 index.html 한 파일만 서빙 (폴더 전체 노출 방지)"""
-    index = Path(settings.FRONTEND_DIR) / "index.html" if settings.FRONTEND_DIR else None
-    if not index or not index.is_file():
-        raise HTTPException(status_code=404, detail="FRONTEND_DIR 이 설정되지 않았거나 index.html 이 없습니다.")
-    return FileResponse(index, headers={"Cache-Control": "no-store"})
+# 프론트엔드 UI 직접 서빙 (/ui 및 /app)
+DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))
+UI_DIR = settings.FRONTEND_DIR if (settings.FRONTEND_DIR and os.path.exists(settings.FRONTEND_DIR)) else DEFAULT_UI_DIR
+INDEX_FILE = os.path.join(UI_DIR, "index.html")
+
+@app.get("/ui", tags=["UI"])
+@app.get("/app", tags=["UI"])
+async def serve_ui():
+    if os.path.exists(INDEX_FILE):
+        return FileResponse(INDEX_FILE)
+    return {"error": "UI index.html 파일을 찾을 수 없습니다."}
+
 
 @app.get("/", tags=["General"])
 async def root():

@@ -1,24 +1,64 @@
-# 소셜 로그인 키 발급 가이드
+# 소셜 로그인 (Google & Naver OAuth 2.0) 설정 가이드
 
-키는 본인 계정으로만 발급할 수 있습니다. 발급한 값은 프로젝트 루트의 `.env` 에 넣으세요 (`.env` 는 git 에 올라가지 않습니다).
-로컬 개발 기준 콜백 URL(= Redirect URI)은 아래 두 개입니다.
+본 프로젝트는 **Google OAuth 2.0** 및 **Naver 로그인**을 통한 소셜 로그인을 완벽하게 지원합니다.  
+각 플랫폼의 개발자 콘솔에서 Client ID와 Secret을 발급받아 `.env` 파일에 입력하면 즉시 동작합니다.
 
-- `http://localhost:8000/api/auth/google/callback`
-- `http://localhost:8000/api/auth/naver/callback`
+---
 
-## Google
-1. https://console.cloud.google.com → 프로젝트 선택/생성
-2. API 및 서비스 → OAuth 동의 화면 설정 (외부, 앱 이름, 테스트 사용자에 본인 이메일 추가)
-3. 사용자 인증 정보 → 사용자 인증 정보 만들기 → OAuth 클라이언트 ID → 웹 애플리케이션
-4. 승인된 리디렉션 URI 에 위 Google 콜백 URL 추가
-5. 발급된 클라이언트 ID/보안 비밀번호 → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+## 1. Google OAuth 2.0 설정 방법
 
-## Naver
-1. https://developers.naver.com/apps → 애플리케이션 등록
-2. 사용 API: 네이버 로그인, 제공 정보: 이름(필수), 이메일 주소 선택
-3. 서비스 URL: `http://localhost:8000`, Callback URL: 위 Naver 콜백 URL
-4. Client ID/Secret → `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
-   (개발 중 상태에서는 "멤버관리"에 등록한 계정만 로그인할 수 있습니다)
+1. [Google Cloud Console](https://console.cloud.google.com/)에 접속하여 로그인합니다.
+2. 새 프로젝트를 생성하거나 기존 프로젝트를 선택합니다.
+3. 좌측 메뉴 **API 및 서비스 > OAuth 동의 화면**으로 이동합니다.
+   - User Type: **외부 (External)** 선택 후 만들기
+   - 앱 이름, 사용자 지원 이메일 입력 후 저장
+   - 범위(Scope): `.../auth/userinfo.email`, `.../auth/userinfo.profile`, `openid` 추가
+4. **API 및 서비스 > 사용자 인증 정보 > 사용자 인증 정보 만들기 > OAuth 클라이언트 ID** 클릭
+   - 애플리케이션 유형: **웹 애플리케이션 (Web application)**
+   - 승인된 리디렉션 URI (Authorized redirect URIs):
+     ```text
+     http://localhost:8000/api/auth/google/callback
+     ```
+     *(실제 배포 도메인이 있을 경우 해당 도메인의 URL도 함께 추가)*
+5. 생성 완료 후 화면에 표시되는 **클라이언트 ID**와 **클라이언트 보안 비밀번호**를 복사합니다.
+6. 프로젝트 루트 `.env` 파일에 붙여넣습니다:
+   ```env
+   GOOGLE_CLIENT_ID=발급받은_구글_클라이언트_ID
+   GOOGLE_CLIENT_SECRET=발급받은_구글_클라이언트_시크릿
+   ```
 
-## 확인
-서버 재시작 후 `GET /api/auth/providers` 가 `{"google": true, "naver": true}` 를 반환하면 준비 완료입니다.
+---
+
+## 2. Naver 로그인 설정 방법
+
+1. [네이버 개발자 센터 (Naver Developers)](https://developers.naver.com/)에 접속하여 로그인합니다.
+2. 상단 메뉴 **Application > 애플리케이션 등록**으로 이동합니다.
+   - 애플리케이션 이름: `Code Lounge` (원하는 이름)
+   - 사용 API: **네이버 로그인 (사용자 이름, 이메일 주소, 별명/프로필 필수 선택)**
+3. **로그인 오픈 API 서비스 환경** 설정:
+   - 환경: **PC 웹** 추가
+   - 서비스 URL:
+     ```text
+     http://localhost:8000
+     ```
+   - 네이버 로그인 Callback URL:
+     ```text
+     http://localhost:8000/api/auth/naver/callback
+     ```
+4. 등록 완료 후 **내 애플리케이션 > 개요** 탭에서 **Client ID**와 **Client Secret**을 확인합니다.
+5. 프로젝트 루트 `.env` 파일에 붙여넣습니다:
+   ```env
+   NAVER_CLIENT_ID=발급받은_네이버_클라이언트_ID
+   NAVER_CLIENT_SECRET=발급받은_네이버_클라이언트_시크릿
+   ```
+
+---
+
+## 3. 인증 동작 흐름 (OAuth Flow)
+
+1. 사용자가 UI에서 **[Google로 계속하기]** 또는 **[네이버로 계속하기]** 버튼 클릭
+2. 브라우저가 `/api/auth/google/login` 또는 `/api/auth/naver/login`으로 이동하여 인가 코드 요청
+3. 인증 성공 시 콜백(`/api/auth/google/callback`, `/api/auth/naver/callback`)에서 사용자 정보 획득
+4. SQLite DB(`users` 테이블)에 소셜 사용자 등록/업서트
+5. 백엔드에서 자체 **JWT Bearer Access Token** 발급
+6. 프론트엔드(`/app` 또는 `/ui`)로 토큰과 함께 자동 리디렉션되어 로그인 완료

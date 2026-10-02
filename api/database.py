@@ -1,14 +1,11 @@
 import os
-from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from config import settings
 
-# SQLite 파일 저장 디렉터리 보장 (DATABASE_URL 기준, OS 무관)
-if settings.DATABASE_URL.startswith("sqlite"):
-    _db_file = make_url(settings.DATABASE_URL).database
-    if _db_file and _db_file != ":memory:":
-        os.makedirs(os.path.dirname(os.path.abspath(_db_file)), exist_ok=True)
+# SQLite 파일 저장 디렉터리 보장
+db_dir = os.path.dirname(r"c:\backend\data\app.db")
+os.makedirs(db_dir, exist_ok=True)
 
 # 비동기 엔진 생성
 engine = create_async_engine(
