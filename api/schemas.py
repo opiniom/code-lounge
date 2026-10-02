@@ -26,11 +26,6 @@ class CodeRunResponse(BaseModel):
 # ================================
 # 사용자 인증 관련 스키마
 # ================================
-class UserCreate(BaseModel):
-    email: EmailStr = Field(..., description="사용자 이메일 주소")
-    password: str = Field(..., min_length=6, description="비밀번호 (최소 6자 이상)")
-    username: str = Field(..., min_length=2, max_length=50, description="닉네임 또는 이름")
-
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., description="사용자 이메일 주소")
     password: str = Field(..., description="비밀번호")

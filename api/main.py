@@ -95,9 +95,10 @@ async def root():
         "docs_url": "/docs",
         "health_url": "/health",
         "auth_urls": {
-            "signup": "/api/auth/signup",
             "login": "/api/auth/login",
-            "me": "/api/auth/me"
+            "me": "/api/auth/me",
+            "google_login": "/api/auth/google/login",
+            "naver_login": "/api/auth/naver/login"
         },
         "run_url": "/api/run",
         "submissions_url": "/api/submissions",
