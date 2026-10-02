@@ -142,16 +142,10 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
 
 ---
 
-## 소셜 로그인 (Google / Naver) + UI
+## 캘린더 · 회의록 AI 일정 감지
 
-- UI 프로토타입은 [`frontend/index.html`](frontend/index.html) 한 파일입니다. `.env` 의 `FRONTEND_DIR` 에 `frontend` 폴더 절대 경로를 넣으면 서버가 `http://localhost:8000/app` 으로 서빙합니다.
-- 소셜 로그인 키 발급과 콜백 URL 등록: [`docs/social_login_setup.md`](docs/social_login_setup.md)
-- 로그인 흐름: `/api/auth/{google|naver}/login` → 제공자 로그인 → `/api/auth/{provider}/callback` → `users` / `social_accounts` 기록 → JWT 발급 → UI 로 복귀
-
-로컬 실행 (macOS/Linux):
-
-```bash
-python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
-cp .env.example .env   # 키와 FRONTEND_DIR 입력
-.venv/bin/uvicorn main:app --app-dir api --port 8000
-```
+- 프로젝트별 캘린더(셀렉터/설정), 연·월 선택, 여러 날에 걸친 일정을 지원하고 서버(`projects`, `calendar_events`)에 저장됩니다.
+- 회의록 본문에서 일정의 **시작~종료**를 찾아 "감지된 일정" 카드에 띄우고, 추가를 누르면 해당 프로젝트 캘린더에 들어갑니다.
+- 분석 엔진 우선순위: `GEMINI_API_KEY` → `ANTHROPIC_API_KEY` → 규칙 기반(키 불필요). 키는 반드시 `.env` 에만 넣으세요 (`.env` 는 git 에 올라가지 않습니다).
+- 엔드포인트: `GET/POST /api/projects`, `GET/POST /api/calendar/events`, `DELETE /api/calendar/events/{id}`, `POST /api/calendar/detect`
+- 규칙 기반 분석 테스트: `python tests/test_schedule_rules.py`

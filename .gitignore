@@ -27,6 +27,3 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
-
-# Python virtualenv
-.venv/

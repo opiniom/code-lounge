@@ -14,8 +14,22 @@ PYTHON_EXEC = r"C:\Users\Administrator\AppData\Local\Programs\Python\Python311\p
 if not os.path.exists(PYTHON_EXEC):
     PYTHON_EXEC = sys.executable
 
-JAVAC_EXEC = r"C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\javac.exe"
-JAVA_EXEC = r"C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\java.exe"
+JAVAC_EXEC = shutil.which("javac") or r"C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\javac.exe"
+JAVA_EXEC = shutil.which("java") or r"C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin\java.exe"
+
+def decode_bytes(data: bytes) -> str:
+    """UTF-8 및 CP949(Windows 콘솔)를 안전하게 디코딩하는 함수"""
+    if not data:
+        return ""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    try:
+        return data.decode("cp949")
+    except UnicodeDecodeError:
+        pass
+    return data.decode("utf-8", errors="replace")
 
 class LocalSandboxRunner:
     """
@@ -48,13 +62,19 @@ class LocalSandboxRunner:
 
             start_time = time.perf_counter()
 
+            # Python 서브프로세스에 UTF-8 인코딩 환경변수 주입
+            py_env = os.environ.copy()
+            py_env["PYTHONIOENCODING"] = "utf-8"
+            py_env["PYTHONUTF8"] = "1"
+
             # 서브프로세스 비동기 실행 (네트워크 미접근 파이썬 샌드박스)
             process = await asyncio.create_subprocess_exec(
                 PYTHON_EXEC, "-u", "-B", script_path,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=temp_dir
+                cwd=temp_dir,
+                env=py_env
             )
 
             try:
@@ -66,8 +86,8 @@ class LocalSandboxRunner:
                 execution_time = round(time.perf_counter() - start_time, 4)
                 exit_code = process.returncode
 
-                stdout_str = stdout_data.decode("utf-8", errors="replace")
-                stderr_str = stderr_data.decode("utf-8", errors="replace")
+                stdout_str = decode_bytes(stdout_data)
+                stderr_str = decode_bytes(stderr_data)
 
                 status_desc = "Accepted" if exit_code == 0 else "Runtime Error"
 
@@ -138,19 +158,25 @@ class LocalSandboxRunner:
                 )
 
             if compile_proc.returncode != 0:
-                compile_err = c_err.decode("utf-8", errors="replace")
+                compile_err = decode_bytes(c_err)
                 return CodeRunResponse(
                     status="Compilation Error",
                     compile_output=compile_err,
                     exit_code=compile_proc.returncode
                 )
 
-            # 2. 실행 단계 (메모리 한도 512MB 적용)
+            # 2. 실행 단계 (메모리 한도 512MB 및 UTF-8 인코딩 강제 적용)
             max_heap_mb = min(int(memory_limit_kb / 1024), 512)
             start_time = time.perf_counter()
 
             run_proc = await asyncio.create_subprocess_exec(
-                JAVA_EXEC, f"-Xmx{max_heap_mb}m", "-XX:+UseSerialGC", "Main",
+                JAVA_EXEC, 
+                f"-Xmx{max_heap_mb}m", 
+                "-XX:+UseSerialGC",
+                "-Dfile.encoding=UTF-8",
+                "-Dsun.stdout.encoding=UTF-8",
+                "-Dsun.stderr.encoding=UTF-8",
+                "Main",
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -166,8 +192,8 @@ class LocalSandboxRunner:
                 execution_time = round(time.perf_counter() - start_time, 4)
                 exit_code = run_proc.returncode
 
-                stdout_str = stdout_data.decode("utf-8", errors="replace")
-                stderr_str = stderr_data.decode("utf-8", errors="replace")
+                stdout_str = decode_bytes(stdout_data)
+                stderr_str = decode_bytes(stderr_data)
 
                 status_desc = "Accepted" if exit_code == 0 else "Runtime Error"
 
