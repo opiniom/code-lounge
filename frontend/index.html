@@ -633,6 +633,8 @@ a{color:inherit;}
 .calpick-grid button:hover{border-color:var(--border-strong); color:var(--text);}
 .calpick-grid button.cur{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink); font-weight:600;}
 .calpick-today{border:none; background:none; color:var(--accent-ink); font-size:12px; font-weight:600; cursor:pointer; align-self:flex-start; padding:2px 0;}
+.mdr-proj{display:inline-flex; align-items:center; gap:5px; font-size:10px; font-family:var(--font-mono); color:var(--text-muted); background:var(--surface-3); border-radius:6px; padding:2px 7px; margin-right:7px; vertical-align:1px; font-weight:500;}
+.mdr-proj i{width:7px; height:7px; border-radius:2px; display:inline-block;}
 .cal-toolbar{display:flex; align-items:center; gap:8px;}
 .calsel-wrap{position:relative;}
 .calsel-btn{display:flex; align-items:center; gap:8px; min-width:210px; padding:8px 12px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); border-radius:10px; font-size:13px; font-weight:600; cursor:pointer;}
@@ -1510,10 +1512,22 @@ a{color:inherit;}
   <section class="view" data-view="notes">
     <div class="page-pad">
       <div class="section-head">
-        <div><span class="view-eyebrow">Meeting Log</span><h2>회의록</h2><span class="sub">정리된 회의록을 표로 확인하고, 새 회의록은 버튼으로 작성해요</span></div>
-        <button class="btn primary" onclick="openComposeModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>새 회의록 작성
-        </button>
+        <div><span class="view-eyebrow">Meeting Log</span><h2>회의록</h2><span class="sub">프로젝트별 회의록을 표로 확인하고, 새 회의록은 버튼으로 작성해요</span></div>
+        <div class="cal-toolbar">
+          <div class="calsel-wrap">
+            <button class="calsel-btn" id="noteSelBtn" onclick="toggleCalMenu(event,'noteSel')">
+              <span class="pdot" id="noteSelDot"></span><span id="noteSelLabel">전체 프로젝트</span>
+              <span class="chev"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+            </button>
+            <div class="calsel-menu" id="noteSelMenu"></div>
+          </div>
+          <button class="icon-btn" title="프로젝트 설정" onclick="openCalSettings()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+          </button>
+          <button class="btn primary" onclick="openComposeModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>새 회의록 작성
+          </button>
+        </div>
       </div>
 
       <div class="mdoc-table card">
@@ -1527,9 +1541,10 @@ a{color:inherit;}
     <div class="modal-backdrop" id="composeModal" onclick="if(event.target===this)closeComposeModal()">
       <div class="share-modal compose-modal">
         <div class="mh"><h3>새 회의록 작성</h3><button class="icon-btn" onclick="closeComposeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+        <div class="form-row"><label>프로젝트 *</label><select id="noteProject"></select></div>
         <div class="form-grid2">
           <div class="form-row"><label>회의 제목 *</label><input type="text" id="noteTitleInput" placeholder="예: 캡스톤 정기 회의"></div>
-          <div class="form-row"><label>날짜 *</label><input type="date" id="noteDateInput" value="2026-09-11"></div>
+          <div class="form-row"><label>날짜 *</label><input type="date" id="noteDateInput"></div>
         </div>
         <div class="form-row">
           <label>참석자 *</label>
@@ -1631,6 +1646,10 @@ a{color:inherit;}
             <button class="icon-btn" title="회의록 다시 분석" onclick="reanalyzeDocs()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
           </div>
           <p style="font-size:11.5px; color:var(--text-faint); margin-top:-6px; line-height:1.5;">회의록을 AI가 분석해 일정의 시작~종료를 찾아요. 추가를 누르면 해당 프로젝트 캘린더에 기간 그대로 들어가요.</p>
+          <div class="share-toggle" style="padding:8px 10px; font-size:12px;">
+            <span>회의록을 저장하면 캘린더에 자동 반영</span>
+            <div class="switch on" id="autoApplySwitch" onclick="toggleAutoApply()"></div>
+          </div>
           <p class="detect-engine" id="detectNote"></p>
           <div id="detectList" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
@@ -1658,8 +1677,8 @@ a{color:inherit;}
 
     <div class="modal-backdrop" id="calSettingsModal" onclick="if(event.target===this)closeCalSettings()">
       <div class="share-modal">
-        <div class="mh"><h3>프로젝트 캘린더 설정</h3><button class="icon-btn" onclick="closeCalSettings()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">내가 참여 중인 프로젝트 중 캘린더에 표시할 프로젝트를 고르고, 프로젝트별 색상을 바꿀 수 있어요. (색 네모를 누르면 색이 바뀌어요)</p>
+        <div class="mh"><h3>프로젝트 설정</h3><button class="icon-btn" onclick="closeCalSettings()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+        <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">내가 참여 중인 프로젝트 중 캘린더·회의록에 표시할 프로젝트를 고르고, 프로젝트별 색상을 바꿀 수 있어요. (색 네모를 누르면 색이 바뀌어요)</p>
         <div class="share-members" id="calSettingsList"></div>
       </div>
     </div>
@@ -2173,9 +2192,11 @@ async function handleSocialLogin(provider){
       pushToast('✨', provider + ' 로그인 완료', provider + ' 소셜 계정으로 로그인되었습니다.\n(.env에 Client ID를 입력하면 실제 OAuth 2.0으로 자동 연결됩니다)');
     } else {
       mockLogin(provider);
+      setTimeout(function(){ pushToast('⚠️','서버 로그인에 실패해 데모 모드로 열렸어요','데모 모드에서는 회의록 저장과 AI 일정 분석을 쓸 수 없어요 · 서버 상태를 확인해주세요'); }, 500);
     }
   } catch(e) {
     mockLogin(provider);
+    setTimeout(function(){ pushToast('⚠️','서버에 연결할 수 없어 데모 모드로 열렸어요','데모 모드에서는 회의록 저장과 AI 일정 분석을 쓸 수 없어요 · 백엔드가 켜져 있는지 확인해주세요'); }, 500);
   }
 }
 
@@ -2192,12 +2213,11 @@ function mockLogin(provider){
     setTimeout(function(){ pushToast('👋','로그인 완료', provider+' 계정으로 로그인했어요'+(isAdmin?' · 관리자 권한이 적용됐어요':'')); }, 300);
   }
   if(provider!=='Google'){
-    setTimeout(function(){ pushToast('🤖','AI 일정 감지','캡스톤 채팅방에서 "오늘 밤 캐싱 작업" 일정을 찾았어요'); }, 3200);
     setTimeout(function(){ pushToast('🏆','공모전 마감 임박','D-3 · 2026 대학생 AI 해커톤 접수가 곧 마감돼요'); }, 7200);
   }
 }
 function mockLogout(){
-  calApiMode = false; calendarEvents = []; calDetect = [];
+  calApiMode = false; calendarEvents = []; calDetect = []; detectCache = {}; meetingDocs = []; renderMeetingDocs();
   isAdmin = false;
   authToken = null;
   currentUser = null;
@@ -3773,8 +3793,9 @@ function runMeetingSummarize(){
     var today = new Date();
     var dateStr = today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0');
     var doc = buildDocFromLines('채팅에서 정리한 회의 메모', dateStr, ['나'], lines);
+    doc.project = calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
     meetingDocs.unshift(doc);
-    renderMeetingDocs();
+    syncCalProjects();
     syncDocToCalendar(doc);
     appendSystemBubble('📝','AI 회의록 정리', lines.length+'건 정리 완료 · 결정사항 '+doc.decisions.length+' · 액션아이템 '+doc.actions.length, true);
     pushToast('📝','회의록 업데이트','채팅에서 정리한 내용이 회의록에 반영됐어요 · 결정 '+doc.decisions.length+' · 액션 '+doc.actions.length);
@@ -3858,14 +3879,41 @@ function validateRequired(){
     return null;
   }
   var p = dateVal.split('-');
-  return {title:title, date:p[0]+'.'+p[1]+'.'+p[2], attendees:attendees};
+  return {title:title, date:p[0]+'.'+p[1]+'.'+p[2], attendees:attendees, project:document.getElementById('noteProject').value || null};
 }
 function saveDraft(){
   pushToast('💾','임시저장됨','작성 중인 내용이 임시로 저장됐어요');
 }
+var attendeeDefaultHtml = null;
+function buildAttendeePicker(){
+  var box = document.getElementById('attendeePicker');
+  if(attendeeDefaultHtml===null) attendeeDefaultHtml = box.innerHTML;
+  if(!calApiMode){ box.innerHTML = attendeeDefaultHtml; return; }
+  box.innerHTML = '';
+  var chip = document.createElement('button');
+  chip.type = 'button'; chip.className = 'member-chip active'; chip.dataset.name = myProfile.name || '나';
+  chip.onclick = function(){ chip.classList.toggle('active'); };
+  var dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = '#3A6EA5';
+  chip.appendChild(dot); chip.append(myProfile.name || '나');
+  box.appendChild(chip);
+}
 function openComposeModal(){
+  if(calApiMode && !myProjects.length){
+    ensureProjectId().then(function(){ openComposeModal(); }).catch(function(e){ pushToast('⚠️','프로젝트를 만들지 못했어요', e.message); });
+    return;
+  }
+  var psel = document.getElementById('noteProject');
+  psel.innerHTML = '';
+  var defProj = calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
+  myProjects.forEach(function(p){
+    var o = document.createElement('option'); o.value = p.id; o.textContent = p.title;
+    if(p.id===defProj) o.selected = true;
+    psel.appendChild(o);
+  });
+  if(!myProjects.length){ var none = document.createElement('option'); none.value = ''; none.textContent = '프로젝트 없음'; psel.appendChild(none); }
   document.getElementById('noteTitleInput').value = '';
-  document.getElementById('noteDateInput').value = '2026-09-11';
+  document.getElementById('noteDateInput').value = CAL_TODAY.y+'-'+pad2(CAL_TODAY.m)+'-'+pad2(CAL_TODAY.d);
+  buildAttendeePicker();
   document.querySelectorAll('#attendeePicker .member-chip').forEach(function(c){ c.classList.add('active'); });
   document.getElementById('noteEditor').innerHTML = '';
   document.getElementById('composeModal').classList.add('open');
@@ -3883,8 +3931,10 @@ function generateAiRecord(){
     var text = editor.innerText.trim();
     var lines = text.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
     var doc = buildDocFromLines(meta.title, meta.date, meta.attendees, lines);
+    doc.project = meta.project;
     meetingDocs.unshift(doc);
-    renderMeetingDocs();
+    if(meta.project && calSelected!=='all' && calSelected!==meta.project) calSelected = meta.project;   // 새 회의록이 보이는 프로젝트로 이동
+    syncCalProjects();
     syncDocToCalendar(doc);
     btn.disabled = false;
     btn.innerHTML = original;
@@ -3894,16 +3944,22 @@ function generateAiRecord(){
 }
 
 /* ---- notes: document gallery + side drawer ---- */
-var meetingDocs = [
-  buildDocFromLines(
-    '캡스톤 · AI 리테일 추천 정기 회의', '2026.09.11', ['지우','민재','하은','나'],
-    ['오늘 회의에서 UI 디자인 시안 확정하기로 함','민재가 API 문서 정리 금요일까지 담당','다음 회의는 다음주 화요일 오후 2시']
-  )
-];
+var meetingDocs = [];
 function renderMeetingDocs(){
   var wrap = document.getElementById('meetingDocList');
   wrap.innerHTML = '';
-  meetingDocs.forEach(function(doc){
+  var visibleIds = calReady ? calVisibleProjectIds() : null;   // 캘린더 상태가 준비되기 전(스크립트 첫 로드)에는 전부 표시
+  var docsToShow = meetingDocs.filter(function(d){ return !visibleIds || !d.project || visibleIds.indexOf(d.project)>=0; });
+  if(!docsToShow.length){
+    var emptyRow = document.createElement('div');
+    emptyRow.style.cssText = 'padding:34px 18px; text-align:center; color:var(--text-faint); font-size:13px; line-height:1.7;';
+    emptyRow.innerHTML = (meetingDocs.length && calSelected!=='all')
+      ? '이 프로젝트에는 아직 회의록이 없어요.<br>"새 회의록 작성"으로 이 프로젝트의 첫 회의록을 남겨보세요.'
+      : '아직 회의록이 없어요.<br>"새 회의록 작성"으로 첫 회의록을 남겨보세요. "9월 20일부터 22일까지 해커톤 준비"처럼 기간을 적으면 그 프로젝트 캘린더에 반영할 수 있어요.';
+    wrap.appendChild(emptyRow);
+    return;
+  }
+  docsToShow.forEach(function(doc){
     var row = document.createElement('div');
     row.className = 'mdoc-row';
     row.innerHTML =
@@ -3914,6 +3970,13 @@ function renderMeetingDocs(){
     row.querySelector('.mdr-date').textContent = doc.date;
     var titleBtn = row.querySelector('.mdr-title');
     titleBtn.textContent = doc.title + '  →';
+    var rowProj = calReady ? calProjectById(doc.project) : null;
+    if(rowProj && calSelected==='all' && myProjects.length>1){
+      var tag = document.createElement('span'); tag.className = 'mdr-proj';
+      var tdot = document.createElement('i'); tdot.style.background = calProjColor(rowProj);
+      tag.appendChild(tdot); tag.append(rowProj.title);
+      titleBtn.insertBefore(tag, titleBtn.firstChild);
+    }
     titleBtn.onclick = function(){ openMdocDrawer(doc.id); };
     row.querySelector('.mdr-attendees').innerHTML = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
     var statusBtn = row.querySelector('.mdr-status-btn');
@@ -3935,12 +3998,16 @@ function buildDocHtml(doc){
     "<div class='mdoc-props'>"+
       "<div class='mdoc-prop'><span class='mp-label'>📅 날짜</span><span class='mp-val'>"+escHtml(doc.date)+"</span></div>"+
       "<div class='mdoc-prop'><span class='mp-label'>✅ 상태</span><span class='mp-val'><button type='button' class='mdr-status-btn' style='background:"+c+"22; color:"+c+";' onclick='openStatusEditor(event,\""+doc.id+"\")'>● "+escHtml(doc.status)+"</button></span></div>"+
+      "<div class='mdoc-prop'><span class='mp-label'>📁 프로젝트</span><span class='mp-val'>"+escHtml((calProjectById(doc.project)||{title:'미분류'}).title)+"</span></div>"+
       "<div class='mdoc-prop'><span class='mp-label'>👥 참석자</span><span class='mp-val'>"+attendeesHtml+"</span></div>"+
     "</div>"+
     "<hr class='mdoc-divider'>"+
     "<div class='mdoc-block'><h4>💬 논의 내용</h4><ul>"+discussionHtml+"</ul></div>"+
     "<div class='mdoc-block'><h4>✅ 결정 사항 <span class='count'>("+doc.decisions.length+")</span></h4><ol>"+decisionsHtml+"</ol></div>"+
-    "<div class='mdoc-block'><h4>🔧 액션 아이템 <span class='count'>("+doc.actions.length+")</span></h4><ul class='mdoc-checklist'>"+actionsHtml+"</ul></div>"
+    "<div class='mdoc-block'><h4>🔧 액션 아이템 <span class='count'>("+doc.actions.length+")</span></h4><ul class='mdoc-checklist'>"+actionsHtml+"</ul></div>"+
+    "<hr class='mdoc-divider'>"+
+    "<div class='mdoc-block'><h4>📅 캘린더</h4><p style='font-size:12px; color:var(--text-faint); line-height:1.6; margin-bottom:10px;'>회의록에 적힌 날짜·기간(예: 9월 20일부터 22일까지)을 AI가 분석해서 캘린더에 시작~종료 그대로 넣어줘요.</p>"+
+    "<button type='button' class='btn primary' onclick='applyDocToCalendar(\""+doc.id+"\")'>📅 이 회의록 일정을 캘린더에 반영</button></div>"
   );
 }
 function openMdocDrawer(id){
@@ -4011,7 +4078,8 @@ function setDocStatus(docId, name){
 /* ---- notes: edit AI-generated record ---- */
 function buildDocEditHtml(doc){
   return (
-    "<div class='form-row'><label>회의 제목</label><input type='text' id='editTitle' value=\""+escAttr(doc.title)+"\"></div>"+
+    "<div class='form-row'><label>프로젝트</label><select id='editProject'>"+myProjects.map(function(p){ return "<option value='"+escAttr(p.id)+"'"+(p.id===doc.project?" selected":"")+">"+escHtml(p.title)+"</option>"; }).join('')+"</select></div>"+
+    "<div class='form-row' style='margin-top:12px;'><label>회의 제목</label><input type='text' id='editTitle' value=\""+escAttr(doc.title)+"\"></div>"+
     "<div class='mdoc-block' style='margin-top:14px;'><h4>💬 논의 내용 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editOthers' rows='4'>"+escHtml(doc.others.join('\n'))+"</textarea></div>"+
     "<div class='mdoc-block'><h4>✅ 결정 사항 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editDecisions' rows='4'>"+escHtml(doc.decisions.join('\n'))+"</textarea></div>"+
     "<div class='mdoc-block'><h4>🔧 액션 아이템 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editActions' rows='4'>"+escHtml(doc.actions.join('\n'))+"</textarea></div>"+
@@ -4031,6 +4099,8 @@ function saveEditDoc(){
   if(!doc) return;
   var titleVal = document.getElementById('editTitle').value.trim();
   if(titleVal) doc.title = titleVal;
+  var projSel = document.getElementById('editProject');
+  if(projSel && projSel.value) doc.project = projSel.value;
   doc.others = document.getElementById('editOthers').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
   doc.decisions = document.getElementById('editDecisions').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
   doc.actions = document.getElementById('editActions').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
@@ -4042,48 +4112,47 @@ function saveEditDoc(){
 }
 
 /* ---- notes → calendar integration ---- */
+var guestNoticeShown = false;
+/* 회의록을 서버에 저장(생성/수정). 같은 문서의 요청은 순서대로 처리 */
+function persistDoc(doc){
+  if(!calApiMode) return Promise.resolve(doc);
+  doc._p = (doc._p || Promise.resolve()).then(function(){
+    var body = {title:doc.title, attendees:doc.attendees, raw:doc.raw || '', status:doc.status};
+    var m = /^p(\d+)$/.exec(doc.project || '');
+    if(m) body.project_id = parseInt(m[1], 10);
+    if(doc.serverId){
+      return apiFetch('/api/meetings/'+doc.serverId, {method:'PATCH', body:JSON.stringify(body)});
+    }
+    body.doc_date = docIso(doc.date);
+    return apiFetch('/api/meetings', {method:'POST', body:JSON.stringify(body)}).then(function(row){ doc.serverId = row.id; });
+  }).then(function(){ return doc; }, function(e){
+    pushToast('⚠️','회의록을 서버에 저장하지 못했어요', e.message);
+    return doc;
+  });
+  return doc._p;
+}
+function docFromServer(row){
+  var lines = (row.raw || '').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+  var d = buildDocFromLines(row.title, row.doc_date.replace(/-/g, '.'), row.attendees, lines);
+  d.serverId = row.id; d.status = row.status; d.raw = row.raw;
+  d.project = row.project_id ? 'p'+row.project_id : null;
+  return d;
+}
 function syncDocToCalendar(doc){
-  // 회의록이 만들어지거나 수정되면 AI 가 일정 후보를 다시 찾는다 (캘린더에는 사용자가 추가를 눌러야 들어감)
-  if(!calApiMode) return;
-  delete detectCache[doc.id];
-  refreshDetections(true);
+  // 회의록이 만들어지거나 수정되면 저장하고, AI 가 일정(시작~종료)을 찾아 캘린더에 반영한다
+  if(!calApiMode){
+    if(!guestNoticeShown){ guestNoticeShown = true; pushToast('🔒','AI 일정 분석은 로그인 후 사용할 수 있어요','구글/네이버/이메일로 로그인하면 회의록이 저장되고 캘린더에 반영돼요'); }
+    return;
+  }
+  persistDoc(doc).then(function(){ refreshDetections(true, true); });
 }
 renderMeetingDocs();
 
 /* ---- calendar: data-driven events (cap + overflow + delete) ---- */
 var CAL_CAP = 2;
 var calendarEvents = [];
-var DEMO_EVENTS_RAW = [
-  {id:'s1', day:11, title:'14:00 팀 회의', cls:'manual', member:null, project:'capstone'},
-  {id:'s2', day:13, title:'포트폴리오 정리 🔒', cls:'private', member:'me', project:'capstone'},
-  {id:'s3', day:15, title:'🤖 API 문서 마감', cls:'ai', member:'minjae', project:'capstone'},
-  {id:'s4', day:17, title:'인턴 면접', cls:'shared', member:'jiwoo', project:'capstone'},
-  {id:'s5', day:18, title:'알고리즘 스터디', cls:'manual', member:null, project:'algo'},
-  {id:'s6', day:22, title:'🤖 홈페이지 리뷰', cls:'ai', member:null, project:'club'},
-  {id:'s7', day:25, title:'중간 발표 리허설', cls:'manual', member:null, project:'capstone'},
-  {id:'s8', day:9, title:'코딩테스트 모의고사', cls:'shared', member:'minjae', project:'algo'},
-  {id:'s9', day:24, title:'스터디 정기 모임', cls:'manual', member:null, project:'algo'},
-  {id:'s10', day:20, title:'디자인 시안 공유', cls:'shared', member:'haeun', project:'club'},
-  {id:'s11', day:28, title:'🤖 배포 점검', cls:'ai', member:null, project:'club'},
-  {id:'o1', ym:'2026-10', day:3, title:'해커톤 접수 마감', cls:'manual', member:null, project:'capstone'},
-  {id:'o2', ym:'2026-10', day:8, title:'🤖 중간 점검 회의', cls:'ai', member:null, project:'capstone'},
-  {id:'o3', ym:'2026-10', day:15, title:'스터디 휴식 주간', cls:'shared', member:'yoon', project:'algo'},
-  {id:'o4', ym:'2026-10', day:20, title:'홈페이지 1차 배포', cls:'manual', member:null, project:'club'},
-  {id:'a1', ym:'2026-08', day:28, title:'캡스톤 킥오프', cls:'manual', member:null, project:'capstone'},
-  {id:'a2', ym:'2026-08', day:14, title:'스터디 첫 모임', cls:'shared', member:'minjae', project:'algo'}
-];
-var DEMO_DETECT_RAW = [
-  {key:'d1', docTitle:'캡스톤 채팅방', title:'오늘 밤 캐싱 작업', start:'2026-09-11', end:'2026-09-11', startTime:'20:00', source:'오늘 밤 캐싱 작업 해야할듯', project:'capstone', member:'minjae', status:'new'},
-  {key:'d2', docTitle:'캡스톤 정기 회의', title:'팀 회의', start:'2026-09-15', end:'2026-09-15', startTime:'14:00', source:'다음 회의는 다음주 화요일 오후 2시', project:'capstone', member:null, status:'new'},
-  {key:'d3', docTitle:'캡스톤 정기 회의', title:'API 문서 마감 — 민재', start:'2026-09-18', end:'2026-09-18', startTime:null, source:'민재가 API 문서 정리 금요일까지 담당', project:'capstone', member:'minjae', status:'added'}
-];
 function loadDemoCalendar(){
-  calendarEvents = DEMO_EVENTS_RAW.map(function(e){
-    var d = (e.ym || '2026-09')+'-'+pad2(e.day);
-    return {id:e.id, start:d, end:d, startTime:null, endTime:null, title:e.title, cls:e.cls, member:e.member, project:e.project, source:null};
-  });
-  calDetect = DEMO_DETECT_RAW.map(function(c){ return Object.assign({}, c); });
-  calDetectEngine = null; calDetectNote = null;
+  calendarEvents = []; calDetect = []; calDetectEngine = null; calDetectNote = null;
 }
 function memberColor(m){
   var map = {jiwoo:'#E8542E', minjae:'#1F6F5C', haeun:'#8C4A9C', yoon:'#B08B2E', me:'#3A6EA5'};
@@ -4208,8 +4277,9 @@ function closeCalPicker(){
   var box = document.getElementById('calPicker'); if(box) box.classList.remove('open');
   var btn = document.getElementById('calMonthBtn'); if(btn) btn.classList.remove('open');
 }
-function renderCalSelector(){
-  var menu = document.getElementById('calSelMenu');
+var ALL_DOT = 'conic-gradient(#E8542E 0 33%, #1F6F5C 0 66%, #3A6EA5 0)';
+function renderSelectorInto(prefix, countFn, unit){
+  var menu = document.getElementById(prefix+'Menu');
   if(!menu) return;
   menu.innerHTML = '';
   var enabled = calEnabledProjects();
@@ -4225,29 +4295,30 @@ function renderCalSelector(){
     menu.appendChild(b);
   }
   if(enabled.length){
-    addItem('all', '전체 프로젝트', 'conic-gradient(#E8542E 0 33%, #1F6F5C 0 66%, #3A6EA5 0)', enabled.length+'개');
-    enabled.forEach(function(p){
-      var n = calendarEvents.filter(function(ev){ return ev.project===p.id && evInMonth(ev); }).length;
-      addItem(p.id, p.title, calProjColor(p), n+'건');
-    });
+    addItem('all', '전체 프로젝트', ALL_DOT, enabled.length+'개');
+    enabled.forEach(function(p){ addItem(p.id, p.title, calProjColor(p), countFn(p)+unit); });
     var sep = document.createElement('div'); sep.className = 'calsel-sep'; menu.appendChild(sep);
   }
   var st = document.createElement('button');
   st.type = 'button'; st.className = 'calsel-item settings';
-  st.textContent = '⚙ 프로젝트 캘린더 설정';
+  st.textContent = '⚙ 프로젝트 설정';
   st.onclick = function(){ closeCalMenu(); openCalSettings(); };
   menu.appendChild(st);
 
-  var label = document.getElementById('calSelLabel');
-  var dot2 = document.getElementById('calSelDot');
+  var label = document.getElementById(prefix+'Label');
+  var dot2 = document.getElementById(prefix+'Dot');
   var sel = calProjectById(calSelected);
   if(!enabled.length){
     label.textContent = '프로젝트 없음'; dot2.style.background = 'var(--border-strong)';
   } else if(calSelected!=='all' && sel && !calHiddenProjects[sel.id]){
     label.textContent = sel.title; dot2.style.background = calProjColor(sel);
   } else {
-    label.textContent = '전체 프로젝트'; dot2.style.background = 'conic-gradient(#E8542E 0 33%, #1F6F5C 0 66%, #3A6EA5 0)';
+    label.textContent = '전체 프로젝트'; dot2.style.background = ALL_DOT;
   }
+}
+function renderCalSelector(){
+  renderSelectorInto('calSel', function(p){ return calendarEvents.filter(function(ev){ return ev.project===p.id && evInMonth(ev); }).length; }, '건');
+  renderSelectorInto('noteSel', function(p){ return meetingDocs.filter(function(d){ return d.project===p.id; }).length; }, '건');
 }
 function renderCalMemberLegend(){
   var wrap = document.getElementById('calMemberLegend');
@@ -4282,6 +4353,7 @@ function updateCalTexts(){
 function syncCalProjects(){
   if(calSelected!=='all' && (!calProjectById(calSelected) || calHiddenProjects[calSelected])) calSelected = 'all';
   renderCalSelector(); renderCalMemberLegend(); updateCalTexts(); renderCalendarEvents();
+  renderMeetingDocs();
 }
 function selectCalProject(id){
   calSelected = id;
@@ -4289,11 +4361,16 @@ function selectCalProject(id){
   closeCalMenu();
   syncCalProjects();
 }
-function toggleCalMenu(e){
+function toggleCalMenu(e, prefix){
   if(e) e.stopPropagation();
-  document.getElementById('calSelMenu').classList.toggle('open');
+  var menu = document.getElementById((prefix || 'calSel')+'Menu');
+  var willOpen = !menu.classList.contains('open');
+  closeCalMenu();
+  menu.classList.toggle('open', willOpen);
 }
-function closeCalMenu(){ var m = document.getElementById('calSelMenu'); if(m) m.classList.remove('open'); }
+function closeCalMenu(){
+  ['calSelMenu','noteSelMenu'].forEach(function(id){ var m = document.getElementById(id); if(m) m.classList.remove('open'); });
+}
 document.addEventListener('click', function(e){
   if(!e.target.closest || !e.target.closest('.calsel-wrap')) closeCalMenu();
   if(!e.target.closest || !e.target.closest('.cal-head')) closeCalPicker();
@@ -4495,7 +4572,10 @@ function toggleMemberFilter(btn){
 }
 function openAddEvent(){
   var enabled = calEnabledProjects();
-  if(!enabled.length){ pushToast('📅','프로젝트가 없어요','홈에서 프로젝트를 만들면 그 프로젝트 캘린더에 일정을 추가할 수 있어요'); return; }
+  if(!enabled.length){
+    if(calApiMode && !myProjects.length){ ensureProjectId().then(function(){ openAddEvent(); }).catch(function(e){ pushToast('⚠️','프로젝트를 만들지 못했어요', e.message); }); return; }
+    pushToast('📅','프로젝트가 없어요','캘린더 설정에서 프로젝트 캘린더를 켜주세요'); return;
+  }
   var sel = document.getElementById('newEvtProject');
   sel.innerHTML = '';
   var def = calDefaultProject();
@@ -4551,35 +4631,108 @@ function analyzeDoc(doc){
     .then(function(res){
       detectCache[doc.id] = doc.raw;
       calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status!=='new'; });
-      var fresh = 0;
+      var fresh = [];
       res.events.forEach(function(e){
         var key = doc.id+'|'+e.title+'|'+e.start_date+'|'+(e.start_time||'');
         if(calDetect.some(function(c){ return c.key===key; })) return;
         var exists = calendarEvents.some(function(ev){ return ev.title===e.title && ev.start===e.start_date; });
-        calDetect.push({key:key, docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
-          startTime:e.start_time, endTime:e.end_time, source:e.source, project:null, status: exists ? 'added' : 'new'});
-        if(!exists) fresh++;
+        var cand = {key:key, docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
+          startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: exists ? 'added' : 'new'};
+        calDetect.push(cand);
+        if(!exists) fresh.push(cand);
       });
       calDetectEngine = res.engine; calDetectNote = res.note;
       return fresh;
     })
-    .catch(function(e){ calDetectNote = '분석에 실패했어요: '+e.message; return 0; })
-    .then(function(n){ calDetectBusy--; renderDetectCard(); return n; });
+    .catch(function(e){ calDetectNote = '분석에 실패했어요: '+e.message; pushToast('⚠️','회의록 분석에 실패했어요', e.message); return []; })
+    .then(function(list){ calDetectBusy--; renderDetectCard(); return list; });
 }
-function refreshDetections(notify){
+var calAutoApply = true;
+(function(){ try{ if(localStorage.getItem('sync_cal_autoapply')==='0') calAutoApply = false; }catch(e){} })();
+function toggleAutoApply(){
+  calAutoApply = !calAutoApply;
+  try{ localStorage.setItem('sync_cal_autoapply', calAutoApply ? '1' : '0'); }catch(e){}
+  var sw = document.getElementById('autoApplySwitch'); if(sw) sw.classList.toggle('on', calAutoApply);
+  pushToast('⚙️', calAutoApply ? '자동 반영 켜짐' : '자동 반영 꺼짐', calAutoApply ? '회의록을 저장하면 감지된 일정이 바로 캘린더에 들어가요' : '감지된 일정은 "캘린더에 추가"를 눌러야 들어가요');
+}
+/* 일정이 들어갈 프로젝트가 없으면 "내 일정" 프로젝트를 자동으로 만든다 */
+function ensureProjectId(){
+  var def = calDefaultProject();
+  if(def) return Promise.resolve(def);
+  if(myProjects.length) return Promise.resolve(myProjects[0].id);
+  if(!calApiMode) return Promise.resolve(null);
+  return apiFetch('/api/projects', {method:'POST', body:JSON.stringify({title:'내 일정'})}).then(function(row){
+    var pr = projFromServer(row);
+    myProjects.unshift(pr);
+    renderProjRow();
+    pushToast('📁','기본 프로젝트를 만들었어요','"내 일정" 프로젝트 캘린더에 일정이 들어가요');
+    return pr.id;
+  });
+}
+function rangeBrief(c){ return c.title+' ('+fmtRange(c)+')'; }
+/* 후보를 순서대로 캘린더에 추가 (AI 가 찾은 시작~종료 그대로) */
+function addCandidates(list, opts){
+  opts = opts || {};
+  list = list.filter(function(c){ return c.status==='new'; });
+  if(!list.length) return Promise.resolve([]);
+  return ensureProjectId().then(function(pid){
+    if(!pid){ pushToast('📅','프로젝트가 없어요','프로젝트를 만든 뒤 일정을 추가할 수 있어요'); return []; }
+    var done = [];
+    return list.reduce(function(chain, c){
+      return chain.then(function(){
+        return addCalendarEvent({title:c.title, start:c.start, end:c.end, startTime:c.startTime, endTime:c.endTime,
+          kind:'ai', project:c.project || pid, source:c.source, member:c.member||'me'
+        }).then(function(){ c.status = 'added'; done.push(c); });
+      }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
+    }, Promise.resolve()).then(function(){
+      renderDetectCard();
+      if(done.length){
+        goToMonthOf(done[0].start);
+        var pj = calProjectById(done[0].project || '');
+        var brief = done.slice(0,3).map(rangeBrief).join(' · ') + (done.length>3 ? ' 외 '+(done.length-3)+'개' : '') + (pj ? ' → '+pj.title+' 캘린더' : '');
+        pushToast(opts.auto ? '🤖' : '✅', opts.auto ? '회의록 일정을 캘린더에 자동 반영했어요' : '캘린더에 추가됨', brief);
+      }
+      return done;
+    });
+  });
+}
+function refreshDetections(notify, autoApply){
   if(!calApiMode){ renderDetectCard(); return Promise.resolve(); }
   var jobs = meetingDocs.filter(function(doc){ return doc.raw && detectCache[doc.id]!==doc.raw; });
   if(!jobs.length){ renderDetectCard(); return Promise.resolve(); }
-  return Promise.all(jobs.map(analyzeDoc)).then(function(counts){
-    var total = counts.reduce(function(a, b){ return a+b; }, 0);
-    if(notify && total>0) pushToast('🤖','일정 후보를 찾았어요', '회의록에서 일정 '+total+'개를 감지했어요 · 캘린더 탭에서 추가할 수 있어요');
+  return Promise.all(jobs.map(analyzeDoc)).then(function(lists){
+    var fresh = [].concat.apply([], lists);
+    if(!fresh.length){
+      if(notify) pushToast('🤖','일정으로 볼 내용이 없어요','회의록에 "9월 20일부터 22일까지"처럼 날짜나 기간을 적으면 캘린더에 반영돼요');
+      return;
+    }
+    if(autoApply && calAutoApply) return addCandidates(fresh, {auto:true});
+    if(notify) pushToast('🤖','일정 후보를 찾았어요', '일정 '+fresh.length+'개를 감지했어요 · 캘린더 탭에서 추가할 수 있어요');
   });
 }
 function reanalyzeDocs(){
-  if(!calApiMode){ pushToast('🤖','데모 모드예요','실제 로그인 후 회의록을 다시 분석할 수 있어요'); return; }
+  if(!calApiMode){ pushToast('🔒','로그인이 필요해요','로그인하면 회의록을 AI로 다시 분석할 수 있어요'); return; }
   detectCache = {};
   calDetect = calDetect.filter(function(c){ return c.status!=='new'; });
-  refreshDetections(true);
+  refreshDetections(true, false);
+}
+/* 회의록 화면의 버튼: 이 회의록을 지금 분석해서 캘린더에 바로 넣는다 */
+function applyDocToCalendar(docId){
+  var doc = meetingDocs.filter(function(d){ return d.id===docId; })[0];
+  if(!doc) return;
+  if(!calApiMode){ pushToast('🔒','로그인이 필요해요','로그인하면 AI가 회의록을 분석해서 캘린더에 넣어줘요'); return; }
+  if(!doc.raw || !doc.raw.trim()){ pushToast('📝','내용이 비어 있어요','회의록 내용을 적은 뒤 다시 눌러주세요'); return; }
+  pushToast('🤖','회의록을 분석하는 중이에요', doc.title);
+  calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status!=='new'; });
+  analyzeDoc(doc).then(function(fresh){
+    if(!fresh.length){
+      var already = calDetect.some(function(c){ return c.docId===doc.id && c.status==='added'; });
+      pushToast(already ? '✅' : '🤖', already ? '이미 캘린더에 반영돼 있어요' : '일정으로 볼 내용이 없어요',
+        already ? '이 회의록의 일정은 모두 캘린더에 들어 있어요' : '날짜나 기간(예: 9월 20일부터 22일까지)을 적어주세요');
+      return;
+    }
+    return addCandidates(fresh, {auto:false}).then(function(done){ if(done.length) goView('calendar'); });
+  });
 }
 function renderDetectCard(){
   var box = document.getElementById('detectList');
@@ -4589,6 +4742,7 @@ function renderDetectCard(){
   if(noteEl){
     noteEl.textContent = !calApiMode ? '' : ((calDetectEngine==='gemini' || calDetectEngine==='claude') ? '🤖 '+(calDetectEngine==='gemini' ? 'Gemini' : 'Claude')+'가 회의록을 분석했어요' : (calDetectNote || ''));
   }
+  var sw = document.getElementById('autoApplySwitch'); if(sw) sw.classList.toggle('on', calAutoApply);
   var ids = calVisibleProjectIds();
   var shown = calDetect.filter(function(c){ return c.status!=='dismissed' && (!c.project || ids.indexOf(c.project)>=0); });
   if(calDetectBusy){
@@ -4598,12 +4752,20 @@ function renderDetectCard(){
   if(!shown.length){
     if(!calDetectBusy){
       var empty = document.createElement('p'); empty.className = 'detect-empty';
-      empty.textContent = (calApiMode && !meetingDocs.length) ? '회의록을 작성하면 AI가 일정을 찾아줘요.' : '감지된 일정이 없어요.';
+      empty.textContent = !calApiMode ? '로그인하면 회의록을 AI가 분석해서 일정을 찾아줘요.' : (!meetingDocs.length ? '회의록을 작성하면 AI가 일정을 찾아줘요.' : '감지된 일정이 없어요.');
       box.appendChild(empty);
     }
     return;
   }
   var targetId = calDefaultProject();
+  var pending = shown.filter(function(c){ return c.status==='new'; });
+  if(pending.length>1){
+    var all = document.createElement('button');
+    all.className = 'btn primary'; all.style.alignSelf = 'flex-start'; all.style.padding = '6px 12px'; all.style.fontSize = '12px';
+    all.textContent = '모두 추가 ('+pending.length+')';
+    all.onclick = function(){ addCandidates(pending, {auto:false}); };
+    box.appendChild(all);
+  }
   shown.forEach(function(c){
     var item = document.createElement('div');
     item.className = 'detect-item' + (c.status==='added' ? ' added' : '');
@@ -4616,7 +4778,7 @@ function renderDetectCard(){
     src.textContent = c.docTitle+(c.source ? ' · "'+c.source+'"' : '');
     item.appendChild(src);
     var tgt = calProjectById(c.project || targetId);
-    if(tgt && c.status!=='added' && calSelected==='all' && calEnabledProjects().length>1){
+    if(tgt && c.status!=='added' && myProjects.length>1){
       var pl = document.createElement('span'); pl.className = 'proj-line'; pl.textContent = '→ '+tgt.title+' 캘린더에 추가돼요';
       item.appendChild(pl);
     }
@@ -4639,22 +4801,20 @@ function renderDetectCard(){
 function addDetected(key){
   var c = calDetect.filter(function(x){ return x.key===key; })[0];
   if(!c || c.status!=='new') return;
-  var proj = c.project || calDefaultProject();
-  if(!proj){ pushToast('📅','프로젝트가 없어요','프로젝트를 만든 뒤 일정을 추가할 수 있어요'); return; }
-  addCalendarEvent({title:c.title, start:c.start, end:c.end, startTime:c.startTime, endTime:c.endTime, kind:'ai',
-    project:proj, source:c.source, member:c.member||'me'
-  }).then(function(){
-    c.status = 'added';
-    renderDetectCard();
-    goToMonthOf(c.start);
-    pushToast('✅','캘린더에 추가됨', c.title+' · '+fmtRange(c));
-  }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
+  addCandidates([c], {auto:false});
 }
 function addDetectedFromChat(btn){
   btn.textContent='✓ 캘린더에 추가됨';
   btn.disabled = true;
   btn.style.background='var(--text-faint)';
-  addDetected('d1');
+  var ds = CAL_TODAY.y+'-'+pad2(CAL_TODAY.m)+'-'+pad2(CAL_TODAY.d);
+  ensureProjectId().then(function(pid){
+    if(!pid){ pushToast('📅','프로젝트가 없어요','프로젝트를 만든 뒤 일정을 추가할 수 있어요'); return; }
+    return addCalendarEvent({title:'캐싱 작업', start:ds, end:ds, startTime:'20:00', kind:'ai', project:pid}).then(function(){
+      goToMonthOf(ds);
+      pushToast('✅','캘린더에 추가됨','캐싱 작업 · 오늘 20:00');
+    });
+  }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
 }
 calReady = true;
 buildCalGrid();
@@ -4683,16 +4843,14 @@ function apiFetch(path, opts){
   });
 }
 function resetCalToday(real){
-  if(real){ var n = new Date(); CAL_TODAY.y = n.getFullYear(); CAL_TODAY.m = n.getMonth()+1; CAL_TODAY.d = n.getDate(); }
-  else { CAL_TODAY.y = 2026; CAL_TODAY.m = 9; CAL_TODAY.d = 11; }
+  var n = new Date(); CAL_TODAY.y = n.getFullYear(); CAL_TODAY.m = n.getMonth()+1; CAL_TODAY.d = n.getDate();
   calYear = CAL_TODAY.y; calMonth = CAL_TODAY.m;
   buildCalGrid(); updateCalMonthLabel();
 }
-var demoMeetingDocs = null;
 function enterDemoMode(){
   calApiMode = false;
-  if(demoMeetingDocs){ meetingDocs = demoMeetingDocs.slice(); renderMeetingDocs(); }
-  resetCalToday(false);
+  meetingDocs = []; renderMeetingDocs();
+  resetCalToday(true);
   loadDemoCalendar();
   detectCache = {};
   syncCalProjects();
@@ -4709,8 +4867,7 @@ function startRealSession(){
 }
 function enterApiMode(){
   calApiMode = true;
-  if(!demoMeetingDocs) demoMeetingDocs = meetingDocs.slice();
-  meetingDocs = []; renderMeetingDocs();   // 데모 회의록은 실제 계정에 보이지 않게
+  meetingDocs = []; renderMeetingDocs();
   resetCalToday(true);
   calendarEvents = []; calDetect = []; calDetectEngine = null; calDetectNote = null; detectCache = {};
   syncCalProjects();
@@ -4723,6 +4880,11 @@ function enterApiMode(){
   }).then(function(rows){
     calendarEvents = rows.map(serverEventToLocal);
     syncCalProjects();
+    return apiFetch('/api/meetings');
+  }).then(function(rows){
+    meetingDocs = rows.map(docFromServer);
+    meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });   // 저장된 회의록은 로그인할 때마다 다시 분석하지 않음
+    renderMeetingDocs();
   }).catch(function(e){ pushToast('⚠️','데이터를 불러오지 못했어요', e.message); });
 }
 

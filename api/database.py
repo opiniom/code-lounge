@@ -34,7 +34,38 @@ async def get_db():
         finally:
             await session.close()
 
+def _migrate_users_table(sync_conn):
+    """예전 스키마(oauth 컬럼 없음, hashed_password NOT NULL)의 users 테이블을 현재 모델로 재구성"""
+    from sqlalchemy import text
+    info = {row[1]: row for row in sync_conn.execute(text("PRAGMA table_info(users)"))}
+    if not info:
+        return
+    if "oauth_provider" in info and info["hashed_password"][3] == 0:
+        return
+    new_table = Base.metadata.tables["users"]
+    keep = [c.name for c in new_table.columns if c.name in info]
+    sync_conn.execute(text("PRAGMA legacy_alter_table=ON"))   # 다른 테이블의 FK 가 users_old 로 바뀌지 않게
+    sync_conn.execute(text("ALTER TABLE users RENAME TO users_old"))
+    sync_conn.execute(text("PRAGMA legacy_alter_table=OFF"))
+    for (idx_name,) in list(sync_conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='users_old' AND sql IS NOT NULL"))):
+        sync_conn.execute(text('DROP INDEX IF EXISTS "%s"' % idx_name))
+    new_table.create(sync_conn)
+    cols = ", ".join('"%s"' % c for c in keep)
+    sync_conn.execute(text('INSERT INTO users (%s) SELECT %s FROM users_old' % (cols, cols)))
+    sync_conn.execute(text("DROP TABLE users_old"))
+
+def _add_missing_columns(sync_conn):
+    """이미 만들어진 SQLite 파일에 나중에 추가된 컬럼을 보충 (create_all 은 기존 테이블을 바꾸지 않음)"""
+    from sqlalchemy import text
+    cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(meeting_docs)"))}
+    if cols and "project_id" not in cols:
+        sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN project_id INTEGER"))
+
 async def init_db():
     """서버 시작 시 데이터베이스 및 테이블 자동 생성"""
     async with engine.begin() as conn:
+        if engine.dialect.name == "sqlite":
+            await conn.run_sync(_migrate_users_table)
         await conn.run_sync(Base.metadata.create_all)
+        if engine.dialect.name == "sqlite":
+            await conn.run_sync(_add_missing_columns)

@@ -18,6 +18,7 @@ from routers.auth import router as auth_router
 from routers.submissions import router as submissions_router
 from routers.projects import router as projects_router
 from routers.calendar import router as calendar_router
+from routers.meetings import router as meetings_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -72,6 +73,7 @@ app.include_router(auth_router)
 app.include_router(submissions_router)
 app.include_router(projects_router)
 app.include_router(calendar_router)
+app.include_router(meetings_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))
@@ -82,7 +84,7 @@ INDEX_FILE = os.path.join(UI_DIR, "index.html")
 @app.get("/app", tags=["UI"])
 async def serve_ui():
     if os.path.exists(INDEX_FILE):
-        return FileResponse(INDEX_FILE)
+        return FileResponse(INDEX_FILE, headers={"Cache-Control": "no-store"})
     return {"error": "UI index.html 파일을 찾을 수 없습니다."}
 
 

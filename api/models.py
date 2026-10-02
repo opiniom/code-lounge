@@ -62,3 +62,18 @@ class CalendarEvent(Base):
     kind = Column(String(20), default="manual", nullable=False)  # manual | shared | private | ai
     source = Column(String(300), nullable=True)           # AI 가 일정을 뽑아낸 회의록 문장
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class MeetingDoc(Base):
+    """사용자가 작성한 회의록. AI 일정 분석의 원문(raw)을 그대로 보관한다."""
+    __tablename__ = "meeting_docs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)
+    title = Column(String(200), nullable=False)
+    doc_date = Column(Date, nullable=False, index=True)   # 회의 날짜 ('다음주 화요일' 같은 표현의 기준일)
+    attendees = Column(Text, nullable=False, default="[]")  # JSON 배열 문자열
+    raw = Column(Text, nullable=False, default="")
+    status = Column(String(30), default="완료", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

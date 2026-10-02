@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "YourSecurePassword123"
 
     # 데이터베이스 설정 (기본: 로컬 비동기 SQLite 파일, 추후 PostgreSQL로 교체 가능)
-    DATABASE_URL: str = "sqlite+aiosqlite:///c:/backend/data/app.db"
+    # Windows 는 기존 경로 유지, 그 외 OS 는 프로젝트 안의 data/app.db (c:/... 가 상대경로로 해석되는 문제 방지)
+    DATABASE_URL: str = (
+        "sqlite+aiosqlite:///c:/backend/data/app.db" if os.name == "nt"
+        else "sqlite+aiosqlite:///" + os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "app.db").replace("\\", "/")
+    )
 
     # JWT 인증 설정
     JWT_SECRET_KEY: str = "your-super-secret-jwt-key-for-local-development-change-in-prod-987654321"

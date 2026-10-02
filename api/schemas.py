@@ -153,3 +153,31 @@ class DetectResponse(BaseModel):
     engine: str                      # "claude" | "rules"
     note: Optional[str] = None       # 기본 분석으로 대체됐을 때 사유
     events: List[DetectedEvent]
+
+
+# ================================
+# 회의록 스키마
+# ================================
+class MeetingDocCreate(BaseModel):
+    project_id: Optional[int] = None
+    title: str = Field(..., min_length=1, max_length=200)
+    doc_date: date
+    attendees: List[str] = Field(default_factory=list, max_length=30)
+    raw: str = Field(default="", max_length=20000)
+    status: str = Field(default="완료", max_length=30)
+
+class MeetingDocUpdate(BaseModel):
+    project_id: Optional[int] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    attendees: Optional[List[str]] = Field(default=None, max_length=30)
+    raw: Optional[str] = Field(default=None, max_length=20000)
+    status: Optional[str] = Field(default=None, max_length=30)
+
+class MeetingDocResponse(BaseModel):
+    id: int
+    project_id: Optional[int] = None
+    title: str
+    doc_date: date
+    attendees: List[str]
+    raw: str
+    status: str
