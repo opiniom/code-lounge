@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # UI(index.html)가 들어있는 폴더. 지정하면 서버가 /app 으로 index.html 한 파일만 서빙
     FRONTEND_DIR: str = ""
 
+    # 회의록 일정 분석 AI (선택). 우선순위: Gemini → Claude → 규칙 기반(키 불필요)
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
+
     # Judge0 엔드포인트
     JUDGE0_URL: str = os.getenv("JUDGE0_URL", "http://judge0-server:2358")
 

@@ -18,6 +18,8 @@ from services.sandbox_runner import local_sandbox_runner
 from services.auth_service import get_current_user_optional
 from routers.auth import router as auth_router
 from routers.submissions import router as submissions_router
+from routers.projects import router as projects_router
+from routers.calendar import router as calendar_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -67,6 +69,8 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(auth_router)
 app.include_router(submissions_router)
+app.include_router(projects_router)
+app.include_router(calendar_router)
 
 @app.get("/app", include_in_schema=False)
 async def serve_frontend():

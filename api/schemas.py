@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 
 # ================================
 # 코드 실행 관련 스키마
@@ -85,3 +85,64 @@ class HealthCheckResponse(BaseModel):
     judge0_status: str = Field(..., description="샌드박스 엔진 상태")
     judge0_version: Optional[str] = Field(default=None)
     supported_languages: Optional[List[str]] = Field(default=None)
+
+
+# ================================
+# 프로젝트 / 캘린더 / 일정 분석 스키마
+# ================================
+TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+class ProjectCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+class ProjectResponse(BaseModel):
+    id: int
+    title: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CalendarEventCreate(BaseModel):
+    project_id: int
+    title: str = Field(..., min_length=1, max_length=200)
+    start_date: date
+    end_date: Optional[date] = None
+    start_time: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    end_time: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    kind: str = Field(default="manual", pattern=r"^(manual|shared|private|ai)$")
+    source: Optional[str] = Field(default=None, max_length=300)
+
+class CalendarEventResponse(BaseModel):
+    id: int
+    project_id: int
+    title: str
+    start_date: date
+    end_date: date
+    start_time: Optional[str]
+    end_time: Optional[str]
+    all_day: bool
+    kind: str
+    source: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+class DetectRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=20000, description="회의록 본문")
+    title: Optional[str] = Field(default=None, max_length=200)
+    reference_date: Optional[date] = Field(default=None, description="'다음주 화요일' 같은 상대 날짜의 기준일 (보통 회의 날짜)")
+
+class DetectedEvent(BaseModel):
+    title: str
+    start_date: date
+    end_date: date
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    all_day: bool = True
+    source: str = ""
+
+class DetectResponse(BaseModel):
+    engine: str                      # "claude" | "rules"
+    note: Optional[str] = None       # 기본 분석으로 대체됐을 때 사유
+    events: List[DetectedEvent]
