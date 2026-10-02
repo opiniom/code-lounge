@@ -8,39 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from models import User
-from schemas import UserCreate, UserLogin, UserResponse, TokenResponse, SocialLoginRequest
+from schemas import UserLogin, UserResponse, TokenResponse, SocialLoginRequest
 from services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
-@router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    """새 사용자 회원가입 및 즉시 로그인 토큰 반환"""
-    existing = await db.execute(select(User).where(User.email == user_data.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 등록된 이메일 주소입니다."
-        )
-
-    new_user = User(
-        email=user_data.email,
-        hashed_password=hash_password(user_data.password),
-        username=user_data.username,
-        is_active=True
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    token = create_access_token(data={"sub": str(new_user.id), "email": new_user.email})
-
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserResponse.model_validate(new_user)
-    )
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
