@@ -1,0 +1,92 @@
+services:
+  # 1. 중계 백엔드 API (FastAPI)
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: code-exec-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - JUDGE0_URL=http://judge0-server:2358
+      - CORS_ORIGINS=http://localhost:3000,https://*.vercel.app
+      - MAX_TIMEOUT_SECONDS=10.0
+      - DEFAULT_MEMORY_LIMIT_KB=524288
+    depends_on:
+      judge0-server:
+        condition: service_started
+    networks:
+      - sandbox-net
+
+  # 2. Judge0 CE 웹 서버
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-server
+    restart: always
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_started
+    networks:
+      - sandbox-net
+
+  # 3. Judge0 CE 실행 워커 (격리 샌드박스)
+  judge0-worker:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-worker
+    restart: always
+    command: ["./scripts/workers"]
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_started
+    networks:
+      - sandbox-net
+
+  # 4. PostgreSQL 데이터베이스 (Judge0 메타데이터/히스토리)
+  judge0-db:
+    image: postgres:13.0
+    container_name: judge0-db
+    restart: always
+    environment:
+      - POSTGRES_DB=judge0
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=YourSecurePassword123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sandbox-net
+
+  # 5. Redis (비동기 작업 큐 및 캐시)
+  judge0-redis:
+    image: redis:6.0
+    container_name: judge0-redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - sandbox-net
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  sandbox-net:
+    driver: bridge

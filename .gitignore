@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.local
+
+# Database
+data/
+*.db
+*.sqlite3
+
+# Installers and binary packages
+*.exe
+*.msi
+Docker Desktop*
+
+# Logs
+*.log
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/

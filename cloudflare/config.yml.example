@@ -1,0 +1,16 @@
+# Cloudflare Tunnel Named Tunnel 설정 예시
+# 터널 UUID는 'cloudflared tunnel create <TUNNEL_NAME>' 실행 시 발급됩니다.
+
+tunnel: YOUR_TUNNEL_UUID_HERE
+credentials-file: C:\Users\<YOUR_USER>\.cloudflared\YOUR_TUNNEL_UUID_HERE.json
+
+ingress:
+  # 1. 외부 Vercel에서 접근할 고정 도메인 매핑 (예: api-exec.yourdomain.com)
+  - hostname: api-exec.yourdomain.com
+    service: http://localhost:8000
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: false
+
+  # 2. 매칭되지 않는 기타 요청 차단 (반드시 마지막에 위치해야 함)
+  - service: http_status:404
