@@ -97,13 +97,19 @@ TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
 class ProjectCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
 
+class MemberBrief(BaseModel):
+    id: int
+    username: str
+
 class ProjectResponse(BaseModel):
     id: int
     title: str
     created_at: datetime
+    is_owner: bool = True
+    members: List[MemberBrief] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+class InviteRequest(BaseModel):
+    email: EmailStr
 
 class CalendarEventCreate(BaseModel):
     project_id: int
@@ -114,10 +120,12 @@ class CalendarEventCreate(BaseModel):
     end_time: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
     kind: str = Field(default="manual", pattern=r"^(manual|shared|private|ai)$")
     source: Optional[str] = Field(default=None, max_length=300)
+    meeting_doc_id: Optional[int] = None
 
 class CalendarEventResponse(BaseModel):
     id: int
     project_id: int
+    user_id: Optional[int] = None
     title: str
     start_date: date
     end_date: date
@@ -126,6 +134,7 @@ class CalendarEventResponse(BaseModel):
     all_day: bool
     kind: str
     source: Optional[str]
+    meeting_doc_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -162,6 +171,7 @@ class MeetingDocCreate(BaseModel):
     status: str = Field(default="완료", max_length=30)
 
 class MeetingDocUpdate(BaseModel):
+    detections: Optional[List[dict]] = Field(default=None, max_length=50)
     project_id: Optional[int] = None
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     attendees: Optional[List[str]] = Field(default=None, max_length=30)
@@ -170,9 +180,50 @@ class MeetingDocUpdate(BaseModel):
 
 class MeetingDocResponse(BaseModel):
     id: int
+    detections: List[dict] = Field(default_factory=list)
     project_id: Optional[int] = None
     title: str
     doc_date: date
     attendees: List[str]
     raw: str
     status: str
+
+
+# ================================
+# 팀 채팅 스키마
+# ================================
+class ChatMessageCreate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    project_id: int
+    user_id: Optional[int] = None
+    author: str
+    kind: str
+    text: str
+    meta: Optional[dict] = None
+    created_at: str
+
+
+# ================================
+# 워크스페이스 파일 스키마
+# ================================
+class FileSave(BaseModel):
+    path: str = Field(..., min_length=1, max_length=300)
+    content: str = Field(default="", max_length=300000)
+    base_updated_at: Optional[str] = Field(default=None, description="내가 마지막으로 받은 updated_at. 그 사이 다른 팀원이 고쳤으면 409")
+    force: bool = False
+
+class FileBulk(BaseModel):
+    files: List[FileSave] = Field(..., max_length=100)
+
+class FileRename(BaseModel):
+    from_path: str = Field(..., min_length=1, max_length=300)
+    to_path: str = Field(..., min_length=1, max_length=300)
+
+class FileResponse_(BaseModel):
+    path: str
+    content: str
+    updated_at: str
+    updated_by: Optional[str] = None

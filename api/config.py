@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     # 회의록 일정 분석 AI (선택). 우선순위: Gemini → Claude → 규칙 기반(키 불필요)
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    # 위 모델의 무료 한도(429)가 차면 순서대로 시도할 모델 (쉼표 구분)
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.1-flash-lite,gemini-flash-lite-latest"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
     

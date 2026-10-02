@@ -2,11 +2,12 @@ import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from database import get_db
-from models import User, MeetingDoc, Project
+from models import User, MeetingDoc, Project, CalendarEvent
 from schemas import MeetingDocCreate, MeetingDocUpdate, MeetingDocResponse
 from services.auth_service import get_current_user
+from services.access import get_member_project
 
 router = APIRouter(prefix="/api/meetings", tags=["Meetings"])
 
@@ -15,8 +16,12 @@ def _to_response(doc: MeetingDoc) -> MeetingDocResponse:
         attendees = json.loads(doc.attendees or "[]")
     except ValueError:
         attendees = []
+    try:
+        detections = json.loads(doc.detections or "[]")
+    except ValueError:
+        detections = []
     return MeetingDocResponse(
-        id=doc.id, project_id=doc.project_id, title=doc.title, doc_date=doc.doc_date,
+        id=doc.id, detections=detections, project_id=doc.project_id, title=doc.title, doc_date=doc.doc_date,
         attendees=[str(a) for a in attendees], raw=doc.raw or "", status=doc.status,
     )
 
@@ -31,11 +36,7 @@ async def _get_owned(db: AsyncSession, doc_id: int, user: User) -> MeetingDoc:
 async def _check_project(db: AsyncSession, project_id, user: User):
     if project_id is None:
         return
-    found = (await db.execute(
-        select(Project.id).where(Project.id == project_id, Project.owner_id == user.id)
-    )).scalar_one_or_none()
-    if found is None:
-        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
+    await get_member_project(db, project_id, user)
 
 @router.get("", response_model=List[MeetingDocResponse])
 async def list_meetings(
@@ -80,6 +81,11 @@ async def update_meeting(
         doc.project_id = data.project_id
     if data.title is not None:
         doc.title = data.title.strip()
+    if data.detections is not None:
+        encoded = json.dumps(data.detections, ensure_ascii=False)
+        if len(encoded) > 30000:
+            raise HTTPException(status_code=400, detail="감지 결과가 너무 큽니다.")
+        doc.detections = encoded
     if data.attendees is not None:
         doc.attendees = json.dumps(data.attendees, ensure_ascii=False)
     if data.raw is not None:
@@ -97,6 +103,33 @@ async def delete_meeting(
     db: AsyncSession = Depends(get_db),
 ):
     doc = await _get_owned(db, doc_id, current_user)
+    # 이 회의록에서 AI 가 만든 캘린더 일정도 함께 지운다 (직접 추가한 일정은 건드리지 않음)
+    await db.execute(
+        delete(CalendarEvent).where(
+            CalendarEvent.meeting_doc_id == doc_id,
+            CalendarEvent.user_id == current_user.id,
+            CalendarEvent.kind == "ai",
+        )
+    )
     await db.delete(doc)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{doc_id}/events")
+async def delete_doc_events(
+    doc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """회의록 내용이 수정될 때, 이 회의록에서 AI 가 만들었던 캘린더 일정을 지운다 (새 내용으로 다시 분석하기 위해)"""
+    await _get_owned(db, doc_id, current_user)
+    result = await db.execute(
+        delete(CalendarEvent).where(
+            CalendarEvent.meeting_doc_id == doc_id,
+            CalendarEvent.user_id == current_user.id,
+            CalendarEvent.kind == "ai",
+        )
+    )
+    await db.commit()
+    return {"deleted": result.rowcount or 0}

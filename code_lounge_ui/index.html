@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sync/</title>
+<script>
+/* 화면 크기 자동 조절: 모니터(창) 너비에 맞춰 전체 UI 를 키운다. 설정에서 직접 고를 수도 있다. */
+(function(){
+  var BASE = 1440, MAX = 1.75;
+  window.__uiScalePref = 'auto';
+  try { window.__uiScalePref = localStorage.getItem('sync_ui_scale') || 'auto'; } catch(e){}
+  window.__uiScaleCompute = function(){
+    var pref = window.__uiScalePref;
+    if (pref !== 'auto' && !isNaN(parseFloat(pref))) return Math.min(2, Math.max(0.7, parseFloat(pref)));
+    var s = window.innerWidth / BASE;                 // 1440px 보다 넓은 화면에서 비례해서 확대
+    s = Math.min(MAX, Math.max(1, s));
+    return Math.round(s * 20) / 20;                   // 0.05 단위로 정리해서 글자가 흐려지지 않게
+  };
+  window.__uiScaleApply = function(){
+    var s = window.__uiScaleCompute();
+    window.__uiScale = s;
+    var root = document.documentElement;
+    root.style.zoom = s === 1 ? '' : String(s);
+    root.style.setProperty('--ui-zoom', String(s));
+    return s;
+  };
+  window.__uiScaleApply();
+})();
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
 <style>
@@ -123,7 +147,12 @@ p{margin:0;}
 a{color:inherit;}
 
 /* ---------- app shell ---------- */
-.app{min-height:100vh; display:flex; flex-direction:column;}
+:root{--ui-zoom:1;}
+.scale-options{display:flex; gap:6px; flex-wrap:wrap;}
+.scale-opt{flex:1 1 auto; min-width:58px; padding:9px 8px; border:1px solid var(--border); background:var(--surface); border-radius:10px; font-size:12px; color:var(--text-muted); cursor:pointer; text-align:center;}
+.scale-opt:hover{border-color:var(--border-strong); color:var(--text);}
+.scale-opt.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink); font-weight:600;}
+.app{min-height:calc(100vh / var(--ui-zoom) - 16px);   /* body 기본 여백(위아래 8px씩) 만큼 제외 */ display:flex; flex-direction:column;}
 
 .topbar{
   height:58px; flex:0 0 auto;
@@ -171,8 +200,8 @@ a{color:inherit;}
 .view{display:none;}
 .view.active{display:flex; flex-direction:column; flex:1 1 auto; min-height:0;}
 .view[data-view="workspace"].active{
-  height:calc(100vh - 58px);
-  max-height:calc(100vh - 58px);
+  height:calc(100vh / var(--ui-zoom) - 58px - 16px);
+  max-height:calc(100vh / var(--ui-zoom) - 58px - 16px);
   overflow:hidden;
 }
 
@@ -229,11 +258,11 @@ a{color:inherit;}
 .app.home-landing-mode .home-hero-right{display:none;}
 .app.home-landing-mode .home-hero{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  min-height:calc(100vh - 58px - 70px);
+  min-height:calc(100vh / var(--ui-zoom) - 58px - 16px - 70px);
   position:relative; z-index:1;
 }
-.app.home-landing-mode .home-hero-left{max-width:min(860px, 92vw); width:100%; gap:36px;}
-.app.home-landing-mode .hh-sub{max-width:600px; font-size:clamp(15px, 1.2vw, 18px);}
+.app.home-landing-mode .home-hero-left{max-width:min(860px, calc(92vw / var(--ui-zoom))); width:100%; gap:36px;}
+.app.home-landing-mode .hh-sub{max-width:600px; font-size:clamp(15px, calc(1.2vw / var(--ui-zoom)), 18px);}
 .app.home-landing-mode .prompt-box{
   border-radius:var(--radius-l); padding:24px 24px 18px; box-shadow:var(--shadow-lg); gap:16px;
 }
@@ -246,7 +275,7 @@ a{color:inherit;}
 .app.home-landing-mode .prompt-actions .left{gap:10px;}
 .app.home-landing-mode .home-pad::before{
   content:''; position:absolute; top:-80px; left:50%; transform:translateX(-50%);
-  width:min(860px,92vw); height:min(860px,92vw); border-radius:50%;
+  width:min(860px, calc(92vw / var(--ui-zoom))); height:min(860px, calc(92vw / var(--ui-zoom))); border-radius:50%;
   background:radial-gradient(circle, var(--accent-soft) 0%, transparent 68%);
   filter:blur(36px); opacity:.75; pointer-events:none; z-index:0;
   animation:homeGlow 9s ease-in-out infinite;
@@ -267,9 +296,9 @@ a{color:inherit;}
   letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink); font-weight:600;
   background:var(--accent-soft); border-radius:999px; padding:5px 11px; width:fit-content;
 }
-.hh-title{font-family:var(--font-body); font-weight:700; font-size:clamp(32px, 4.4vw, 58px); line-height:1.16; letter-spacing:-.02em; color:var(--text); text-wrap:balance;}
+.hh-title{font-family:var(--font-body); font-weight:700; font-size:clamp(32px, calc(4.4vw / var(--ui-zoom)), 58px); line-height:1.16; letter-spacing:-.02em; color:var(--text); text-wrap:balance;}
 .hh-title .accent-line{display:block; color:var(--accent);}
-.hh-sub{color:var(--text-muted); font-size:clamp(14.5px, 1.1vw, 17px); max-width:540px; margin:0 auto;}
+.hh-sub{color:var(--text-muted); font-size:clamp(14.5px, calc(1.1vw / var(--ui-zoom)), 17px); max-width:540px; margin:0 auto;}
 
 .prompt-box{
   background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-m);
@@ -382,7 +411,8 @@ a{color:inherit;}
 
 .ws-shell{flex:1 1 auto; display:flex; min-height:0; height:calc(100% - 46px); overflow:hidden; position:relative;}
 .ws-empty-state{
-  flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position:absolute; inset:0; z-index:6;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-align:center; gap:10px; padding:40px; background:var(--bg-elevated);
 }
 .ws-empty-state[hidden]{ display:none !important; }
@@ -408,6 +438,67 @@ a{color:inherit;}
 .ftree-node svg{width:13px; height:13px; flex:0 0 auto;}
 .ftree-node.folder{color:var(--text); font-weight:500;}
 .ftree-children{margin-left:14px; border-left:1px dashed var(--border-strong); padding-left:4px;}
+.ftree-node .fname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ftree-node .fdot{width:7px; height:7px; border-radius:50%; flex:0 0 auto;}
+.ftree-node .fmod{width:6px; height:6px; border-radius:50%; background:var(--accent); flex:0 0 auto;}
+.ftree-node .fact{display:none; gap:2px; margin-left:auto; flex:0 0 auto;}
+.ftree-node:hover .fact{display:flex;}
+.ftree-node:hover .fmod{display:none;}
+.ftree-node .fact button{border:none; background:none; color:var(--text-faint); cursor:pointer; padding:2px 3px; border-radius:5px; display:flex;}
+.ftree-node .fact button:hover{background:var(--surface-3); color:var(--text);}
+.ftree-node .fact button.del:hover{color:var(--accent);}
+.ftree-node.confirm{background:var(--accent-soft); color:var(--accent-ink); cursor:default;}
+.ftree-node.confirm .cbtn{border:none; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; cursor:pointer;}
+.ftree-node.confirm .cbtn.yes{background:var(--accent); color:#fff;}
+.ftree-node.confirm .cbtn.no{background:transparent; color:var(--text-muted);}
+.ftree-node .chev{transition:transform .12s; color:var(--text-faint);}
+.ftree-node.folder.closed .chev{transform:rotate(-90deg);}
+.ftree-node.folder .fcnt{margin-left:auto; font-size:10px; color:var(--text-faint); font-family:var(--font-mono);}
+.ft-rename{flex:1; min-width:0; border:1px solid var(--accent); border-radius:6px; background:var(--surface); color:var(--text); font-size:12px; padding:2px 6px; outline:none; font-family:var(--font-mono);}
+.pm-list{display:flex; flex-direction:column; gap:6px; max-height:calc(46vh / var(--ui-zoom)); overflow-y:auto; padding:2px;}
+.pm-row{display:flex; align-items:center; gap:11px; padding:10px 12px; background:var(--surface-2); border-radius:10px; font-size:13px; cursor:pointer; border:1px solid transparent; transition:border-color .12s, background .12s;}
+.pm-row:hover{border-color:var(--border-strong);}
+.pm-row.sel{background:var(--accent-soft); border-color:var(--accent);}
+.pm-row.locked{opacity:.55; cursor:not-allowed;}
+.pm-check{width:18px; height:18px; border-radius:6px; border:1.5px solid var(--border-strong); background:var(--surface); flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; transition:all .12s;}
+.pm-row.sel .pm-check, .pm-all.sel .pm-check{background:var(--accent); border-color:var(--accent);}
+.pm-check svg{width:12px; height:12px; opacity:0;}
+.pm-row.sel .pm-check svg, .pm-all.sel .pm-check svg{opacity:1;}
+.pm-row .pm-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;}
+.pm-row .pm-meta{font-size:11px; color:var(--text-faint); font-family:var(--font-mono); flex:0 0 auto;}
+.pm-all{display:flex; align-items:center; gap:11px; padding:4px 12px; font-size:12px; color:var(--text-muted); cursor:pointer; user-select:none;}
+.pm-foot{display:flex; align-items:center; gap:10px; justify-content:space-between; min-height:40px;}
+.pm-foot .pm-count{font-size:12px; color:var(--text-muted);}
+.pm-trash{display:inline-flex; align-items:center; gap:7px; border:none; border-radius:10px; padding:9px 15px; font-size:13px; font-weight:600; cursor:pointer; background:var(--accent); color:#fff;}
+.pm-trash:disabled{background:var(--surface-3); color:var(--text-faint); cursor:not-allowed;}
+.pm-confirm{display:flex; flex-direction:column; gap:8px; width:100%; background:var(--accent-soft); color:var(--accent-ink); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.5;}
+.pm-confirm .row{display:flex; gap:8px; justify-content:flex-end;}
+.pm-confirm .cbtn{border:none; border-radius:9px; padding:7px 14px; font-size:12.5px; font-weight:600; cursor:pointer;}
+.pm-confirm .cbtn.yes{background:var(--accent); color:#fff;}
+.pm-confirm .cbtn.no{background:transparent; color:var(--text-muted);}
+.ft-search{padding:8px 10px 2px; flex:0 0 auto;}
+.ft-search input, .ft-newrow input{
+  width:100%; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:6px 9px; font-size:12px; outline:none; color:var(--text); font-family:var(--font-body);
+}
+.ft-search input:focus, .ft-newrow input:focus{border-color:var(--accent);}
+.ft-newrow{padding:6px 10px 2px; flex:0 0 auto;}
+.ft-newrow input{border-color:var(--accent); font-family:var(--font-mono);}
+.ft-empty{padding:22px 12px; font-size:12px; color:var(--text-muted); text-align:center; line-height:1.6;}
+.etab .etab-mod{width:8px; height:8px; border-radius:50%; background:var(--accent); flex:0 0 auto; margin-left:4px;}
+.etab .etab-mod + .etab-close{display:none;}
+.etab:hover .etab-mod{display:none;}
+.etab:hover .etab-mod + .etab-close{display:inline-flex;}
+.ws-conflict{
+  flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--accent-soft); color:var(--accent-ink);
+  font-size:12px; border-bottom:1px solid var(--border);
+}
+.ws-conflict[hidden]{display:none !important;}
+.ws-conflict .btn{padding:4px 10px; font-size:11.5px; border-radius:8px;}
+.ws-conflict span{flex:1;}
+.sb-save{display:inline-flex; align-items:center; gap:5px;}
+.sb-save.dirty{color:#fff; font-weight:700; background:rgba(0,0,0,.22); padding:0 7px; border-radius:6px;}
+.ws-empty-actions .btn{padding:10px 16px;}
+.ws-presence{display:inline-flex; align-items:center; gap:8px;}
 
 .ws-resizer-v{
   width:6px; flex:0 0 6px; cursor:col-resize; background:var(--border); transition:background .15s; z-index:25; position:relative; touch-action:none; user-select:none;
@@ -439,7 +530,15 @@ a{color:inherit;}
 .chat-head .gavatar{width:36px; height:36px; border-radius:50%; background:linear-gradient(150deg,var(--accent),#ffb199); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px; flex:0 0 auto;}
 .chat-head .info h4{font-size:13px; font-weight:600;}
 .chat-head .info span{font-size:11px; color:var(--text-faint);}
-.chat-head .x{margin-left:auto;}
+.chat-head .x{margin-left:0;}
+.chat-head .info{flex:1; min-width:0; display:flex; flex-direction:column;}
+.chat-proj-sel{border:none; background:transparent; font-weight:600; font-size:13px; color:var(--text); max-width:100%; cursor:pointer; padding:0; font-family:inherit; text-overflow:ellipsis;}
+.chat-proj-sel:focus{outline:none;}
+.chat-empty{margin:auto; text-align:center; color:var(--text-faint); font-size:12.5px; line-height:1.7; padding:20px;}
+.sys-bubble .row{display:flex; gap:8px; align-items:center;}
+.sys-bubble button.ghost{background:transparent; color:var(--text-faint); padding:5px 4px;}
+.sys-bubble button:disabled{background:var(--text-faint); cursor:default;}
+.sys-bubble .who{font-size:10.5px; color:var(--text-faint);}
 
 .chat-scroll{flex:1 1 auto; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px;}
 .msg-row{display:flex; gap:8px; align-items:flex-end;}
@@ -511,6 +610,19 @@ a{color:inherit;}
 .note-footer{display:flex; justify-content:flex-end; gap:8px;}
 
 .mdoc-table{padding:0; overflow-x:auto;}
+.mdoc-chk-cell{display:none; align-items:center; justify-content:center;}
+.mdoc-table.selecting .mdoc-chk-cell{display:flex;}
+.mdoc-table.selecting .mdoc-table-head, .mdoc-table.selecting .mdoc-row{grid-template-columns:26px 96px 1fr 190px 130px;}
+.mdoc-row.sel{background:var(--accent-soft);}
+.mdoc-table.selecting .mdoc-row{cursor:pointer;}
+.mdoc-chk-cell .pm-check{cursor:pointer;}
+.mdoc-row.sel .pm-check, .mdoc-table-head .pm-check.on{background:var(--accent); border-color:var(--accent);}
+.mdoc-row.sel .pm-check svg, .mdoc-table-head .pm-check.on svg{opacity:1;}
+.note-selbar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; min-height:42px;}
+.note-selbar .cnt{font-size:12.5px; color:var(--text-muted);}
+.note-selbar .acts{display:flex; gap:8px; align-items:center;}
+.note-selbar .pm-confirm{margin:0;}
+#mdocDeleteBtn.ask{color:#fff; background:var(--accent); border-color:var(--accent);}
 .mdoc-table-head, .mdoc-row{display:grid; grid-template-columns:96px 1fr 190px 130px; gap:12px; align-items:center; padding:12px 16px; min-width:600px;}
 .mdoc-table-head{font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--border);}
 .mdoc-row{border-bottom:1px solid var(--border); font-size:12.8px;}
@@ -534,7 +646,7 @@ a{color:inherit;}
 .sp-new input{flex:1; border:1px solid var(--border); background:var(--surface-2); border-radius:8px; padding:6px 9px; font-size:12px; outline:none;}
 .sp-new button{border:none; background:var(--accent); color:#fff; border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:600; cursor:pointer;}
 
-.compose-modal{max-width:640px; max-height:85vh; overflow-y:auto;}
+.compose-modal{max-width:640px; max-height:calc(85vh / var(--ui-zoom)); overflow-y:auto;}
 
 .mdoc-drawer{
   position:fixed; top:58px; right:0; bottom:0; width:440px; z-index:78;
@@ -559,6 +671,52 @@ a{color:inherit;}
 .mdoc-checklist li{display:flex; align-items:flex-start; gap:8px;}
 .mdoc-checklist li::before{content:'☐'; color:var(--accent); flex:0 0 auto;}
 .mdoc-empty{color:var(--text-faint); font-size:12.5px;}
+
+/* ---- 회의록 수정 화면 ---- */
+.mdoc-drawer.editing .mdoc-drawer-head .btn{display:none;}
+.mdoc-drawer.editing .mdoc-drawer-body{padding-bottom:0;}
+.mdoc-edit-title{
+  width:100%; border:none; border-bottom:1.5px solid transparent; background:transparent; outline:none;
+  font-family:var(--font-display); font-size:22px; font-weight:600; line-height:1.35; color:var(--text);
+  padding:2px 0 6px; margin-bottom:14px; transition:border-color .15s;
+}
+.mdoc-edit-title:hover{border-bottom-color:var(--border);}
+.mdoc-edit-title:focus{border-bottom-color:var(--accent);}
+.mdoc-edit-title::placeholder{color:var(--text-faint);}
+.mdoc-select{
+  appearance:none; -webkit-appearance:none; border:1px solid var(--border); background-color:var(--surface-2); color:var(--text);
+  border-radius:999px; padding:5px 30px 5px 12px; font-size:12.5px; font-family:var(--font-body); font-weight:500; cursor:pointer; outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C8578' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; max-width:100%;
+}
+.mdoc-select:hover{border-color:var(--border-strong);}
+.mdoc-select:focus{border-color:var(--accent);}
+.mdoc-edit-note{
+  display:flex; gap:9px; align-items:flex-start; background:var(--accent-2-soft); color:var(--accent-2-ink);
+  border-radius:12px; padding:11px 13px; font-size:12px; line-height:1.55; margin-bottom:18px;
+}
+.mdoc-edit-note b{font-weight:600;}
+.mdoc-edit-sec{
+  --sec:var(--text-faint); background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--sec);
+  border-radius:12px; padding:12px 14px 12px; margin-bottom:12px; transition:border-color .15s, box-shadow .15s;
+}
+.mdoc-edit-sec:focus-within{border-color:var(--sec); box-shadow:0 0 0 3px color-mix(in srgb, var(--sec) 16%, transparent);}
+.mdoc-edit-sec.sec-other{--sec:#3A6EA5;}
+.mdoc-edit-sec.sec-decision{--sec:var(--accent-2);}
+.mdoc-edit-sec.sec-action{--sec:var(--accent);}
+.mdoc-edit-sec .sec-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+.mdoc-edit-sec .sec-title{font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;}
+.mdoc-edit-sec .sec-hint{font-size:11px; color:var(--text-faint);}
+.mdoc-edit-sec .sec-count{margin-left:auto; font-family:var(--font-mono); font-size:10.5px; color:var(--sec); background:color-mix(in srgb, var(--sec) 12%, transparent); padding:2px 8px; border-radius:999px;}
+.mdoc-edit-sec textarea{
+  display:block; width:100%; min-height:60px; border:none; outline:none; background:transparent; resize:none; overflow:hidden;
+  font-family:var(--font-body); font-size:13px; line-height:1.7; color:var(--text); padding:0;
+}
+.mdoc-edit-sec textarea::placeholder{color:var(--text-faint);}
+.mdoc-edit-footer{
+  position:sticky; bottom:0; margin:8px -26px 0; padding:14px 26px 16px; display:flex; justify-content:flex-end; gap:8px;
+  background:linear-gradient(to top, var(--bg-elevated) 70%, transparent); border-top:1px solid var(--border);
+}
 
 .form-row{display:flex; flex-direction:column; gap:6px;}
 .form-row label{font-size:11.5px; font-weight:600; color:var(--text-muted); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.03em;}
@@ -656,6 +814,13 @@ a{color:inherit;}
 .cal-set-row .pdot{width:16px; height:16px; border-radius:5px; cursor:pointer; border:none; padding:0;}
 .cal-set-row .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;}
 .cal-set-row .hint{font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono);}
+.cal-set-row .pdel{border:none; background:none; color:var(--text-faint); cursor:pointer; padding:3px; border-radius:6px; display:flex;}
+.cal-set-row .pdel:hover{color:var(--accent); background:var(--surface-3);}
+.cal-set-row.confirming{background:var(--accent-soft); color:var(--accent-ink); flex-wrap:wrap;}
+.cal-set-row .cwarn{flex-basis:100%; font-size:11px; line-height:1.5; color:var(--accent-ink);}
+.cal-set-row .cbtn{border:none; border-radius:8px; padding:4px 11px; font-size:11.5px; font-weight:600; cursor:pointer;}
+.cal-set-row .cbtn.yes{background:var(--accent); color:#fff;}
+.cal-set-row .cbtn.no{background:transparent; color:var(--text-muted);}
 .cal-set-empty{font-size:12.5px; color:var(--text-faint); padding:8px 2px;}
 .day-detail-item .ddi-proj{font-size:10px; color:var(--text-faint); font-family:var(--font-mono); flex:0 0 auto; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .detect-item .when{font-size:11.8px; font-weight:600; color:var(--accent-2-ink);}
@@ -751,7 +916,7 @@ a{color:inherit;}
 /* ================= AUTH ================= */
 .app.auth-mode .topbar{display:none;}
 .auth-wrap{
-  min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center; padding:24px;
+  min-height:calc(100vh / var(--ui-zoom) - 16px); width:100%; display:flex; align-items:center; justify-content:center; padding:24px;
   background-image:radial-gradient(var(--border) 1px, transparent 1px);
   background-size:22px 22px;
 }
@@ -1320,14 +1485,24 @@ a{color:inherit;}
   <!-- ============ WORKSPACE ============ -->
   <section class="view" data-view="workspace">
     <div class="ws-projectbar">
-      <span class="crumb">sync/ <b id="wsCrumbName">캡스톤 · AI 리테일 추천</b></span>
-      <span class="chip accent2" id="wsPresenceChip">● 3명 접속중</span>
+      <div class="calsel-wrap">
+        <button class="calsel-btn" id="wsSelBtn" onclick="toggleCalMenu(event,'wsSel')" style="min-width:230px;">
+          <span class="pdot" id="wsSelDot"></span><span id="wsSelLabel">프로젝트 선택</span>
+          <span class="chev"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="calsel-menu" id="wsSelMenu"></div>
+      </div>
+      <button class="icon-btn" id="wsManageBtn" title="프로젝트 관리 (선택 삭제)" onclick="openProjManage()">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </button>
+      <b id="wsCrumbName" hidden></b>
+      <span class="chip accent2" id="wsPresenceChip">팀원 3명</span>
       <div class="members">
         <div class="avatar-stack" id="wsMemberStack">
           <div class="mini" style="background:#E8542E;">지</div><div class="mini" style="background:#1F6F5C;">민</div><div class="mini" style="background:#8C4A9C;">하</div>
         </div>
         <button class="btn ghost" onclick="openShare()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.2M8.3 13.3l7.4 4.2"/></svg>공유
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.2M8.3 13.3l7.4 4.2"/></svg>
         </button>
       </div>
     </div>
@@ -1336,22 +1511,15 @@ a{color:inherit;}
       <input type="file" id="wsFolderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(event)">
 
       <div class="ws-empty-state" id="wsEmptyState" hidden>
-        <div class="ws-empty-icon">📁</div>
-        <h3>열린 폴더가 없습니다</h3>
-        <p>내 컴퓨터의 프로젝트 폴더를 열거나, 기본 더미 템플릿 파일로 바로 코딩을 시작해보세요.</p>
-        <div class="ws-empty-actions" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <button class="btn primary" onclick="triggerOpenFolder()">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
-            내 컴퓨터 폴더 열기
-          </button>
-          <button class="btn" onclick="initProjectDummyFiles(null, true)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>
-            더미 파일 생성
-          </button>
-          <button class="btn ghost" onclick="promptNewFile()">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            새 파일
-          </button>
+        <div class="ws-empty-icon" id="wsEmptyIcon">📁</div>
+        <h3 id="wsEmptyTitle">열린 폴더가 없습니다</h3>
+        <p id="wsEmptyDesc">내 컴퓨터의 프로젝트 폴더를 열거나, 새 파일을 만들어 바로 코딩을 시작해보세요.</p>
+        <div class="ws-empty-actions" id="wsEmptyActions" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn primary" id="wsStarterBtn" onclick="wsStarter()">🐍 Python으로 시작하기</button>
+          <button class="btn" onclick="promptNewFile()">＋ 새 파일</button>
+          <button class="btn" onclick="triggerOpenFolder()">📂 내 컴퓨터 폴더 가져오기</button>
+          <button class="btn ghost" id="wsDummyBtn" onclick="initProjectDummyFiles(null, true)">예제 파일 보기</button>
+          <button class="btn primary" id="wsNewProjBtn" onclick="openNewProjectModal()" hidden>＋ 새 프로젝트 만들기</button>
         </div>
       </div>
       <aside class="filetree" id="wsFileTree">
@@ -1369,6 +1537,8 @@ a{color:inherit;}
             </button>
           </div>
         </div>
+        <div class="ft-newrow" id="wsNewFileRow" hidden><input id="wsNewFileInput" placeholder="파일 이름 · 예: src/main.py (Enter)" onkeydown="wsNewFileKey(event)" onblur="wsNewFileBlur()"></div>
+        <div class="ft-search"><input id="wsFileSearch" placeholder="파일 검색" oninput="wsSetSearch(this.value)"></div>
         <div class="filetree-content" id="wsFileTreeContent"></div>
       </aside>
 
@@ -1394,6 +1564,8 @@ a{color:inherit;}
           </div>
         </div>
 
+        <div class="ws-conflict" id="wsConflictBar" hidden></div>
+
         <!-- 에디터 영역 (VS Code Monaco Editor) -->
         <div class="editor-body" id="editorBody">
           <div id="monacoEditorContainer" class="monaco-container"></div>
@@ -1407,6 +1579,7 @@ a{color:inherit;}
         <!-- 에디터 하단 상태바 -->
         <div class="editor-statusbar">
           <div class="sb-left">
+            <span class="sb-save" id="sbSave"></span>
             <span id="sbPos">Ln 1, Col 1</span>
             <span id="sbLines">1 lines</span>
             <span>UTF-8</span>
@@ -1499,8 +1672,9 @@ a{color:inherit;}
             </button>
             <div class="calsel-menu" id="noteSelMenu"></div>
           </div>
-          <button class="icon-btn" title="프로젝트 설정" onclick="openCalSettings()">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+          
+          <button class="btn" id="noteSelectBtn" onclick="toggleNoteSelectMode()" title="회의록 선택 삭제">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>선택 삭제
           </button>
           <button class="btn primary" onclick="openComposeModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>새 회의록 작성
@@ -1510,16 +1684,17 @@ a{color:inherit;}
 
       <div class="mdoc-table card">
         <div class="mdoc-table-head">
-          <span>날짜</span><span>회의 내용</span><span>참석자</span><span>상태</span>
+          <span class="mdoc-chk-cell"><span class="pm-check" id="noteSelAll" onclick="toggleNoteSelAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></span><span>날짜</span><span>회의 내용</span><span>참석자</span><span>상태</span>
         </div>
         <div id="meetingDocList"></div>
       </div>
+      <div class="note-selbar" id="noteSelBar" hidden></div>
     </div>
 
     <div class="modal-backdrop" id="composeModal" onclick="if(event.target===this)closeComposeModal()">
       <div class="share-modal compose-modal">
         <div class="mh"><h3>새 회의록 작성</h3><button class="icon-btn" onclick="closeComposeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <div class="form-row"><label>프로젝트 *</label><select id="noteProject"></select></div>
+        <div class="form-row"><label>프로젝트 *</label><select id="noteProject" onchange="buildAttendeePicker(this.value)"></select></div>
         <div class="form-grid2">
           <div class="form-row"><label>회의 제목 *</label><input type="text" id="noteTitleInput" placeholder="예: 캡스톤 정기 회의"></div>
           <div class="form-row"><label>날짜 *</label><input type="date" id="noteDateInput"></div>
@@ -1565,9 +1740,10 @@ a{color:inherit;}
 
     <aside class="mdoc-drawer" id="mdocDrawer">
       <div class="mdoc-drawer-head">
-        <span class="crumb">회의록</span>
+        <span class="crumb" id="mdocCrumb">회의록</span>
         <div style="display:flex; gap:6px;">
           <button class="btn ghost" onclick="toggleEditDoc()">✏️ 수정</button>
+          <button class="btn ghost" id="mdocDeleteBtn" onclick="askDeleteDoc()">🗑 삭제</button>
           <button class="icon-btn" onclick="closeMdocDrawer()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </div>
       </div>
@@ -1578,7 +1754,7 @@ a{color:inherit;}
       <div class="sp-head">상태 편집</div>
       <div class="sp-list" id="statusOptionList"></div>
       <div class="sp-new">
-        <input type="text" id="newStatusInput" placeholder="새 상태 추가" onkeydown="if(event.key==='Enter')addStatusOption()">
+        <input type="text" id="newStatusInput" placeholder="새 상태 추가" onkeydown="if(isEnter(event))addStatusOption()">
         <button onclick="addStatusOption()">추가</button>
       </div>
     </div>
@@ -1619,15 +1795,8 @@ a{color:inherit;}
         </div>
 
         <div class="ai-detect-card card">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <h4>🤖 회의록 분석 · 감지된 일정</h4>
-            <button class="icon-btn" title="회의록 다시 분석" onclick="reanalyzeDocs()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
-          </div>
-          <p style="font-size:11.5px; color:var(--text-faint); margin-top:-6px; line-height:1.5;">회의록을 AI가 분석해 일정의 시작~종료를 찾아요. 추가를 누르면 해당 프로젝트 캘린더에 기간 그대로 들어가요.</p>
-          <div class="share-toggle" style="padding:8px 10px; font-size:12px;">
-            <span>회의록을 저장하면 캘린더에 자동 반영</span>
-            <div class="switch on" id="autoApplySwitch" onclick="toggleAutoApply()"></div>
-          </div>
+          <h4>🤖 회의록 분석 · 감지된 일정</h4>
+          <p style="font-size:11.5px; color:var(--text-faint); margin-top:-6px; line-height:1.5;">회의록을 저장하면 AI가 일정의 시작~종료를 찾아 해당 프로젝트 캘린더에 바로 넣어요. 캘린더에서 지운 일정은 여기에 다시 나타나요.</p>
           <p class="detect-engine" id="detectNote"></p>
           <div id="detectList" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
@@ -1655,8 +1824,8 @@ a{color:inherit;}
 
     <div class="modal-backdrop" id="calSettingsModal" onclick="if(event.target===this)closeCalSettings()">
       <div class="share-modal">
-        <div class="mh"><h3>프로젝트 설정</h3><button class="icon-btn" onclick="closeCalSettings()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">내가 참여 중인 프로젝트 중 캘린더·회의록에 표시할 프로젝트를 고르고, 프로젝트별 색상을 바꿀 수 있어요. (색 네모를 누르면 색이 바뀌어요)</p>
+        <div class="mh"><h3>캘린더 표시 설정</h3><button class="icon-btn" onclick="closeCalSettings()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+        <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">내가 참여 중인 프로젝트 중 캘린더에 표시할 프로젝트를 고르고, 프로젝트별 색상을 바꿀 수 있어요. (색 네모를 누르면 색이 바뀌어요)</p>
         <div class="share-members" id="calSettingsList"></div>
       </div>
     </div>
@@ -1946,34 +2115,51 @@ a{color:inherit;}
   <!-- ============ GLOBAL CHAT (available from every screen) ============ -->
   <button class="chat-toggle-tab" onclick="toggleChat()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    <span class="badge">3</span>
+    <span class="badge" id="chatBadge" hidden>0</span>
   </button>
 
   <aside class="chat-panel" id="chatPanel">
     <div class="chat-inner">
       <div class="chat-head">
-        <div class="gavatar">캡</div>
-        <div class="info"><h4>캡스톤 · AI 리테일 추천</h4><span>지우, 민재, 하은 · 3명 · 어디서든 이어서 대화해요</span></div>
+        <div class="gavatar" id="chatAvatar">팀</div>
+        <div class="info"><select class="chat-proj-sel" id="chatProjectSel" onchange="switchChatProject(this.value)"></select><span id="chatMembers">로그인하면 팀 채팅을 쓸 수 있어요</span></div>
+        <button class="icon-btn" id="chatInviteBtn" title="팀원 초대" onclick="openInviteModal()" hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg></button>
         <button class="icon-btn x" onclick="toggleChat()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <div class="chat-scroll" id="chatScroll">
-        <div class="msg-row"><div class="mavatar" style="background:#E8542E;">지</div><div class="msg-col"><span class="msg-name">지우</span><div class="bubble">recommend.ts 쪽 API 응답이 좀 느린 것 같아요 🙂</div></div></div>
-        <div class="msg-row"><div class="mavatar" style="background:#1F6F5C;">민</div><div class="msg-col"><span class="msg-name">민재</span><div class="bubble">캐싱 붙이면 나아질듯? 내가 오늘 밤에 해볼게</div><span class="msg-time">오후 8:41</span></div></div>
-        <div class="sys-bubble">
-          <span class="lbl">🤖 AI 일정 감지</span>
-          <span>대화에서 "오늘 밤 캐싱 작업" 일정을 찾았어요. 캘린더에 추가할까요?</span>
-          <button onclick="addDetectedFromChat(this)">캘린더에 추가</button>
-        </div>
-        <div class="msg-row me"><div class="mavatar" style="background:#3A6EA5;">나</div><div class="msg-col"><span class="msg-name">나</span><div class="bubble">좋아요, 부탁드려요! 저는 UI 마무리할게요</div><span class="msg-time">오후 8:43</span></div></div>
-        <div class="msg-row me"><div class="mavatar" style="background:#3A6EA5;">나</div><div class="msg-col"><span class="msg-name">나</span><div class="bubble">/회의 다음 회의 안건은 검색 필터 기능부터 정하기로 함</div><span class="chip accent2" style="margin-top:2px;">📝 회의 메모로 태그됨</span><span class="msg-time">오후 8:44</span></div></div>
-        <div class="msg-row"><div class="mavatar" style="background:#8C4A9C;">하</div><div class="msg-col"><span class="msg-name">하은</span><div class="typing-dots"><span></span><span></span><span></span></div></div></div>
-      </div>
+      <div class="chat-scroll" id="chatScroll"></div>
       <div class="chat-input">
-        <input type="text" id="chatMsgInput" placeholder="/회의 내용 메모 · 'AI야 회의록 정리해줘'" onkeydown="if(event.key==='Enter')sendChatMsg()">
+        <input type="text" id="chatMsgInput" placeholder="팀원에게 메시지 · '/회의 내용'으로 회의 메모 태그" onkeydown="if(isEnter(event))sendChatMsg()">
         <button onclick="sendChatMsg()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m4 20 17-8L4 4l2 7-2 9Z"/></svg></button>
       </div>
     </div>
   </aside>
+
+  <div class="modal-backdrop" id="projManageModal" onclick="if(event.target===this)closeProjManage()">
+    <div class="share-modal" style="width:min(460px, calc(92vw / var(--ui-zoom)));">
+      <div class="mh"><h3>프로젝트 관리</h3><button class="icon-btn" onclick="closeProjManage()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">삭제할 프로젝트를 체크한 뒤 휴지통을 누르세요. 프로젝트의 파일·채팅·캘린더 일정이 함께 삭제돼요.</p>
+      <div class="pm-list" id="pmList"></div>
+      <div class="pm-foot" id="pmFoot"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="newProjectModal" onclick="if(event.target===this)closeNewProjectModal()">
+    <div class="share-modal">
+      <div class="mh"><h3>새 프로젝트</h3><button class="icon-btn" onclick="closeNewProjectModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">프로젝트를 만들면 워크스페이스 파일, 회의록, 캘린더, 팀 채팅이 이 프로젝트 단위로 나뉘어요.</p>
+      <div class="form-row"><label>프로젝트 이름</label><input type="text" id="newProjectName" placeholder="예: 캡스톤 · AI 리테일 추천" onkeydown="if(isEnter(event))submitNewProject()"></div>
+      <button class="btn primary" onclick="submitNewProject()">만들기</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
+    <div class="share-modal">
+      <div class="mh"><h3>팀원 초대</h3><button class="icon-btn" onclick="closeInviteModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">팀원이 이 서비스에 한 번 로그인(구글/네이버)한 뒤, 그 계정의 이메일로 초대할 수 있어요. 초대하면 이 프로젝트의 채팅과 캘린더를 함께 쓰게 돼요.</p>
+      <div class="form-row"><label>이메일</label><input type="email" id="inviteEmail" placeholder="teammate@gmail.com" onkeydown="if(isEnter(event))submitInvite()"></div>
+      <button class="btn primary" onclick="submitInvite()">초대하기</button>
+    </div>
+  </div>
 
   <div class="modal-backdrop" id="settingsModal" onclick="if(event.target===this)closeSettings()">
     <div class="share-modal">
@@ -1996,6 +2182,18 @@ a{color:inherit;}
         </div>
         <p style="font-size:11px; color:var(--text-faint); margin-top:2px;">시스템을 선택하면 기기의 라이트/다크 설정을 그대로 따라가요.</p>
       </div>
+      <div class="form-row" style="margin-top:14px;">
+        <label>화면 크기</label>
+        <div class="scale-options" id="scaleOptions">
+          <button class="scale-opt" data-scale="auto" onclick="setUiScale('auto')">자동</button>
+          <button class="scale-opt" data-scale="0.9" onclick="setUiScale('0.9')">작게</button>
+          <button class="scale-opt" data-scale="1" onclick="setUiScale('1')">보통</button>
+          <button class="scale-opt" data-scale="1.25" onclick="setUiScale('1.25')">크게</button>
+          <button class="scale-opt" data-scale="1.5" onclick="setUiScale('1.5')">더 크게</button>
+        </div>
+        <p id="scaleHint" style="font-size:11px; color:var(--text-faint); margin-top:6px; line-height:1.5;"></p>
+      </div>
+      <p id="buildTag" style="font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); margin-top:6px;">화면 버전 확인 중…</p>
     </div>
   </div>
 
@@ -2053,6 +2251,7 @@ function goView(name){
   document.querySelector('.app').classList.toggle('auth-mode', name==='auth');
   closeMenus();
   if(name==='calendar') refreshDetections(false);
+  if(name==='workspace') enterWorkspaceView(); else wsStopPolling();
   if(name==='workspace'){
     setTimeout(function(){
       if(window.monaco && monacoEditor) monacoEditor.layout();
@@ -2145,7 +2344,17 @@ function mockLogin(provider){
   goView('home');
   pushToast('👋', '게스트 접속', '게스트 모드로 둘러봅니다.');
 }
+function wsResetForSessionChange(){
+  wsStopPolling(); wsProject = null; wsLoaded = false; wsLoading = false;
+  files = {}; openedTabs = []; currentFileKey = null; wsRenaming = null; wsDeleting = null;
+  renderWsSelector(); renderWsEmpty(); renderFileTree(); renderTabs();
+  if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
+  wsUpdateSaveStatus(); wsRenderConflict();
+}
 function mockLogout(){
+  calProjectsLoaded = true;
+  wsResetForSessionChange();
+  stopChat();
   calApiMode = false; calendarEvents = []; calDetect = []; detectCache = {}; meetingDocs = []; renderMeetingDocs();
   isAdmin = false;
   authToken = null;
@@ -2161,7 +2370,7 @@ function mockLogout(){
 }
 
 /* ---- settings: theme ---- */
-function openSettings(){ syncThemeButtons(); document.getElementById('settingsModal').classList.add('open'); }
+function openSettings(){ syncThemeButtons(); syncScaleButtons(); document.getElementById('settingsModal').classList.add('open'); }
 function closeSettings(){ var el = document.getElementById('settingsModal'); if(el) el.classList.remove('open'); }
 function isDarkMode(){
   var t = document.documentElement.getAttribute('data-theme');
@@ -2188,6 +2397,31 @@ function setTheme(mode){
   syncThemeButtons();
   pushToast(mode==='dark'?'🌙':mode==='light'?'☀️':'🖥️','테마 변경됨', mode==='system' ? '시스템 설정을 따라가요' : (mode==='dark'?'다크 모드로 바꿨어요':'라이트 모드로 바꿨어요'));
 }
+/* ---- 화면 크기 (자동/수동) ---- */
+function currentUiScale(){ return window.__uiScale || 1; }
+function setUiScale(pref){
+  window.__uiScalePref = pref;
+  try { localStorage.setItem('sync_ui_scale', pref); } catch(e){}
+  applyUiScale();
+  syncScaleButtons();
+  pushToast('🔍', '화면 크기 변경', pref === 'auto' ? '모니터 너비에 맞춰 자동으로 조절해요' : Math.round(parseFloat(pref) * 100) + '%로 고정했어요');
+}
+function applyUiScale(){
+  var s = window.__uiScaleApply ? window.__uiScaleApply() : 1;
+  if (window.monaco && monacoEditor) setTimeout(function(){ monacoEditor.layout(); }, 60);
+  return s;
+}
+function syncScaleButtons(){
+  var pref = window.__uiScalePref || 'auto';
+  document.querySelectorAll('.scale-opt').forEach(function(b){ b.classList.toggle('active', b.dataset.scale === pref); });
+  var hint = document.getElementById('scaleHint');
+  if (hint) hint.textContent = '현재 ' + Math.round(currentUiScale() * 100) + '% · ' + (pref === 'auto' ? '창 너비 ' + window.innerWidth + 'px 기준으로 자동 조절 중' : '직접 고른 크기');
+}
+var __scaleTimer = null;
+window.addEventListener('resize', function(){
+  clearTimeout(__scaleTimer);
+  __scaleTimer = setTimeout(function(){ if ((window.__uiScalePref || 'auto') === 'auto') { applyUiScale(); syncScaleButtons(); } }, 150);
+});
 function syncThemeButtons(){
   var current = document.documentElement.getAttribute('data-theme') || 'system';
   document.querySelectorAll('.theme-opt').forEach(function(b){ b.classList.toggle('active', b.dataset.themeChoice===current); });
@@ -2400,20 +2634,31 @@ function addEventToCal(btn){
   pushToast('📅','캘린더에 추가됨', title+' 마감일이 캘린더에 추가됐어요');
 }
 function autoGrow(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+/* 한글/일본어 등 IME 로 글자를 조합하는 중에 누른 Enter 는 '입력 확정'이지 제출이 아니다.
+   이걸 구분하지 않으면 확정 Enter 가 한 번 더 들어와서 같은 동작이 두 번 실행된다. */
+var imeComposing = false;
+document.addEventListener('compositionstart', function(){ imeComposing = true; }, true);
+document.addEventListener('compositionend', function(){ setTimeout(function(){ imeComposing = false; }, 0); }, true);
+// 조합 중이라는 신호가 하나라도 있으면 Enter 를 제출로 보지 않는다 (브라우저/OS 마다 isComposing 값이 제각각이라 3가지를 모두 확인)
+function isEnter(e){ return e.key==='Enter' && !e.isComposing && e.keyCode!==229 && !imeComposing; }
 function handlePromptKeydown(e){
-  if(e.key==='Enter' && !e.altKey){
+  if(isEnter(e) && !e.altKey){
     e.preventDefault();
     createFromPrompt();
   }
 }
 function createFromPrompt(){
   var input = document.getElementById('promptInput');
-  var v = input.value.trim();
-  if(!v) return;
-  input.value = '';
-  autoGrow(input);
-  addProjectFromPrompt(v);
-  dismissHomeLanding();
+  function go(){
+    var v = input.value.trim();
+    if(!v) return;
+    input.value = '';
+    autoGrow(input);
+    addProjectFromPrompt(v);
+    dismissHomeLanding();
+  }
+  // 조합이 끝나지 않은 상태에서 값을 비우면 마지막 글자가 입력창에 다시 남는다 → 먼저 입력을 확정(blur)하고 처리
+  if(imeComposing){ input.blur(); setTimeout(go, 30); } else go();
 }
 var myProjects = [
   {id:'calc_proj', title:'사칙연산 계산기를 만드는 코드를 짜고싶어', isNew:false, stack:'PY', stackColor:'#3A6EA5', status:'진행중', statusClass:'accent2',
@@ -2471,12 +2716,51 @@ function projNext(){
   var totalPages = Math.ceil(myProjects.length / PROJ_PAGE_SIZE);
   if(projPageIndex<totalPages-1){ projPageIndex++; renderProjRow(); }
 }
+/* 열어 둔 화면이 오래된 코드면 알려주고(작업 중이 아니면 자동으로) 새로고침한다 */
+var appBuild = null;
+function checkAppVersion(){
+  if (document.hidden) return;
+  fetch(API_BASE + '/api/version', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(v){
+    if (!v || !v.build) return;
+    var tag = document.getElementById('buildTag');
+    if (appBuild === null) { appBuild = v.build; }
+    if (tag) tag.textContent = '화면 버전 ' + appBuild + (v.build === appBuild ? ' · 최신' : ' · 새 버전 ' + v.build + ' 있음 (새로고침 필요)');
+    if (v.build === appBuild) return;
+    if (v.build === appBuild) return;
+    var ae = document.activeElement;
+    var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable) && ae.value;
+    var unsaved = Object.keys(files).some(function(k){ return files[k] && files[k].dirty; });
+    if (!typing && !unsaved) { location.reload(); }
+    else if (!window.__staleToast) { window.__staleToast = true; pushToast('🔄', '새 버전이 나왔어요', '작업을 마치면 페이지를 새로고침(⌘R) 해주세요'); }
+  }).catch(function(){});
+}
+checkAppVersion();
+setInterval(checkAppVersion, 15000);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkAppVersion(); });
+var projCreateGuard = {name:null, at:0, busy:false};
 function addProjectFromPrompt(name, row){
+  name = (name || '').trim();
+  if(!name) return;
+  if(!row){
+    // 연타·중복 이벤트 방지: 생성 중이거나, 같은 이름을 방금(3초 안에) 만들었으면 무시
+    if(projCreateGuard.busy) return;
+    // 한글 입력에서 같은 Enter 가 두 번 들어오면, 두 번째는 방금 만든 이름의 일부(마지막 글자)로 들어온다
+    // 예) "ㄹㅇ" 를 만든 직후 "ㅇ" → 같은 이름이거나, 방금 이름의 끝/앞부분이면 중복으로 보고 무시
+    var prev = projCreateGuard.name;
+    if(prev && Date.now()-projCreateGuard.at < 3000 && (prev===name || (name.length < prev.length && (prev.endsWith(name) || prev.startsWith(name))))) return;
+    projCreateGuard.name = name; projCreateGuard.at = Date.now();
+  }
   if(calApiMode && !row){
+    projCreateGuard.busy = true;
     apiFetch('/api/projects', {method:'POST', body:JSON.stringify({title:name})})
-      .then(function(created){ addProjectFromPrompt(name, created); })
-      .catch(function(e){ pushToast('⚠️','프로젝트를 만들지 못했어요', e.message); });
+      .then(function(created){ projCreateGuard.busy = false; addProjectFromPrompt(name, created); })
+      .catch(function(e){ projCreateGuard.busy = false; projCreateGuard.name = null; pushToast('⚠️','프로젝트를 만들지 못했어요', e.message); });
     return;
+  }
+  if(row){
+    // 서버가 이미 만든 프로젝트를 돌려준 경우(중복 요청) → 다시 추가하지 않고, 서버 쪽 이름으로만 맞춘다
+    var existing = myProjects.filter(function(x){ return x.id==='p'+row.id; })[0];
+    if(existing){ if(existing.title!==row.title){ existing.title = row.title; renderProjRow(); } return; }
   }
   setWidget('projects', true);
   var id = row ? 'p'+row.id : 'ws'+Date.now()+Math.random().toString(36).slice(2,5);
@@ -2484,6 +2768,8 @@ function addProjectFromPrompt(name, row){
   var newProj = {
     id: id,
     serverId: row ? row.id : undefined,
+    members: row ? row.members : [],
+    isOwner: true,
     title: name,
     isNew: false,
     stack: isCalc ? 'PY' : 'AI',
@@ -2496,28 +2782,35 @@ function addProjectFromPrompt(name, row){
     recentFile: isCalc ? 'calculator.py' : 'main.py'
   };
   myProjects.unshift(newProj);
+  if(row) registerProjectMembers(newProj);
   projPageIndex = 0;
   renderProjRow();
   pushToast('✨','프로젝트 생성됨', '"'+name+'" 워크스페이스가 생성되었습니다.');
   openWorkspace(id);
 }
 function openWorkspace(id){
+  if (calApiMode && calProjectById(id)) {
+    // 실제 로그인: 프로젝트를 선택하고 워크스페이스 화면으로 (파일은 서버에서 불러옴)
+    wsProject = null; wsLoaded = false;
+    calSelected = id; saveCalSettings(); syncCalProjects();
+    goView('workspace');
+    return;
+  }
   var proj = myProjects.find(function(p){ return p.id===id; }) || myProjects[0] || { id:'calc_proj', title:'사칙연산 계산기를 만드는 코드를 짜고싶어' };
   currentWorkspaceId = proj.id;
+  wsProject = proj.id;
   var crumb = document.getElementById('wsCrumbName');
   if (crumb) crumb.textContent = proj.title;
 
   initProjectDummyFiles(proj, false);
   proj.isNew = false;
+  renderWsSelector();
 
   var wsFileTree = document.getElementById('wsFileTree');
   var wsEditorCol = document.getElementById('wsEditorCol');
-  var wsEmptyState = document.getElementById('wsEmptyState');
-  var hasFiles = Object.keys(files).length > 0;
-
   if (wsFileTree) wsFileTree.hidden = false;
   if (wsEditorCol) wsEditorCol.hidden = false;
-  if (wsEmptyState) wsEmptyState.hidden = hasFiles;
+  renderWsEmpty();
 
   var chip = document.getElementById('wsPresenceChip');
   var stack = document.getElementById('wsMemberStack');
@@ -2559,192 +2852,165 @@ function triggerOpenFolder() {
   }
 }
 
+var WS_BINARY_EXT = ['png','jpg','jpeg','gif','ico','webp','pdf','zip','tar','gz','exe','dll','so','dylib','class','pyc','woff','woff2','ttf'];
 function handleFolderSelect(event) {
   var fileList = event.target.files;
   if (!fileList || fileList.length === 0) return;
-
+  var entries = [];
+  var skipped = 0;
+  var reads = [];
   var rootFolderName = '';
-  var newFiles = {};
-  var readPromises = [];
-  var tabKeys = [];
-
   for (var i = 0; i < fileList.length; i++) {
     (function(file) {
       var relPath = file.webkitRelativePath || file.name;
       var parts = relPath.split('/');
-      if (parts.length > 1 && !rootFolderName) {
-        rootFolderName = parts[0];
-      }
+      if (parts.length > 1 && !rootFolderName) rootFolderName = parts[0];
       var displayPath = parts.length > 1 ? parts.slice(1).join('/') : file.name;
-      var fileKey = 'usr_' + relPath.replace(/[^a-zA-Z0-9_]/g, '_');
+      if (/(^|\/)(node_modules|\.git|__pycache__|\.venv|dist|build)(\/|$)/.test(displayPath)) { skipped++; return; }
       var ext = (file.name.split('.').pop() || '').toLowerCase();
-      var lang = getLangForExt(ext);
-      var dotColor = getDotColorForExt(ext);
-
-      var isBinary = ['png','jpg','jpeg','gif','ico','webp','pdf','zip','tar','gz','exe','dll','so','dylib','class','pyc','woff','woff2','ttf'].includes(ext);
-
-      if (!isBinary && file.size < 2 * 1024 * 1024) {
-        var p = new Promise(function(resolve) {
-          var reader = new FileReader();
-          reader.onload = function(e) {
-            newFiles[fileKey] = {
-              tab: displayPath,
-              dot: dotColor,
-              lang: lang,
-              raw: e.target.result
-            };
-            resolve();
-          };
-          reader.onerror = function() {
-            newFiles[fileKey] = {
-              tab: displayPath,
-              dot: dotColor,
-              lang: lang,
-              raw: '// 파일 로드 실패'
-            };
-            resolve();
-          };
-          reader.readAsText(file);
-        });
-        readPromises.push(p);
-      } else {
-        newFiles[fileKey] = {
-          tab: displayPath,
-          dot: dotColor,
-          lang: lang,
-          raw: '// [바이너리 또는 대용량 파일: ' + (file.size / 1024).toFixed(1) + ' KB]'
-        };
-      }
-      tabKeys.push(fileKey);
+      if (WS_BINARY_EXT.indexOf(ext) >= 0 || file.size > 300000) { skipped++; return; }
+      reads.push(new Promise(function(resolve) {
+        var reader = new FileReader();
+        reader.onload = function(e) { entries.push({ path: displayPath, content: String(e.target.result || '') }); resolve(); };
+        reader.onerror = function() { skipped++; resolve(); };
+        reader.readAsText(file);
+      }));
     })(fileList[i]);
   }
-
-  Promise.all(readPromises).then(function() {
-    files = newFiles;
-    openedTabs = tabKeys.slice(0, 5);
-    currentFileKey = openedTabs[0] || null;
-
-    if (rootFolderName) {
-      var crumb = document.getElementById('wsCrumbName');
-      if (crumb) crumb.textContent = rootFolderName;
-      var openProj = myProjects.find(function(p){ return p.id === currentWorkspaceId; });
-      if (openProj) {
-        openProj.title = rootFolderName;
-        openProj.files = fileList.length + ' files';
-        renderProjRow();
-      }
-    }
-
-    var wsEmptyState = document.getElementById('wsEmptyState');
-    var wsFileTree = document.getElementById('wsFileTree');
-    var wsEditorCol = document.getElementById('wsEditorCol');
-    if (wsEmptyState) wsEmptyState.hidden = true;
-    if (wsFileTree) wsFileTree.hidden = false;
-    if (wsEditorCol) wsEditorCol.hidden = false;
-
-    renderFileTree();
-    renderTabs();
-    if (currentFileKey) {
-      renderFileContent(currentFileKey);
-    }
-    pushToast('📁', '폴더 열기 완료', (rootFolderName || '선택한 폴더') + '에서 ' + fileList.length + '개 파일을 불러왔습니다.');
+  Promise.all(reads).then(function() {
+    if (!entries.length) { pushToast('📁', '가져올 파일이 없어요', '이미지·대용량·node_modules 같은 파일은 건너뛰어요'); return; }
+    if (wsUseServer()) { wsImportEntries(entries, skipped, rootFolderName); return; }
+    // 로그인 전(데모): 이 화면에서만 사용
+    files = {}; openedTabs = [];
+    entries.forEach(function(en){
+      var ext = (en.path.split('.').pop() || '').toLowerCase();
+      var key = wsKey(en.path);
+      files[key] = { tab: en.path, path: en.path, dot: getDotColorForExt(ext), lang: getLangForExt(ext), raw: en.content, dirty: false };
+    });
+    var firstKeys = Object.keys(files).slice(0, 5);
+    openedTabs = firstKeys; currentFileKey = firstKeys[0] || null;
+    renderWsEmpty(); renderFileTree(); renderTabs();
+    if (currentFileKey) renderFileContent(currentFileKey);
+    pushToast('📁', '폴더 열기 완료', (rootFolderName || '선택한 폴더') + ' · ' + entries.length + '개 파일 (이 화면에서만 보여요)');
   });
 }
 
 function promptNewFile() {
-  var name = prompt('새 파일 이름을 입력하세요 (예: new_file.py):', 'untitled.py');
-  if (!name || !name.trim()) return;
-  name = name.trim();
-  var key = 'usr_' + name.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + Date.now();
-  var ext = (name.split('.').pop() || '').toLowerCase();
-  files[key] = {
-    tab: name,
-    dot: getDotColorForExt(ext),
-    lang: getLangForExt(ext),
-    raw: ''
-  };
-  if (!openedTabs.includes(key)) openedTabs.push(key);
-  currentFileKey = key;
-
-  var wsEmptyState = document.getElementById('wsEmptyState');
-  var wsFileTree = document.getElementById('wsFileTree');
-  var wsEditorCol = document.getElementById('wsEditorCol');
-  if (wsEmptyState) wsEmptyState.hidden = true;
-  if (wsFileTree) wsFileTree.hidden = false;
-  if (wsEditorCol) wsEditorCol.hidden = false;
-
-  renderFileTree();
-  renderTabs();
-  renderFileContent(key);
+  var tree = document.getElementById('wsFileTree');
+  if (tree && tree.classList.contains('collapsed')) toggleSidebar();
+  var row = document.getElementById('wsNewFileRow');
+  var inp = document.getElementById('wsNewFileInput');
+  if (!row || !inp) return;
+  row.hidden = false; inp.value = '';
+  var empty = document.getElementById('wsEmptyState');
+  if (empty && !empty.hidden && Object.keys(files).length === 0) { empty.hidden = true; }   // 빈 화면에서 눌러도 탐색기에서 바로 입력
+  inp.focus();
 }
+function wsNewFileKey(e){
+  if (isEnter(e)) { var v = e.target.value; wsHideNewFileRow(); wsCreateFile(v); }
+  else if (e.key === 'Escape') { wsHideNewFileRow(); renderWsEmpty(); }
+}
+function wsNewFileBlur(){ setTimeout(function(){ var row = document.getElementById('wsNewFileRow'); if (row && !row.hidden && document.activeElement !== document.getElementById('wsNewFileInput')) { wsHideNewFileRow(); renderWsEmpty(); } }, 120); }
+function wsHideNewFileRow(){ var row = document.getElementById('wsNewFileRow'); if (row) row.hidden = true; }
 
 /* ---- 트리 뷰 렌더링 ---- */
+var wsSearch = '', wsRenaming = null, wsDeleting = null, wsCollapsed = {};
+function wsSetSearch(v){ wsSearch = (v || '').trim().toLowerCase(); renderFileTree(); }
+var ICON_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>';
+var ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>';
+var ICON_CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>';
 function renderFileTree() {
   var treeEl = document.getElementById('wsFileTreeContent');
   if (!treeEl) return;
   treeEl.innerHTML = '';
-
-  var keys = Object.keys(files);
+  var keys = Object.keys(files).filter(function(k){ return !wsSearch || (files[k].tab || k).toLowerCase().indexOf(wsSearch) >= 0; });
   if (keys.length === 0) {
-    treeEl.innerHTML = '<div style="padding:16px 12px; font-size:12px; color:var(--text-muted); text-align:center;">표시할 파일이 없습니다.<br><button class="btn" style="margin-top:8px; font-size:11px;" onclick="initProjectDummyFiles(null, true)">더미 파일 생성</button></div>';
+    treeEl.innerHTML = '<div class="ft-empty">' + (Object.keys(files).length ? '검색 결과가 없어요.' : '아직 파일이 없어요.<br><button class="btn" style="margin-top:8px; font-size:12px; padding:6px 12px;" onclick="promptNewFile()">＋ 새 파일</button>') + '</div>';
     return;
   }
-
   var root = { dirs: {}, files: [] };
   keys.forEach(function(key) {
     var f = files[key];
-    var path = f.tab || key;
-    var parts = path.split('/');
+    var parts = (f.tab || key).split('/');
     var curr = root;
+    var acc = '';
     for (var i = 0; i < parts.length - 1; i++) {
+      acc += (acc ? '/' : '') + parts[i];
       var d = parts[i];
-      if (!curr.dirs[d]) curr.dirs[d] = { dirs: {}, files: [] };
+      if (!curr.dirs[d]) curr.dirs[d] = { dirs: {}, files: [], path: acc };
       curr = curr.dirs[d];
     }
     curr.files.push({ key: key, name: parts[parts.length - 1], file: f });
   });
-
+  function countFiles(n){ var c = n.files.length; Object.keys(n.dirs).forEach(function(k){ c += countFiles(n.dirs[k]); }); return c; }
   function buildBranch(node) {
     var frag = document.createDocumentFragment();
-
     Object.keys(node.dirs).sort().forEach(function(dirName) {
+      var dn = node.dirs[dirName];
+      var closed = !wsSearch && wsCollapsed[dn.path];
       var dirNode = document.createElement('div');
-      dirNode.className = 'ftree-node folder';
-      dirNode.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg><span>' + dirName + '</span>';
-
+      dirNode.className = 'ftree-node folder' + (closed ? ' closed' : '');
+      dirNode.innerHTML = ICON_CHEV + ICON_FOLDER + '<span class="fname"></span><span class="fcnt">' + countFiles(dn) + '</span>';
+      dirNode.querySelector('.fname').textContent = dirName;
       var childContainer = document.createElement('div');
       childContainer.className = 'ftree-children';
-      childContainer.appendChild(buildBranch(node.dirs[dirName]));
-
+      childContainer.style.display = closed ? 'none' : 'block';
+      childContainer.appendChild(buildBranch(dn));
       dirNode.onclick = function(e) {
         e.stopPropagation();
-        childContainer.style.display = childContainer.style.display === 'none' ? 'block' : 'none';
+        wsCollapsed[dn.path] = !wsCollapsed[dn.path];
+        var nowClosed = wsCollapsed[dn.path];
+        childContainer.style.display = nowClosed ? 'none' : 'block';
+        dirNode.classList.toggle('closed', nowClosed);
       };
-
       frag.appendChild(dirNode);
       frag.appendChild(childContainer);
     });
-
     node.files.sort(function(a, b){ return a.name.localeCompare(b.name); }).forEach(function(item) {
       var fileNode = document.createElement('div');
-      fileNode.className = 'ftree-node file' + (item.key === currentFileKey ? ' active' : '');
       fileNode.dataset.key = item.key;
-
-      var dot = '<span class="dot" style="background:' + (item.file.dot || '#888') + '; width:7px; height:7px; border-radius:50%; display:inline-block; margin-left:auto;"></span>';
-      var svgIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>';
-      fileNode.innerHTML = svgIcon + '<span>' + item.name + '</span>' + dot;
-
-      fileNode.onclick = function(e) {
-        e.stopPropagation();
-        openFile(item.key, fileNode);
-      };
-
+      if (wsDeleting === item.key) {
+        fileNode.className = 'ftree-node file confirm';
+        fileNode.innerHTML = '<span class="fname"></span><button class="cbtn yes">삭제</button><button class="cbtn no">취소</button>';
+        fileNode.querySelector('.fname').textContent = item.name + ' 삭제?';
+        fileNode.querySelector('.yes').onclick = function(e){ e.stopPropagation(); wsDeleteFile(item.key); };
+        fileNode.querySelector('.no').onclick = function(e){ e.stopPropagation(); wsDeleting = null; renderFileTree(); };
+        frag.appendChild(fileNode);
+        return;
+      }
+      if (wsRenaming === item.key) {
+        fileNode.className = 'ftree-node file';
+        var inp = document.createElement('input');
+        inp.className = 'ft-rename'; inp.value = item.file.tab;
+        var done = false;
+        inp.onkeydown = function(e){
+          if (isEnter(e)) { done = true; wsRenameFile(item.key, inp.value); }
+          else if (e.key === 'Escape') { done = true; wsRenaming = null; renderFileTree(); }
+        };
+        inp.onblur = function(){ if (!done) { wsRenaming = null; renderFileTree(); } };
+        inp.onclick = function(e){ e.stopPropagation(); };
+        fileNode.innerHTML = ICON_FILE;
+        fileNode.appendChild(inp);
+        frag.appendChild(fileNode);
+        setTimeout(function(){ inp.focus(); var dot = inp.value.lastIndexOf('.'); inp.setSelectionRange(inp.value.lastIndexOf('/') + 1, dot > 0 ? dot : inp.value.length); }, 0);
+        return;
+      }
+      fileNode.className = 'ftree-node file' + (item.key === currentFileKey ? ' active' : '');
+      fileNode.innerHTML = ICON_FILE + '<span class="fname"></span>' +
+        (item.file.dirty ? '<span class="fmod" title="저장 안 된 변경"></span>' : '') +
+        '<span class="fact"><button class="ren" title="이름 바꾸기"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' +
+        '<button class="del" title="삭제"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></span>' +
+        '<span class="fdot" style="background:' + (item.file.dot || '#888') + ';"></span>';
+      fileNode.querySelector('.fname').textContent = item.name;
+      fileNode.title = item.file.tab + (item.file.updatedBy ? ' · 마지막 수정 ' + item.file.updatedBy : '');
+      fileNode.onclick = function(e) { e.stopPropagation(); openFile(item.key, fileNode); };
+      fileNode.ondblclick = function(e) { e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
+      fileNode.querySelector('.ren').onclick = function(e){ e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
+      fileNode.querySelector('.del').onclick = function(e){ e.stopPropagation(); wsDeleting = item.key; renderFileTree(); };
       frag.appendChild(fileNode);
     });
-
     return frag;
   }
-
   treeEl.appendChild(buildBranch(root));
 }
 
@@ -3040,8 +3306,10 @@ function initMonacoEditor() {
 
     // 실시간 코드 변경 동기화
     monacoEditor.onDidChangeModelContent(function() {
+      if (wsSettingValue) return;   // 파일을 열면서 값을 채우는 변경은 '수정'이 아님
       if (currentFileKey && files[currentFileKey]) {
         files[currentFileKey].raw = monacoEditor.getValue();
+        wsMarkDirty(currentFileKey);
       }
       updateEditorStatusBar();
     });
@@ -3053,6 +3321,10 @@ function initMonacoEditor() {
       if (sbPos) sbPos.textContent = 'Ln ' + pos.lineNumber + ', Col ' + pos.column;
     });
 
+    // 단축키: Ctrl/Cmd+S 저장
+    monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+      if (currentFileKey) wsSave(currentFileKey, false, true);
+    });
     // 단축키: Ctrl+Enter 또는 Cmd+Enter로 실행
     monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
       runCurrentCode();
@@ -3084,6 +3356,8 @@ function renderTabs() {
     title.className = 'etab-title';
     title.textContent = f.tab;
 
+    var modDot = null;
+    if (f.dirty) { modDot = document.createElement('span'); modDot.className = 'etab-mod'; modDot.title = '저장 안 된 변경'; }
     var closeBtn = document.createElement('span');
     closeBtn.className = 'etab-close';
     closeBtn.innerHTML = '&times;';
@@ -3094,6 +3368,7 @@ function renderTabs() {
 
     tabDiv.appendChild(dot);
     tabDiv.appendChild(title);
+    if (modDot) tabDiv.appendChild(modDot);
     tabDiv.appendChild(closeBtn);
     tabsContainer.appendChild(tabDiv);
   });
@@ -3160,7 +3435,8 @@ function openFile(key, el) {
   }
 }
 
-function renderFileContent(key) {
+var wsSettingValue = false;
+function renderFileContent(key, keepCursor) {
   var f = files[key];
   if (!f) return;
   if (window.monaco && monacoEditor) {
@@ -3169,13 +3445,359 @@ function renderFileContent(key) {
     if (model) {
       monaco.editor.setModelLanguage(model, lang);
     }
+    var pos = keepCursor ? monacoEditor.getPosition() : null;
+    wsSettingValue = true;
     monacoEditor.setValue(f.raw || '');
-    monacoEditor.revealPosition({ lineNumber: 1, column: 1 });
+    wsSettingValue = false;
+    monacoEditor.revealPosition(pos || { lineNumber: 1, column: 1 });
+    if (pos) monacoEditor.setPosition(pos);
   }
   updateEditorStatusBar();
+  wsUpdateSaveStatus();
+  wsRenderConflict();
 }
 
-/* ---- 창 숨기기 및 리사이저 기능 ---- */
+/* ======================================================================
+   워크스페이스 v2: 프로젝트별 파일 (서버 저장 · 자동 저장 · 팀 공유)
+   ====================================================================== */
+var wsProject = null, wsLoaded = false, wsLoading = false, wsPollTimer = null;
+function wsServerId(){ var m = /^p(\d+)$/.exec(wsProject || ''); return m ? parseInt(m[1], 10) : null; }
+function wsUseServer(){ return calApiMode && !!wsServerId(); }
+function wsKey(path){ return 'f:' + path; }
+function wsMakeFile(row){
+  var ext = (row.path.split('.').pop() || '').toLowerCase();
+  return { tab: row.path, path: row.path, dot: getDotColorForExt(ext), lang: getLangForExt(ext), raw: row.content || '',
+    baseUpdatedAt: row.updated_at || null, updatedBy: row.updated_by || null, dirty: false, saving: false, conflict: null };
+}
+function wsAgo(iso){
+  if (!iso) return '';
+  var sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (sec < 10) return '방금';
+  if (sec < 60) return sec + '초 전';
+  if (sec < 3600) return Math.round(sec / 60) + '분 전';
+  if (sec < 86400) return Math.round(sec / 3600) + '시간 전';
+  return Math.round(sec / 86400) + '일 전';
+}
+function renderWsEmpty(){
+  var empty = document.getElementById('wsEmptyState');
+  if (!empty) return;
+  var tree = document.getElementById('wsFileTree'), col = document.getElementById('wsEditorCol');
+  var hasFiles = Object.keys(files).length > 0;
+  var noProject = calApiMode && !myProjects.length;
+  var title = document.getElementById('wsEmptyTitle'), desc = document.getElementById('wsEmptyDesc'), icon = document.getElementById('wsEmptyIcon');
+  var starter = document.getElementById('wsStarterBtn'), dummy = document.getElementById('wsDummyBtn'), newProj = document.getElementById('wsNewProjBtn');
+  var acts = document.getElementById('wsEmptyActions');
+  if (noProject) {
+    icon.textContent = '🚀'; title.textContent = '프로젝트를 먼저 만들어주세요';
+    desc.textContent = '프로젝트를 만들면 파일, 회의록, 캘린더, 팀 채팅이 그 프로젝트 단위로 나뉘어요.';
+    Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b !== newProj); });
+    empty.hidden = false; if (tree) tree.hidden = true; if (col) col.hidden = true;
+    return;
+  }
+  if (tree) tree.hidden = false;
+  if (col) col.hidden = false;
+  if (calApiMode) {
+    icon.textContent = wsLoading ? '⏳' : '📂';
+    title.textContent = wsLoading ? '파일을 불러오는 중이에요…' : '아직 파일이 없어요';
+    desc.textContent = wsLoading ? '' : '이 프로젝트의 첫 파일을 만들어보세요. 만든 파일은 자동 저장되고 팀원과 함께 볼 수 있어요.';
+    Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b === dummy || b === newProj || wsLoading); });
+    if (starter) starter.hidden = wsLoading;
+  } else {
+    icon.textContent = '📁'; title.textContent = '열린 폴더가 없습니다';
+    desc.textContent = '내 컴퓨터의 폴더를 열거나 새 파일을 만들어 시작해보세요. (로그인하면 파일이 저장되고 팀원과 공유돼요)';
+    Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b === newProj); });
+  }
+  empty.hidden = hasFiles;
+}
+function wsUpdateSaveStatus(){
+  var el = document.getElementById('sbSave');
+  if (!el) return;
+  var f = currentFileKey ? files[currentFileKey] : null;
+  el.className = 'sb-save';
+  if (!f) { el.textContent = ''; return; }
+  if (!wsUseServer()) { el.textContent = '로컬 편집 (저장 안 됨)'; return; }
+  if (f.conflict) { el.classList.add('dirty'); el.textContent = '⚠ 충돌'; }
+  else if (f.saving) { el.textContent = '저장 중…'; }
+  else if (f.dirty) { el.classList.add('dirty'); el.textContent = '● 저장 안 됨'; }
+  else { el.textContent = '✓ 저장됨' + (f.updatedBy ? ' · ' + f.updatedBy + ' ' + wsAgo(f.baseUpdatedAt) : ''); }
+}
+function wsRenderConflict(){
+  var bar = document.getElementById('wsConflictBar');
+  if (!bar) return;
+  var f = currentFileKey ? files[currentFileKey] : null;
+  if (!f || !f.conflict) { bar.hidden = true; bar.innerHTML = ''; return; }
+  bar.hidden = false;
+  bar.innerHTML = '';
+  var msg = document.createElement('span');
+  msg.textContent = '⚠ ' + (f.conflict.updated_by || '다른 팀원') + '님이 ' + wsAgo(f.conflict.updated_at) + ' 이 파일을 먼저 수정했어요. 어떻게 할까요?';
+  var mine = document.createElement('button'); mine.className = 'btn'; mine.textContent = '내 변경으로 덮어쓰기';
+  mine.onclick = function(){ wsSave(currentFileKey, true); };
+  var theirs = document.createElement('button'); theirs.className = 'btn'; theirs.textContent = '최신 내용 불러오기';
+  theirs.onclick = function(){
+    f.raw = f.conflict.content; f.baseUpdatedAt = f.conflict.updated_at; f.updatedBy = f.conflict.updated_by; f.conflict = null; f.dirty = false;
+    renderFileContent(currentFileKey, true); renderTabs(); renderFileTree();
+  };
+  bar.appendChild(msg); bar.appendChild(mine); bar.appendChild(theirs);
+}
+function wsMarkDirty(key){
+  var f = files[key];
+  if (!f) return;
+  var wasDirty = f.dirty;
+  f.dirty = true;
+  wsUpdateSaveStatus();
+  if (!wasDirty) { renderTabs(); renderFileTree(); }
+  if (!wsUseServer()) return;
+  clearTimeout(f._t);
+  f._t = setTimeout(function(){ wsSave(key); }, 900);
+}
+function wsSave(key, force, manual){
+  var f = files[key];
+  if (!f || !wsUseServer()) return Promise.resolve();
+  clearTimeout(f._t);
+  if (!f.dirty && !force) { if (manual) pushToast('✓', '이미 저장돼 있어요', f.tab); return Promise.resolve(); }
+  if (f.conflict && !force) return Promise.resolve();
+  f.saving = true; wsUpdateSaveStatus();
+  var content = f.raw;
+  return apiFetch('/api/projects/' + wsServerId() + '/files', { method: 'PUT',
+    body: JSON.stringify({ path: f.path, content: content, base_updated_at: f.baseUpdatedAt, force: !!force }) })
+    .then(function(row){
+      f.saving = false; f.baseUpdatedAt = row.updated_at; f.updatedBy = row.updated_by; f.conflict = null;
+      if (f.raw === content) f.dirty = false; else wsMarkDirty(key);
+      renderTabs(); renderFileTree(); wsUpdateSaveStatus(); wsRenderConflict();
+      if (manual) pushToast('💾', '저장했어요', f.tab);
+    }).catch(function(e){
+      f.saving = false;
+      if (e.status === 409 && e.body && e.body.file) { f.conflict = e.body.file; wsRenderConflict(); wsUpdateSaveStatus(); }
+      else { wsUpdateSaveStatus(); pushToast('⚠️', '저장하지 못했어요', e.message); }
+    });
+}
+function wsFlushSaves(){
+  Object.keys(files).forEach(function(k){ var f = files[k]; if (f.dirty && wsUseServer() && !f.conflict) wsSave(k); });
+}
+window.addEventListener('beforeunload', function(e){
+  var pending = Object.keys(files).some(function(k){ return files[k].dirty && wsUseServer(); });
+  if (pending) { wsFlushSaves(); e.preventDefault(); e.returnValue = ''; }
+});
+document.addEventListener('keydown', function(e){
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && document.querySelector('.view.active[data-view="workspace"]')) {
+    e.preventDefault();
+    if (currentFileKey) wsSave(currentFileKey, false, true);
+  }
+});
+
+/* ---- 새 파일 / 이름 바꾸기 / 삭제 ---- */
+function wsOpenKey(key){
+  if (!openedTabs.includes(key)) openedTabs.push(key);
+  currentFileKey = key;
+  renderWsEmpty(); renderFileTree(); renderTabs(); renderFileContent(key);
+  try { localStorage.setItem('sync_ws_last_' + (wsProject || ''), files[key].path); } catch (e) {}
+}
+function wsCreateFile(name, content){
+  name = (name || '').trim().replace(/^\/+/, '').replace(/\/+/g, '/');
+  if (!name) { renderWsEmpty(); return Promise.resolve(); }
+  var key = wsKey(name);
+  if (files[key]) { pushToast('ℹ️', '이미 있는 파일이에요', name); wsOpenKey(key); return Promise.resolve(); }
+  var f = wsMakeFile({ path: name, content: content || '', updated_at: null, updated_by: null });
+  files[key] = f;
+  wsOpenKey(key);
+  if (!wsUseServer()) return Promise.resolve();
+  return wsSave(key, true);
+}
+function wsRenameFile(key, newPath){
+  wsRenaming = null;
+  var f = files[key];
+  newPath = (newPath || '').trim().replace(/^\/+/, '').replace(/\/+/g, '/');
+  if (!f || !newPath || newPath === f.path) { renderFileTree(); return; }
+  if (files[wsKey(newPath)]) { pushToast('⚠️', '같은 이름의 파일이 이미 있어요', newPath); renderFileTree(); return; }
+  function applyLocal(row){
+    var nk = wsKey(newPath), ext = (newPath.split('.').pop() || '').toLowerCase();
+    f.tab = newPath; f.path = newPath; f.dot = getDotColorForExt(ext); f.lang = getLangForExt(ext);
+    if (row) { f.baseUpdatedAt = row.updated_at; f.updatedBy = row.updated_by; }
+    delete files[key]; files[nk] = f;
+    openedTabs = openedTabs.map(function(k){ return k === key ? nk : k; });
+    if (currentFileKey === key) currentFileKey = nk;
+    renderFileTree(); renderTabs(); if (currentFileKey === nk) renderFileContent(nk, true);
+  }
+  if (wsUseServer() && !f.dirty) {
+    apiFetch('/api/projects/' + wsServerId() + '/files/rename', { method: 'POST', body: JSON.stringify({ from_path: f.path, to_path: newPath }) })
+      .then(applyLocal).catch(function(e){ pushToast('⚠️', '이름을 바꾸지 못했어요', e.message); renderFileTree(); });
+  } else if (wsUseServer()) {
+    pushToast('ℹ️', '저장 후에 이름을 바꿀 수 있어요', '변경 내용을 먼저 저장하는 중이에요'); wsSave(key).then(function(){ renderFileTree(); });
+  } else { applyLocal(null); }
+}
+function wsDeleteFile(key){
+  wsDeleting = null;
+  var f = files[key];
+  if (!f) return;
+  function dropLocal(){
+    delete files[key];
+    var idx = openedTabs.indexOf(key);
+    if (idx >= 0) openedTabs.splice(idx, 1);
+    if (currentFileKey === key) {
+      currentFileKey = openedTabs.length ? openedTabs[Math.max(0, idx - 1)] : null;
+      if (currentFileKey) renderFileContent(currentFileKey);
+      else if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
+    }
+    renderWsEmpty(); renderFileTree(); renderTabs(); wsUpdateSaveStatus(); wsRenderConflict();
+  }
+  if (wsUseServer()) {
+    apiFetch('/api/projects/' + wsServerId() + '/files?path=' + encodeURIComponent(f.path), { method: 'DELETE' })
+      .then(function(){ dropLocal(); pushToast('🗑️', '파일을 삭제했어요', f.tab); })
+      .catch(function(e){ pushToast('⚠️', '삭제하지 못했어요', e.message); renderFileTree(); });
+  } else { dropLocal(); }
+}
+function wsStarter(){
+  var title = (calProjectById(wsProject) || { title: '프로젝트' }).title;
+  var main = '# ' + title + '\n\ndef main():\n    print("Hello, ' + title.replace(/"/g, '') + '!")\n\n\nif __name__ == "__main__":\n    main()\n';
+  var readme = '# ' + title + '\n\n프로젝트 설명을 적어보세요.\n\n## 실행\n\n```bash\npython main.py\n```\n';
+  wsCreateFile('README.md', readme).then(function(){ return wsCreateFile('main.py', main); });
+}
+function wsImportEntries(entries, skipped, rootName){
+  var sid = wsServerId();
+  var chunks = [];
+  for (var i = 0; i < entries.length; i += 50) chunks.push(entries.slice(i, i + 50));
+  pushToast('📂', '폴더를 가져오는 중이에요', entries.length + '개 파일');
+  chunks.reduce(function(chain, chunk){
+    return chain.then(function(){ return apiFetch('/api/projects/' + sid + '/files/bulk', { method: 'PUT', body: JSON.stringify({ files: chunk }) }); });
+  }, Promise.resolve()).then(function(){
+    pushToast('✅', '폴더를 가져왔어요', (rootName || '선택한 폴더') + ' · ' + entries.length + '개 파일' + (skipped ? ' (' + skipped + '개 건너뜀)' : ''));
+    wsProject = null; wsLoaded = false; enterWorkspaceView();
+  }).catch(function(e){ pushToast('⚠️', '가져오지 못했어요', e.message); });
+}
+
+/* ---- 프로젝트 선택 / 로드 / 팀 변경 감지 ---- */
+function renderWsSelector(){
+  var menu = document.getElementById('wsSelMenu'), label = document.getElementById('wsSelLabel'), dot = document.getElementById('wsSelDot');
+  if (!menu) return;
+  menu.innerHTML = '';
+  myProjects.forEach(function(pr){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'calsel-item' + (pr.id === wsProject ? ' active' : '');
+    var d = document.createElement('span'); d.className = 'pdot'; d.style.background = calProjColor(pr);
+    var nm = document.createElement('span'); nm.textContent = pr.title; nm.style.overflow = 'hidden'; nm.style.textOverflow = 'ellipsis'; nm.style.whiteSpace = 'nowrap';
+    b.appendChild(d); b.appendChild(nm);
+    if (pr.members && pr.members.length) { var c = document.createElement('span'); c.className = 'cnt'; c.textContent = pr.members.length + '명'; b.appendChild(c); }
+    b.onclick = function(){ closeCalMenu(); selectWsProject(pr.id); };
+    menu.appendChild(b);
+  });
+  if (myProjects.length) { var sep = document.createElement('div'); sep.className = 'calsel-sep'; menu.appendChild(sep); }
+  var add = document.createElement('button');
+  add.type = 'button'; add.className = 'calsel-item settings'; add.textContent = '＋ 새 프로젝트 만들기';
+  add.onclick = function(){ closeCalMenu(); openNewProjectModal(); };
+  menu.appendChild(add);
+  var mng = document.createElement('button');
+  mng.type = 'button'; mng.className = 'calsel-item settings'; mng.textContent = '⚙ 프로젝트 관리 (삭제)';
+  mng.onclick = function(){ closeCalMenu(); openProjManage(); };
+  menu.appendChild(mng);
+  var cur = calProjectById(wsProject);
+  label.textContent = cur ? cur.title : (myProjects.length ? '프로젝트 선택' : '프로젝트 없음');
+  dot.style.background = cur ? calProjColor(cur) : 'var(--border-strong)';
+}
+function renderWsHeader(){
+  var chip = document.getElementById('wsPresenceChip'), stack = document.getElementById('wsMemberStack');
+  var cur = calProjectById(wsProject);
+  if (!calApiMode || !cur) { return; }
+  var members = cur.members || [];
+  if (chip) { chip.hidden = false; chip.textContent = '팀원 ' + (members.length || 1) + '명'; chip.title = members.map(function(m){ return m.username; }).join(', '); }
+  if (stack) {
+    stack.hidden = false; stack.innerHTML = '';
+    (members.length ? members : [{ username: (myProfile.name || '나') }]).slice(0, 5).forEach(function(m){
+      var mini = document.createElement('div'); mini.className = 'mini'; mini.style.background = chatColor(m.username); mini.textContent = String(m.username).slice(0, 1); mini.title = m.username;
+      stack.appendChild(mini);
+    });
+  }
+}
+function selectWsProject(id){
+  if (calApiMode) { calSelected = id; saveCalSettings(); syncCalProjects(); }
+  if (!calApiMode) { openWorkspace(id); return; }
+  loadWorkspace(id);
+}
+function enterWorkspaceView(){
+  renderWsSelector();
+  if (!calApiMode) { renderWsEmpty(); return; }
+  var target = (calSelected !== 'all' && calProjectById(calSelected)) ? calSelected
+    : (wsProject && calProjectById(wsProject)) ? wsProject
+    : (calDefaultProject() || (myProjects[0] && myProjects[0].id) || null);
+  if (!target) { files = {}; openedTabs = []; currentFileKey = null; wsProject = null; renderWsEmpty(); renderFileTree(); renderTabs(); return; }
+  if (target !== wsProject || !wsLoaded) loadWorkspace(target);
+  else { wsStartPolling(); renderWsHeader(); }
+}
+function loadWorkspace(id){
+  wsStopPolling();
+  wsFlushSaves();
+  wsProject = id; wsLoaded = false; wsLoading = true;
+  files = {}; openedTabs = []; currentFileKey = null; wsRenaming = null; wsDeleting = null; wsSearch = '';
+  var si = document.getElementById('wsFileSearch'); if (si) si.value = '';
+  var cur = calProjectById(id);
+  var crumb = document.getElementById('wsCrumbName'); if (crumb && cur) crumb.textContent = cur.title;
+  renderWsSelector(); renderWsHeader(); renderWsEmpty(); renderFileTree(); renderTabs(); renderFileContent_empty();
+  var sid = wsServerId();
+  if (!sid || !calApiMode) { wsLoading = false; renderWsEmpty(); return; }
+  apiFetch('/api/projects/' + sid + '/files').then(function(rows){
+    if (wsProject !== id) return;   // 불러오는 사이 다른 프로젝트로 바꾼 경우
+    rows.forEach(function(r){ files[wsKey(r.path)] = wsMakeFile(r); });
+    wsLoaded = true; wsLoading = false;
+    var last = null; try { last = localStorage.getItem('sync_ws_last_' + id); } catch (e) {}
+    var openKey = (last && files[wsKey(last)]) ? wsKey(last)
+      : files[wsKey('main.py')] ? wsKey('main.py') : files[wsKey('README.md')] ? wsKey('README.md') : (Object.keys(files)[0] || null);
+    renderWsEmpty(); renderFileTree();
+    if (openKey) wsOpenKey(openKey); else renderTabs();
+    wsStartPolling();
+  }).catch(function(e){ wsLoading = false; renderWsEmpty(); pushToast('⚠️', '파일을 불러오지 못했어요', e.message); });
+}
+function renderFileContent_empty(){
+  if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
+  updateEditorStatusBar(); wsUpdateSaveStatus(); wsRenderConflict();
+}
+function wsStartPolling(){ wsStopPolling(); wsPollTimer = setInterval(wsPoll, 6000); }
+function wsStopPolling(){ if (wsPollTimer) { clearInterval(wsPollTimer); wsPollTimer = null; } }
+function wsPoll(){
+  if (document.hidden || !wsUseServer() || !document.querySelector('.view.active[data-view="workspace"]')) return;
+  var id = wsProject;
+  apiFetch('/api/projects/' + wsServerId() + '/files').then(function(rows){
+    if (wsProject !== id) return;
+    var me = currentUser ? currentUser.username : null;
+    var remote = {}; rows.forEach(function(r){ remote[r.path] = r; });
+    var changed = [], who = {}, added = [], removed = [];
+    rows.forEach(function(r){
+      var key = wsKey(r.path), f = files[key];
+      if (!f) { files[key] = wsMakeFile(r); if (r.updated_by !== me) { added.push(r.path); who[r.updated_by || '팀원'] = 1; } return; }
+      if (f.baseUpdatedAt !== r.updated_at) {
+        if (!f.dirty && !f.saving) {
+          f.raw = r.content; f.baseUpdatedAt = r.updated_at; f.updatedBy = r.updated_by;
+          if (r.updated_by !== me) { changed.push(r.path); who[r.updated_by || '팀원'] = 1; }
+          if (key === currentFileKey) renderFileContent(key, true);
+        } else if (r.updated_by !== me) { f.conflict = r; if (key === currentFileKey) { wsRenderConflict(); wsUpdateSaveStatus(); } }
+      }
+    });
+    Object.keys(files).forEach(function(key){
+      var f = files[key];
+      if (f.path && !remote[f.path] && !f.dirty && !f.saving && f.baseUpdatedAt) {
+        delete files[key]; removed.push(f.path);
+        var idx = openedTabs.indexOf(key); if (idx >= 0) openedTabs.splice(idx, 1);
+        if (currentFileKey === key) { currentFileKey = openedTabs[0] || null; if (currentFileKey) renderFileContent(currentFileKey); else renderFileContent_empty(); }
+      }
+    });
+    if (changed.length || added.length || removed.length) {
+      renderWsEmpty(); renderFileTree(); renderTabs();
+      var names = Object.keys(who).join(', ');
+      if (changed.length) pushToast('✏️', (names || '팀원') + '님이 파일을 수정했어요', changed.slice(0, 3).join(', ') + (changed.length > 3 ? ' 외 ' + (changed.length - 3) + '개' : ''));
+      else if (added.length) pushToast('📄', (names || '팀원') + '님이 파일을 추가했어요', added.slice(0, 3).join(', '));
+      else if (removed.length) pushToast('🗑️', '팀원이 파일을 삭제했어요', removed.slice(0, 3).join(', '));
+    }
+    wsUpdateSaveStatus();
+  }).catch(function(){});
+}
+/* ---- 새 프로젝트 ---- */
+function openNewProjectModal(){ var el = document.getElementById('newProjectName'); el.value = ''; document.getElementById('newProjectModal').classList.add('open'); setTimeout(function(){ el.focus(); }, 100); }
+function closeNewProjectModal(){ document.getElementById('newProjectModal').classList.remove('open'); }
+function submitNewProject(){
+  var name = document.getElementById('newProjectName').value.trim();
+  if (!name) return;
+  closeNewProjectModal();
+  addProjectFromPrompt(name);
+}
+
 function toggleSidebar() {
   var tree = document.getElementById('wsFileTree');
   var btn = document.getElementById('wsSidebarToggleBtn');
@@ -3225,7 +3847,7 @@ function initResizers() {
     function onPointerMoveV(e) {
       if (!isDraggingV) return;
       e.preventDefault();
-      var deltaX = e.clientX - startX;
+      var deltaX = (e.clientX - startX) / currentUiScale();
       var maxW = wsShell ? Math.max(200, wsShell.clientWidth - 280) : 550;
       var newW = Math.round(startW + deltaX);
       if (newW < 140) newW = 140;
@@ -3250,7 +3872,7 @@ function initResizers() {
     resizerV.addEventListener('pointerdown', function(e) {
       isDraggingV = true;
       startX = e.clientX;
-      startW = fileTree.getBoundingClientRect().width;
+      startW = fileTree.getBoundingClientRect().width / currentUiScale();
       resizerV.classList.add('dragging');
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
@@ -3275,7 +3897,7 @@ function initResizers() {
       if (!isDraggingH) return;
       e.preventDefault();
       // startY - e.clientY: 마우스를 위로 올리면 터미널 높이 증가, 아래로 내리면 감소
-      var deltaY = startY - e.clientY;
+      var deltaY = (startY - e.clientY) / currentUiScale();
       var totalH = editorCol.clientHeight;
       // 헤더(38px), 상태바(24px), 리사이저(6px), 최소 에디터 영역(70px)을 남겨둠
       var maxH = Math.max(100, totalH - 140);
@@ -3308,7 +3930,7 @@ function initResizers() {
       }
       isDraggingH = true;
       startY = e.clientY;
-      startH = terminal.getBoundingClientRect().height;
+      startH = terminal.getBoundingClientRect().height / currentUiScale();
       resizerH.classList.add('dragging');
       document.body.style.cursor = 'row-resize';
       document.body.style.userSelect = 'none';
@@ -3387,6 +4009,7 @@ async function checkBackendHealth() {
 
 
 async function runCurrentCode() {
+  if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
   var code = '';
   if (window.monaco && monacoEditor) {
     code = monacoEditor.getValue().trim();
@@ -3619,27 +4242,193 @@ async function checkAutoLogin() {
 }
 checkAutoLogin();
 
-/* ---- global chat ---- */
-function toggleChat(){ document.getElementById('chatPanel').classList.toggle('open'); }
-
-var pendingMeetingLines = ['다음 회의 안건은 검색 필터 기능부터 정하기로 함'];
-
-function appendMyMessage(val, tagLabel){
-  var scroll = document.getElementById('chatScroll');
-  var row = document.createElement('div');
-  row.className='msg-row me';
-  row.innerHTML = "<div class='mavatar' style='background:#3A6EA5;'>나</div><div class='msg-col'><span class='msg-name'>나</span><div class='bubble'></div></div>";
-  row.querySelector('.bubble').textContent = val;
-  if(tagLabel){
-    var tag = document.createElement('span');
-    tag.className='chip accent2';
-    tag.style.marginTop='2px';
-    tag.textContent = tagLabel;
-    row.querySelector('.msg-col').appendChild(tag);
+/* ---- team chat (프로젝트별 채팅 + AI 일정 감지) ---- */
+var pendingMeetingLines = [];
+var chatProject = null;      // 프런트 프로젝트 id ('p3')
+var chatMsgs = [];           // 서버 메시지
+var chatLocal = [];          // 이 세션에서만 보이는 안내 말풍선
+var chatSig = '';
+var chatTimer = null;
+var chatBusy = false;
+function chatServerId(){ var m = /^p(\d+)$/.exec(chatProject || ''); return m ? parseInt(m[1], 10) : null; }
+function chatSeenKey(){ return 'sync_chat_seen_'+(currentUser ? currentUser.id : 'x')+'_'+chatProject; }
+function chatSeenId(){ try{ return parseInt(localStorage.getItem(chatSeenKey()) || '0', 10); }catch(e){ return 0; } }
+function chatMarkSeen(){
+  var max = chatMsgs.reduce(function(a, m){ return Math.max(a, m.id); }, 0);
+  try{ localStorage.setItem(chatSeenKey(), String(max)); }catch(e){}
+}
+var CHAT_COLORS = ['#E8542E','#1F6F5C','#8C4A9C','#3A6EA5','#B08B2E','#C2456F'];
+function chatColor(key){ var n = 0; String(key).split('').forEach(function(c){ n += c.charCodeAt(0); }); return CHAT_COLORS[n % CHAT_COLORS.length]; }
+function fmtChatTime(iso){
+  var d = new Date(iso); if(isNaN(d)) return '';
+  var h = d.getHours(), m = d.getMinutes();
+  return (h<12 ? '오전 ' : '오후 ')+(h%12===0 ? 12 : h%12)+':'+pad2(m);
+}
+function chatPanelOpen(){ return document.getElementById('chatPanel').classList.contains('open'); }
+function toggleChat(){
+  document.getElementById('chatPanel').classList.toggle('open');
+  if(chatPanelOpen()){ renderChatHeader(); loadChat(true); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
+}
+function renderChatHeader(){
+  var sel = document.getElementById('chatProjectSel');
+  if(!sel) return;
+  var members = document.getElementById('chatMembers');
+  var invite = document.getElementById('chatInviteBtn');
+  sel.innerHTML = '';
+  if(!calApiMode){
+    var o = document.createElement('option'); o.textContent = '팀 채팅'; sel.appendChild(o); sel.disabled = true;
+    members.textContent = '로그인하면 팀 채팅을 쓸 수 있어요'; invite.hidden = true;
+    document.getElementById('chatAvatar').textContent = '팀';
+    return;
   }
-  scroll.appendChild(row);
-  scroll.scrollTop = scroll.scrollHeight;
+  sel.disabled = false;
+  if(!myProjects.length){
+    var o2 = document.createElement('option'); o2.textContent = '프로젝트 없음'; sel.appendChild(o2); sel.disabled = true;
+    members.textContent = '프로젝트를 만들면 팀원과 대화할 수 있어요'; invite.hidden = true;
+    document.getElementById('chatAvatar').textContent = '팀';
+    return;
+  }
+  if(!chatProject || !calProjectById(chatProject)) chatProject = calDefaultProject() || myProjects[0].id;
+  myProjects.forEach(function(pr){
+    var op = document.createElement('option'); op.value = pr.id; op.textContent = pr.title;
+    if(pr.id===chatProject) op.selected = true;
+    sel.appendChild(op);
+  });
+  var cur = calProjectById(chatProject);
+  document.getElementById('chatAvatar').textContent = (cur.title || '팀').slice(0, 1);
+  var names = (cur.members || []).map(function(mm){ return mm.username; });
+  members.textContent = (names.length ? names.join(', ')+' · '+names.length+'명' : '나 혼자')+' · 어디서든 이어서 대화해요';
+  invite.hidden = !cur.isOwner;
+}
+function switchChatProject(id){
+  chatProject = id; chatMsgs = []; chatSig = '';
+  renderChatHeader(); renderChat(); loadChat(true);
+}
+function updateChatBadge(){
+  var badge = document.getElementById('chatBadge');
+  if(!badge) return;
+  var seen = chatSeenId();
+  var mine = currentUser ? currentUser.id : -1;
+  var unread = chatMsgs.filter(function(m){ return m.id > seen && m.user_id !== mine; }).length;
+  badge.hidden = !(calApiMode && unread > 0 && !chatPanelOpen());
+  badge.textContent = unread > 9 ? '9+' : String(unread);
+}
+function loadChat(force){
+  var sid = chatServerId();
+  if(!calApiMode || !sid || chatBusy) return Promise.resolve();
+  chatBusy = true;
+  return apiFetch('/api/projects/'+sid+'/messages').then(function(rows){
+    var sig = rows.map(function(m){ return m.id+(m.meta ? ':'+m.meta.status : ''); }).join(',');
+    var changed = sig !== chatSig;
+    chatSig = sig; chatMsgs = rows;
+    if(changed || force){
+      renderChat();
+      if(changed) refreshTeamEvents();
+    }
+    if(chatPanelOpen()) chatMarkSeen();
+    updateChatBadge();
+  }).catch(function(){}).then(function(){ chatBusy = false; });
+}
+function refreshTeamEvents(){
+  if(!calApiMode) return;
+  apiFetch('/api/calendar/events').then(function(rows){
+    calendarEvents = rows.map(serverEventToLocal);
+    syncCandidateStatus();
+    renderCalendarEvents(); renderCalSelector(); renderDetectCard();
+  }).catch(function(){});
+}
+function startChat(){
+  renderChatHeader();
+  chatMsgs = []; chatSig = '';
+  loadChat(true);
+  if(chatTimer) clearInterval(chatTimer);
+  chatTimer = setInterval(function(){ if(!document.hidden) loadChat(false); }, 3000);
+}
+function stopChat(){
+  if(chatTimer){ clearInterval(chatTimer); chatTimer = null; }
+  chatMsgs = []; chatLocal = []; chatSig = ''; chatProject = null;
+  renderChatHeader(); renderChat(); updateChatBadge();
+}
+function buildMsgRow(m){
+  var mine = currentUser && m.user_id === currentUser.id;
+  var row = document.createElement('div');
+  row.className = 'msg-row'+(mine ? ' me' : '');
+  var av = document.createElement('div'); av.className = 'mavatar';
+  av.style.background = mine ? '#3A6EA5' : chatColor(m.author); av.textContent = (mine ? '나' : m.author).slice(0, 1);
+  var col = document.createElement('div'); col.className = 'msg-col';
+  var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = mine ? '나' : m.author;
+  var bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = m.text;
+  col.appendChild(nm); col.appendChild(bubble);
+  if(/^\/회의\s+/.test(m.text)){
+    var tag = document.createElement('span'); tag.className = 'chip accent2'; tag.style.marginTop = '2px'; tag.textContent = '📝 회의 메모로 태그됨';
+    col.appendChild(tag);
+  }
+  var tm = document.createElement('span'); tm.className = 'msg-time'; tm.textContent = fmtChatTime(m.created_at);
+  col.appendChild(tm);
+  row.appendChild(av); row.appendChild(col);
   return row;
+}
+function buildDetectBubble(m){
+  var meta = m.meta || {};
+  var div = document.createElement('div'); div.className = 'sys-bubble';
+  var lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = '🤖 AI 일정 감지'; div.appendChild(lbl);
+  var info = {start:meta.start_date, end:meta.end_date, startTime:meta.start_time, endTime:meta.end_time};
+  var txt = document.createElement('span');
+  txt.textContent = (meta.assignee ? meta.assignee+'님이 ' : '')+'"'+meta.title+'" 일정을 맡았어요 · '+fmtRange(info)+(meta.status==='pending' ? ' — 캘린더에 추가할까요?' : '');
+  div.appendChild(txt);
+  var row = document.createElement('div'); row.className = 'row';
+  var btn = document.createElement('button');
+  if(meta.status==='added'){ btn.textContent = '✓ 캘린더에 추가됨'; btn.disabled = true; row.appendChild(btn); }
+  else {
+    btn.textContent = '캘린더에 추가';
+    btn.onclick = function(){ btn.disabled = true; applyChatDetection(m); };
+    var no = document.createElement('button'); no.className = 'ghost'; no.textContent = '무시';
+    no.onclick = function(){ dismissChatDetection(m); };
+    row.appendChild(btn); row.appendChild(no);
+  }
+  div.appendChild(row);
+  return div;
+}
+function renderChat(){
+  var scroll = document.getElementById('chatScroll');
+  if(!scroll) return;
+  var nearBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
+  scroll.innerHTML = '';
+  if(!calApiMode){
+    scroll.innerHTML = "<div class='chat-empty'>로그인하면 프로젝트 팀원과 대화할 수 있어요.<br>대화에서 \"제가 금요일까지 할게요\"처럼 담당과 기한이 나오면 AI가 캘린더에 올려줘요.</div>";
+  } else if(!chatServerId()){
+    scroll.innerHTML = "<div class='chat-empty'>프로젝트를 만들면 이곳에서 팀원과 대화할 수 있어요.</div>";
+  } else if(!chatMsgs.length && !chatLocal.length){
+    scroll.innerHTML = "<div class='chat-empty'>아직 대화가 없어요.<br>첫 메시지를 보내보세요. 담당과 기한이 나오는 대화는 AI가 캘린더에 올려줘요.</div>";
+  } else {
+    chatMsgs.forEach(function(m){
+      if(m.kind==='ai_detect'){ if(m.meta && m.meta.status!=='dismissed') scroll.appendChild(buildDetectBubble(m)); }
+      else scroll.appendChild(buildMsgRow(m));
+    });
+    chatLocal.forEach(function(el){ scroll.appendChild(el); });
+  }
+  if(nearBottom || chatMsgs.length<=1) scroll.scrollTop = scroll.scrollHeight;
+}
+function applyChatDetection(m){
+  var sid = chatServerId();
+  apiFetch('/api/projects/'+sid+'/messages/'+m.id+'/apply', {method:'POST'}).then(function(row){
+    var ev = serverEventToLocal(row);
+    if(!calendarEvents.some(function(e){ return e.id===ev.id; })) calendarEvents.push(ev);
+    renderCalendarEvents(); renderCalSelector();
+    pushToast('✅','캘린더에 추가됨', (m.meta.assignee ? m.meta.assignee+' · ' : '')+m.meta.title+' · '+fmtRange({start:m.meta.start_date, end:m.meta.end_date, startTime:m.meta.start_time, endTime:m.meta.end_time}));
+    return loadChat(true);
+  }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); renderChat(); });
+}
+function dismissChatDetection(m){
+  var sid = chatServerId();
+  apiFetch('/api/projects/'+sid+'/messages/'+m.id+'/dismiss', {method:'POST'}).then(function(){ return loadChat(true); }).catch(function(){});
+}
+function appendMyMessage(val, tagLabel){
+  // 게스트(서버 없음)일 때의 임시 표시
+  var el = buildMsgRow({user_id: currentUser ? currentUser.id : -1, author:'나', text:val, created_at:new Date().toISOString()});
+  if(tagLabel){ var tag = document.createElement('span'); tag.className='chip accent2'; tag.style.marginTop='2px'; tag.textContent = tagLabel; el.querySelector('.msg-col').appendChild(tag); }
+  chatLocal.push(el); renderChat();
+  return el;
 }
 function appendTypingBubble(){
   var scroll = document.getElementById('chatScroll');
@@ -3651,7 +4440,6 @@ function appendTypingBubble(){
   return row;
 }
 function appendSystemBubble(icon, label, text, withBtn){
-  var scroll = document.getElementById('chatScroll');
   var div = document.createElement('div');
   div.className='sys-bubble';
   div.innerHTML = "<span class='lbl'></span><span></span>";
@@ -3663,8 +4451,7 @@ function appendSystemBubble(icon, label, text, withBtn){
     btn.onclick = function(){ goView('notes'); };
     div.appendChild(btn);
   }
-  scroll.appendChild(div);
-  scroll.scrollTop = scroll.scrollHeight;
+  chatLocal.push(div); renderChat();
 }
 function runMeetingSummarize(){
   if(pendingMeetingLines.length===0){
@@ -3678,8 +4465,9 @@ function runMeetingSummarize(){
     thinking.remove();
     var today = new Date();
     var dateStr = today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0');
-    var doc = buildDocFromLines('채팅에서 정리한 회의 메모', dateStr, ['나'], lines);
-    doc.project = calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
+    var attendeeNames = (calProjectById(chatProject) && calProjectById(chatProject).members || []).map(function(mm){ return mm.username; });
+    var doc = buildDocFromLines('채팅에서 정리한 회의 메모', dateStr, attendeeNames.length ? attendeeNames : ['나'], lines);
+    doc.project = chatProject || calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
     meetingDocs.unshift(doc);
     syncCalProjects();
     syncDocToCalendar(doc);
@@ -3692,19 +4480,39 @@ function sendChatMsg(){
   var val = input.value.trim();
   if(!val) return;
   input.value='';
-
   var meetingMatch = val.match(/^\/회의\s+(.+)/);
   var isSummarizeCmd = /^\/회의정리/.test(val) || (/회의록/.test(val) && /(정리|작성)/.test(val));
+  if(meetingMatch) pendingMeetingLines.push(meetingMatch[1]);
 
-  if(meetingMatch){
-    appendMyMessage(val, '📝 회의 메모로 태그됨');
-    pendingMeetingLines.push(meetingMatch[1]);
-  } else if(isSummarizeCmd){
-    appendMyMessage(val);
-    runMeetingSummarize();
-  } else {
-    appendMyMessage(val);
+  var sid = chatServerId();
+  if(calApiMode && sid){
+    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val})}).then(function(msg){
+      chatMsgs.push(msg); chatSig += (chatSig ? ',' : '')+msg.id;
+      renderChat(); chatMarkSeen();
+      // AI 가 대화를 분석하는 동안(백그라운드) 몇 번 더 확인해서 일정 카드가 바로 뜨게 한다
+      [1500, 3500, 7000].forEach(function(t){ setTimeout(function(){ loadChat(true); }, t); });
+      if(isSummarizeCmd) runMeetingSummarize();
+    }).catch(function(e){ pushToast('⚠️','메시지를 보내지 못했어요', e.message); input.value = val; });
+    return;
   }
+  // 게스트/프로젝트 없음: 이 화면에서만 보이는 임시 대화
+  if(!calApiMode) pushToast('🔒','로그인 후 팀 채팅이 저장돼요','지금은 이 화면에서만 보이는 임시 대화예요');
+  appendMyMessage(val, meetingMatch ? '📝 회의 메모로 태그됨' : null);
+  if(isSummarizeCmd) runMeetingSummarize();
+}
+/* ---- team invite ---- */
+function openInviteModal(){ document.getElementById('inviteEmail').value = ''; document.getElementById('inviteModal').classList.add('open'); setTimeout(function(){ document.getElementById('inviteEmail').focus(); }, 100); }
+function closeInviteModal(){ document.getElementById('inviteModal').classList.remove('open'); }
+function submitInvite(){
+  var email = document.getElementById('inviteEmail').value.trim();
+  var sid = chatServerId();
+  if(!email || !sid) return;
+  apiFetch('/api/projects/'+sid+'/members', {method:'POST', body:JSON.stringify({email:email})}).then(function(row){
+    var cur = calProjectById(chatProject);
+    if(cur){ cur.members = row.members; registerProjectMembers(cur); }
+    closeInviteModal(); renderChatHeader(); syncCalProjects();
+    pushToast('🎉','팀원을 초대했어요', email+' 님이 이 프로젝트의 채팅과 캘린더에 참여해요');
+  }).catch(function(e){ pushToast('⚠️','초대하지 못했어요', e.message); });
 }
 
 /* ---- notes: composer ---- */
@@ -3771,17 +4579,21 @@ function saveDraft(){
   pushToast('💾','임시저장됨','작성 중인 내용이 임시로 저장됐어요');
 }
 var attendeeDefaultHtml = null;
-function buildAttendeePicker(){
+function buildAttendeePicker(projId){
   var box = document.getElementById('attendeePicker');
   if(attendeeDefaultHtml===null) attendeeDefaultHtml = box.innerHTML;
   if(!calApiMode){ box.innerHTML = attendeeDefaultHtml; return; }
   box.innerHTML = '';
-  var chip = document.createElement('button');
-  chip.type = 'button'; chip.className = 'member-chip active'; chip.dataset.name = myProfile.name || '나';
-  chip.onclick = function(){ chip.classList.toggle('active'); };
-  var dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = '#3A6EA5';
-  chip.appendChild(dot); chip.append(myProfile.name || '나');
-  box.appendChild(chip);
+  var pr = calProjectById(projId || (document.getElementById('noteProject') || {}).value);
+  var names = (pr && pr.members && pr.members.length) ? pr.members.map(function(mm){ return mm.username; }) : [myProfile.name || '나'];
+  names.forEach(function(nm){
+    var chip = document.createElement('button');
+    chip.type = 'button'; chip.className = 'member-chip active'; chip.dataset.name = nm;
+    chip.onclick = function(){ chip.classList.toggle('active'); };
+    var dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = chatColor(nm);
+    chip.appendChild(dot); chip.append(nm);
+    box.appendChild(chip);
+  });
 }
 function openComposeModal(){
   if(calApiMode && !myProjects.length){
@@ -3799,7 +4611,7 @@ function openComposeModal(){
   if(!myProjects.length){ var none = document.createElement('option'); none.value = ''; none.textContent = '프로젝트 없음'; psel.appendChild(none); }
   document.getElementById('noteTitleInput').value = '';
   document.getElementById('noteDateInput').value = CAL_TODAY.y+'-'+pad2(CAL_TODAY.m)+'-'+pad2(CAL_TODAY.d);
-  buildAttendeePicker();
+  buildAttendeePicker(defProj);
   document.querySelectorAll('#attendeePicker .member-chip').forEach(function(c){ c.classList.add('active'); });
   document.getElementById('noteEditor').innerHTML = '';
   document.getElementById('composeModal').classList.add('open');
@@ -3849,6 +4661,7 @@ function renderMeetingDocs(){
     var row = document.createElement('div');
     row.className = 'mdoc-row';
     row.innerHTML =
+      "<span class='mdoc-chk-cell'><span class='pm-check'>"+PM_CHECK+"</span></span>"+
       "<span class='mdr-date'></span>"+
       "<button type='button' class='mdr-title'></button>"+
       "<span class='mdr-attendees'></span>"+
@@ -3863,15 +4676,111 @@ function renderMeetingDocs(){
       tag.appendChild(tdot); tag.append(rowProj.title);
       titleBtn.insertBefore(tag, titleBtn.firstChild);
     }
-    titleBtn.onclick = function(){ openMdocDrawer(doc.id); };
+    titleBtn.onclick = function(e){ if(noteSelecting){ e.stopPropagation(); toggleNoteSel(doc.id); return; } openMdocDrawer(doc.id); };
+    if(noteSelecting && noteSel[doc.id]) row.classList.add('sel');
+    row.onclick = function(){ if(noteSelecting) toggleNoteSel(doc.id); };
     row.querySelector('.mdr-attendees').innerHTML = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
     var statusBtn = row.querySelector('.mdr-status-btn');
     var c = getStatusColor(doc.status);
     statusBtn.style.background = c+'22'; statusBtn.style.color = c;
     statusBtn.textContent = '● '+doc.status;
-    statusBtn.onclick = function(e){ openStatusEditor(e, doc.id); };
+    statusBtn.onclick = function(e){ if(noteSelecting){ e.stopPropagation(); toggleNoteSel(doc.id); return; } openStatusEditor(e, doc.id); };
     wrap.appendChild(row);
   });
+  var tableEl = document.querySelector('.mdoc-table');
+  if(tableEl) tableEl.classList.toggle('selecting', noteSelecting);
+  renderNoteSelBar();
+}
+/* ---- 회의록 삭제 (선택 삭제 + 상세 화면의 삭제) ---- */
+var noteSelecting = false, noteSel = {}, noteConfirm = false, noteBusy = false;
+function visibleDocsForSelection(){
+  var ids = calReady ? calVisibleProjectIds() : null;
+  return meetingDocs.filter(function(d){ return !ids || !d.project || ids.indexOf(d.project)>=0; });
+}
+function toggleNoteSelectMode(){
+  noteSelecting = !noteSelecting; noteSel = {}; noteConfirm = false;
+  var btn = document.getElementById('noteSelectBtn');
+  if(btn) btn.classList.toggle('primary', false);
+  renderMeetingDocs();
+}
+function toggleNoteSel(id){ if(noteSel[id]) delete noteSel[id]; else noteSel[id] = true; noteConfirm = false; renderMeetingDocs(); }
+function toggleNoteSelAll(){
+  var docs = visibleDocsForSelection();
+  var every = docs.length && docs.every(function(d){ return noteSel[d.id]; });
+  docs.forEach(function(d){ if(every) delete noteSel[d.id]; else noteSel[d.id] = true; });
+  noteConfirm = false; renderMeetingDocs();
+}
+function renderNoteSelBar(){
+  var bar = document.getElementById('noteSelBar');
+  if(!bar) return;
+  var all = document.getElementById('noteSelAll');
+  var docs = visibleDocsForSelection();
+  var chosen = docs.filter(function(d){ return noteSel[d.id]; });
+  if(all) all.classList.toggle('on', docs.length>0 && chosen.length===docs.length);
+  bar.hidden = !noteSelecting;
+  bar.innerHTML = '';
+  if(!noteSelecting) return;
+  if(noteConfirm && chosen.length){
+    var box = document.createElement('div'); box.className = 'pm-confirm'; box.style.flex = '1';
+    var msg = document.createElement('div');
+    msg.textContent = '선택한 회의록 ' + chosen.length + '개를 삭제할까요? 이 회의록들에서 AI가 만든 캘린더 일정도 함께 삭제되고, 되돌릴 수 없어요.';
+    var row = document.createElement('div'); row.className = 'row';
+    var no = document.createElement('button'); no.className = 'cbtn no'; no.textContent = '취소'; no.onclick = function(){ noteConfirm = false; renderNoteSelBar(); };
+    var yes = document.createElement('button'); yes.className = 'cbtn yes'; yes.textContent = noteBusy ? '삭제 중…' : '삭제'; yes.disabled = noteBusy;
+    yes.onclick = function(){ deleteMeetingDocs(chosen.map(function(d){ return d.id; })); };
+    row.appendChild(no); row.appendChild(yes); box.appendChild(msg); box.appendChild(row); bar.appendChild(box);
+    return;
+  }
+  var cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = chosen.length ? chosen.length + '개 선택됨' : '삭제할 회의록을 체크하세요';
+  var acts = document.createElement('div'); acts.className = 'acts';
+  var cancel = document.createElement('button'); cancel.className = 'btn ghost'; cancel.textContent = '취소'; cancel.onclick = toggleNoteSelectMode;
+  var trash = document.createElement('button'); trash.className = 'pm-trash'; trash.disabled = !chosen.length;
+  trash.innerHTML = "<svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='2'><path d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6'/></svg>삭제" + (chosen.length ? ' (' + chosen.length + ')' : '');
+  trash.onclick = function(){ noteConfirm = true; renderNoteSelBar(); };
+  acts.appendChild(cancel); acts.appendChild(trash);
+  bar.appendChild(cnt); bar.appendChild(acts);
+}
+function deleteMeetingDocs(ids){
+  if(noteBusy) return;
+  noteBusy = true; renderNoteSelBar();
+  var done = [], failed = [];
+  ids.reduce(function(chain, id){
+    return chain.then(function(){
+      var doc = meetingDocs.filter(function(d){ return d.id===id; })[0];
+      if(!doc) return;
+      if(calApiMode && doc.serverId){
+        return apiFetch('/api/meetings/'+doc.serverId, {method:'DELETE'}).then(function(){ done.push(doc); }).catch(function(e){ failed.push(doc.title+' ('+e.message+')'); });
+      }
+      done.push(doc);   // 로그인 전(데모) 회의록은 화면에서만 지움
+    });
+  }, Promise.resolve()).then(function(){
+    var gone = {}; done.forEach(function(d){ gone[d.id] = d; });
+    meetingDocs = meetingDocs.filter(function(d){ return !gone[d.id]; });
+    calDetect = calDetect.filter(function(c){ return !gone[c.docId]; });
+    calendarEvents = calendarEvents.filter(function(e){ return !(e.cls==='ai' && e.docServerId && done.some(function(d){ return d.serverId===e.docServerId; })); });
+    done.forEach(function(d){ delete detectCache[d.id]; });
+    var drawer = document.getElementById('mdocDrawer');
+    if(drawer && drawer.classList.contains('open') && gone[drawer.dataset.docId]) closeMdocDrawer();
+    noteSel = {}; noteConfirm = false; noteBusy = false;
+    noteSelecting = false;   // 삭제가 끝나면 선택 모드를 닫는다
+    renderMeetingDocs(); renderCalendarEvents(); renderCalSelector(); renderDetectCard();
+    if(done.length) pushToast('🗑️', '회의록 '+done.length+'개를 삭제했어요', done.slice(0,3).map(function(d){ return '"'+d.title+'"'; }).join(', ')+(done.length>3 ? ' 외 '+(done.length-3)+'개' : ''));
+    if(failed.length) pushToast('⚠️', '일부를 삭제하지 못했어요', failed.join(', '));
+  });
+}
+var docDeleteAsk = null;
+function askDeleteDoc(){
+  var drawer = document.getElementById('mdocDrawer');
+  var id = drawer.dataset.docId;
+  var btn = document.getElementById('mdocDeleteBtn');
+  if(!id) return;
+  if(docDeleteAsk === id){
+    docDeleteAsk = null; btn.classList.remove('ask'); btn.textContent = '🗑 삭제';
+    deleteMeetingDocs([id]);
+    return;
+  }
+  docDeleteAsk = id; btn.classList.add('ask'); btn.textContent = '정말 삭제?';
+  setTimeout(function(){ if(docDeleteAsk === id){ docDeleteAsk = null; btn.classList.remove('ask'); btn.textContent = '🗑 삭제'; } }, 3500);
 }
 function buildDocHtml(doc){
   var attendeesHtml = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
@@ -3899,9 +4808,14 @@ function buildDocHtml(doc){
 function openMdocDrawer(id){
   var doc = meetingDocs.find(function(d){ return d.id===id; });
   if(!doc) return;
-  document.getElementById('mdocDrawer').dataset.docId = id;
+  var drawer = document.getElementById('mdocDrawer');
+  drawer.dataset.docId = id;
+  docDeleteAsk = null;
+  var delBtn = document.getElementById('mdocDeleteBtn'); if(delBtn){ delBtn.classList.remove('ask'); delBtn.textContent = '🗑 삭제'; }
+  drawer.classList.remove('editing');
+  document.getElementById('mdocCrumb').textContent = '회의록';
   document.getElementById('mdocDrawerBody').innerHTML = buildDocHtml(doc);
-  document.getElementById('mdocDrawer').classList.add('open');
+  drawer.classList.add('open');
 }
 function closeMdocDrawer(){ var el = document.getElementById('mdocDrawer'); if(el) el.classList.remove('open'); }
 
@@ -3921,8 +4835,9 @@ function openStatusEditor(e, docId){
   renderStatusOptionList();
   var r = e.currentTarget.getBoundingClientRect();
   var pop = document.getElementById('statusPopover');
-  pop.style.top = (r.bottom+6)+'px';
-  pop.style.left = Math.min(r.left, window.innerWidth-220)+'px';
+  var z = currentUiScale();
+  pop.style.top = (r.bottom / z + 6)+'px';
+  pop.style.left = Math.min(r.left / z, window.innerWidth / z - 220)+'px';
   pop.classList.add('open');
 }
 function closeStatusEditor(){ var el = document.getElementById('statusPopover'); if(el) el.classList.remove('open'); }
@@ -3962,21 +4877,48 @@ function setDocStatus(docId, name){
 }
 
 /* ---- notes: edit AI-generated record ---- */
+function growTextarea(el){
+  el.style.height = 'auto';
+  el.style.height = Math.max(60, el.scrollHeight)+'px';
+  var cnt = document.querySelector('.sec-count[data-for="'+el.id+'"]');
+  if(cnt){ var n = el.value.split('\n').filter(function(l){ return l.trim(); }).length; cnt.textContent = n+'줄'; }
+}
+function buildEditSection(cls, icon, title, id, lines, placeholder){
+  return "<div class='mdoc-edit-sec "+cls+"'>"+
+    "<div class='sec-head'><span class='sec-title'>"+icon+" "+title+"</span><span class='sec-hint'>한 줄에 하나씩</span><span class='sec-count' data-for='"+id+"'>0줄</span></div>"+
+    "<textarea id='"+id+"' rows='3' placeholder=\""+escAttr(placeholder)+"\" oninput='growTextarea(this)'>"+escHtml(lines.join('\n'))+"</textarea></div>";
+}
 function buildDocEditHtml(doc){
+  var projOptions = myProjects.map(function(p){ return "<option value='"+escAttr(p.id)+"'"+(p.id===doc.project?" selected":"")+">"+escHtml(p.title)+"</option>"; }).join('');
+  var attendeesHtml = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
   return (
-    "<div class='form-row'><label>프로젝트</label><select id='editProject'>"+myProjects.map(function(p){ return "<option value='"+escAttr(p.id)+"'"+(p.id===doc.project?" selected":"")+">"+escHtml(p.title)+"</option>"; }).join('')+"</select></div>"+
-    "<div class='form-row' style='margin-top:12px;'><label>회의 제목</label><input type='text' id='editTitle' value=\""+escAttr(doc.title)+"\"></div>"+
-    "<div class='mdoc-block' style='margin-top:14px;'><h4>💬 논의 내용 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editOthers' rows='4'>"+escHtml(doc.others.join('\n'))+"</textarea></div>"+
-    "<div class='mdoc-block'><h4>✅ 결정 사항 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editDecisions' rows='4'>"+escHtml(doc.decisions.join('\n'))+"</textarea></div>"+
-    "<div class='mdoc-block'><h4>🔧 액션 아이템 <span class='count'>(한 줄에 하나씩)</span></h4><textarea id='editActions' rows='4'>"+escHtml(doc.actions.join('\n'))+"</textarea></div>"+
-    "<div class='note-footer'><button type='button' class='btn ghost' onclick='cancelEditDoc()'>취소</button><button type='button' class='btn primary' onclick='saveEditDoc()'>저장</button></div>"
+    "<div class='mdoc-edit'>"+
+    "<input type='text' class='mdoc-edit-title' id='editTitle' placeholder='회의 제목' value=\""+escAttr(doc.title)+"\">"+
+    "<div class='mdoc-props'>"+
+      "<div class='mdoc-prop'><span class='mp-label'>📁 프로젝트</span><span class='mp-val'><select id='editProject' class='mdoc-select'>"+(projOptions || "<option value=''>프로젝트 없음</option>")+"</select></span></div>"+
+      "<div class='mdoc-prop'><span class='mp-label'>📅 날짜</span><span class='mp-val'>"+escHtml(doc.date)+"</span></div>"+
+      "<div class='mdoc-prop'><span class='mp-label'>👥 참석자</span><span class='mp-val'>"+attendeesHtml+"</span></div>"+
+    "</div>"+
+    "<hr class='mdoc-divider'>"+
+    "<div class='mdoc-edit-note'><span>🤖</span><span><b>저장하면 AI가 회의록을 다시 분석해요.</b> 날짜나 기간(예: 9월 20일부터 22일까지)을 적으면 캘린더 일정이 새 내용으로 다시 만들어져요.</span></div>"+
+    buildEditSection('sec-other', '💬', '논의 내용', 'editOthers', doc.others, '예: 검색 필터 기능부터 먼저 논의')+
+    buildEditSection('sec-decision', '✅', '결정 사항', 'editDecisions', doc.decisions, '예: UI 디자인 시안은 이번 주 안에 확정하기로 함')+
+    buildEditSection('sec-action', '🔧', '액션 아이템', 'editActions', doc.actions, '예: 민재가 API 문서 정리 금요일까지 담당')+
+    "<div class='mdoc-edit-footer'><button type='button' class='btn ghost' onclick='cancelEditDoc()'>취소</button><button type='button' class='btn primary' onclick='saveEditDoc()'>저장하고 캘린더 다시 분석</button></div>"+
+    "</div>"
   );
 }
 function toggleEditDoc(){
-  var id = document.getElementById('mdocDrawer').dataset.docId;
+  var drawer = document.getElementById('mdocDrawer');
+  var id = drawer.dataset.docId;
   var doc = meetingDocs.find(function(d){ return d.id===id; });
   if(!doc) return;
+  drawer.classList.add('editing');
+  document.getElementById('mdocCrumb').textContent = '회의록 › 수정';
   document.getElementById('mdocDrawerBody').innerHTML = buildDocEditHtml(doc);
+  document.getElementById('mdocDrawerBody').scrollTop = 0;
+  document.querySelectorAll('#mdocDrawerBody .mdoc-edit-sec textarea').forEach(growTextarea);
+  var t = document.getElementById('editTitle'); if(t) t.focus();
 }
 function cancelEditDoc(){ openMdocDrawer(document.getElementById('mdocDrawer').dataset.docId); }
 function saveEditDoc(){
@@ -4022,6 +4964,7 @@ function docFromServer(row){
   var d = buildDocFromLines(row.title, row.doc_date.replace(/-/g, '.'), row.attendees, lines);
   d.serverId = row.id; d.status = row.status; d.raw = row.raw;
   d.project = row.project_id ? 'p'+row.project_id : null;
+  d.detections = row.detections || [];
   return d;
 }
 function syncDocToCalendar(doc){
@@ -4030,7 +4973,24 @@ function syncDocToCalendar(doc){
     if(!guestNoticeShown){ guestNoticeShown = true; pushToast('🔒','AI 일정 분석은 로그인 후 사용할 수 있어요','구글/네이버/이메일로 로그인하면 회의록이 저장되고 캘린더에 반영돼요'); }
     return;
   }
-  persistDoc(doc).then(function(){ refreshDetections(true, true); });
+  // 이미 분석했던 회의록의 내용이 바뀌었다면(수정): 예전 내용에서 만들어진 일정/후보를 지우고 새 내용으로 다시 만든다
+  var edited = detectCache[doc.id]!==undefined && detectCache[doc.id]!==doc.raw;
+  persistDoc(doc)
+    .then(function(){ return edited ? resetDocDerived(doc) : null; })
+    .then(function(){ refreshDetections(true, true); });
+}
+function resetDocDerived(doc){
+  // 무시한 항목은 그대로 두고, 나머지 후보와 이 회의록이 만든 AI 일정은 지운다
+  calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status==='dismissed'; });
+  function dropLocal(){
+    calendarEvents = calendarEvents.filter(function(e){ return !(e.cls==='ai' && e.docServerId && e.docServerId===doc.serverId); });
+    renderCalendarEvents(); renderCalSelector(); renderDetectCard();
+  }
+  if(!doc.serverId){ dropLocal(); return Promise.resolve(); }
+  return apiFetch('/api/meetings/'+doc.serverId+'/events', {method:'DELETE'}).then(function(res){
+    dropLocal();
+    if(res && res.deleted) pushToast('🔄','회의록이 바뀌어 일정을 다시 만들어요','이전 내용에서 만든 일정 '+res.deleted+'개를 지우고 새 내용으로 다시 분석해요');
+  }).catch(function(e){ dropLocal(); pushToast('⚠️','이전 일정을 정리하지 못했어요', e.message); });
 }
 renderMeetingDocs();
 
@@ -4042,7 +5002,13 @@ function loadDemoCalendar(){
 }
 function memberColor(m){
   var map = {jiwoo:'#E8542E', minjae:'#1F6F5C', haeun:'#8C4A9C', yoon:'#B08B2E', me:'#3A6EA5'};
-  return map[m] || '#8C8578';
+  if(map[m]) return map[m];
+  var u = /^u(\d+)$/.exec(m || '');
+  if(u) return ['#3A6EA5','#E8542E','#1F6F5C','#8C4A9C','#B08B2E','#C2456F'][parseInt(u[1], 10) % 6];
+  return '#8C8578';
+}
+function registerProjectMembers(pr){
+  calProjectMembers[pr.id] = (pr.members || []).map(function(mm){ calMemberNames['u'+mm.id] = mm.username; return 'u'+mm.id; });
 }
 
 /* ---- calendar: 프로젝트별 캘린더 (셀렉터 + 설정) ---- */
@@ -4185,11 +5151,13 @@ function renderSelectorInto(prefix, countFn, unit){
     enabled.forEach(function(p){ addItem(p.id, p.title, calProjColor(p), countFn(p)+unit); });
     var sep = document.createElement('div'); sep.className = 'calsel-sep'; menu.appendChild(sep);
   }
-  var st = document.createElement('button');
-  st.type = 'button'; st.className = 'calsel-item settings';
-  st.textContent = '⚙ 프로젝트 설정';
-  st.onclick = function(){ closeCalMenu(); openCalSettings(); };
-  menu.appendChild(st);
+  if(prefix==='calSel'){
+    var st = document.createElement('button');
+    st.type = 'button'; st.className = 'calsel-item settings';
+    st.textContent = '⚙ 캘린더 표시 설정';
+    st.onclick = function(){ closeCalMenu(); openCalSettings(); };
+    menu.appendChild(st);
+  }
 
   var label = document.getElementById(prefix+'Label');
   var dot2 = document.getElementById(prefix+'Dot');
@@ -4236,10 +5204,13 @@ function updateCalTexts(){
   else { sub.textContent = '내가 참여 중인 '+ids.length+'개 프로젝트의 일정을 한눈에 확인해요'; }
   renderDetectCard();
 }
+var calProjectsLoaded = !authToken;   // 로그인(또는 자동 로그인) 직후 서버에서 프로젝트를 다 불러오기 전에는 저장된 선택을 지우지 않는다
 function syncCalProjects(){
-  if(calSelected!=='all' && (!calProjectById(calSelected) || calHiddenProjects[calSelected])) calSelected = 'all';
+  if(calSelected!=='all' && calProjectsLoaded && (!calProjectById(calSelected) || calHiddenProjects[calSelected])) calSelected = 'all';
   renderCalSelector(); renderCalMemberLegend(); updateCalTexts(); renderCalendarEvents();
   renderMeetingDocs();
+  if(typeof renderChatHeader==='function') renderChatHeader();
+  if(typeof renderWsSelector==='function') renderWsSelector();
 }
 function selectCalProject(id){
   calSelected = id;
@@ -4255,7 +5226,7 @@ function toggleCalMenu(e, prefix){
   menu.classList.toggle('open', willOpen);
 }
 function closeCalMenu(){
-  ['calSelMenu','noteSelMenu'].forEach(function(id){ var m = document.getElementById(id); if(m) m.classList.remove('open'); });
+  ['calSelMenu','noteSelMenu','wsSelMenu'].forEach(function(id){ var m = document.getElementById(id); if(m) m.classList.remove('open'); });
 }
 document.addEventListener('click', function(e){
   if(!e.target.closest || !e.target.closest('.calsel-wrap')) closeCalMenu();
@@ -4263,6 +5234,92 @@ document.addEventListener('click', function(e){
 });
 function openCalSettings(){ closeCalMenu(); renderCalSettings(); document.getElementById('calSettingsModal').classList.add('open'); }
 function closeCalSettings(){ var el = document.getElementById('calSettingsModal'); if(el) el.classList.remove('open'); }
+/* ---- 워크스페이스: 프로젝트 관리 (체크 → 휴지통으로 삭제) ---- */
+var pmSelected = {}, pmConfirm = false, pmBusy = false;
+function openProjManage(){
+  if (!calApiMode) { pushToast('🔒', '로그인이 필요해요', '로그인하면 프로젝트를 만들고 삭제할 수 있어요'); return; }
+  pmSelected = {}; pmConfirm = false; pmBusy = false;
+  renderProjManage();
+  document.getElementById('projManageModal').classList.add('open');
+}
+function closeProjManage(){ document.getElementById('projManageModal').classList.remove('open'); pmConfirm = false; }
+var PM_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+function renderProjManage(){
+  var list = document.getElementById('pmList'), foot = document.getElementById('pmFoot');
+  if (!list || !foot) return;
+  list.innerHTML = ''; foot.innerHTML = '';
+  var deletable = myProjects.filter(function(p){ return p.isOwner; });
+  if (!myProjects.length) {
+    list.innerHTML = "<p class='cal-set-empty'>프로젝트가 없어요. 워크스페이스 상단의 선택 박스에서 새 프로젝트를 만들어보세요.</p>";
+    return;
+  }
+  var chosen = deletable.filter(function(p){ return pmSelected[p.id]; });
+  // 전체 선택
+  var all = document.createElement('div');
+  all.className = 'pm-all' + (deletable.length && chosen.length === deletable.length ? ' sel' : '');
+  all.innerHTML = "<span class='pm-check'>" + PM_CHECK + "</span><span>전체 선택</span>";
+  all.onclick = function(){
+    var every = deletable.length && chosen.length === deletable.length;
+    deletable.forEach(function(p){ if (every) delete pmSelected[p.id]; else pmSelected[p.id] = true; });
+    pmConfirm = false; renderProjManage();
+  };
+  if (deletable.length) list.appendChild(all);
+  myProjects.forEach(function(p){
+    var row = document.createElement('div');
+    var locked = !p.isOwner;
+    row.className = 'pm-row' + (pmSelected[p.id] ? ' sel' : '') + (locked ? ' locked' : '');
+    row.title = locked ? '소유자만 삭제할 수 있어요' : '';
+    row.innerHTML = "<span class='pm-check'>" + PM_CHECK + "</span><span class='pm-name'></span><span class='pm-meta'></span>";
+    row.querySelector('.pm-name').textContent = p.title;
+    row.querySelector('.pm-meta').textContent = locked ? '팀원 · 삭제 불가' : ((p.members || []).length || 1) + '명';
+    if (!locked) row.onclick = function(){ if (pmSelected[p.id]) delete pmSelected[p.id]; else pmSelected[p.id] = true; pmConfirm = false; renderProjManage(); };
+    list.appendChild(row);
+  });
+  if (pmConfirm && chosen.length) {
+    var box = document.createElement('div'); box.className = 'pm-confirm';
+    var msg = document.createElement('div');
+    msg.textContent = '선택한 ' + chosen.length + '개 프로젝트를 삭제할까요? (' + chosen.slice(0, 3).map(function(p){ return '"' + p.title + '"'; }).join(', ') + (chosen.length > 3 ? ' 외 ' + (chosen.length - 3) + '개' : '') + ') 파일·채팅·캘린더 일정이 함께 삭제되고 되돌릴 수 없어요.';
+    var row = document.createElement('div'); row.className = 'row';
+    var no = document.createElement('button'); no.className = 'cbtn no'; no.textContent = '취소'; no.onclick = function(){ pmConfirm = false; renderProjManage(); };
+    var yes = document.createElement('button'); yes.className = 'cbtn yes'; yes.textContent = pmBusy ? '삭제 중…' : '삭제'; yes.disabled = pmBusy;
+    yes.onclick = function(){ deleteProjects(chosen.map(function(p){ return p.id; })); };
+    row.appendChild(no); row.appendChild(yes); box.appendChild(msg); box.appendChild(row); foot.appendChild(box);
+    return;
+  }
+  var cnt = document.createElement('span'); cnt.className = 'pm-count'; cnt.textContent = chosen.length ? chosen.length + '개 선택됨' : '삭제할 프로젝트를 체크하세요';
+  var trash = document.createElement('button'); trash.className = 'pm-trash'; trash.disabled = !chosen.length;
+  trash.innerHTML = "<svg viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='2'><path d='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6'/></svg>삭제" + (chosen.length ? ' (' + chosen.length + ')' : '');
+  trash.onclick = function(){ pmConfirm = true; renderProjManage(); };
+  foot.appendChild(cnt); foot.appendChild(trash);
+}
+function deleteProjects(ids){
+  if (pmBusy) return;
+  pmBusy = true; renderProjManage();
+  var done = [], failed = [];
+  ids.reduce(function(chain, id){
+    return chain.then(function(){
+      var pr = calProjectById(id);
+      if (!pr || !pr.serverId) return;
+      return apiFetch('/api/projects/' + pr.serverId, { method: 'DELETE' }).then(function(){ done.push(pr); }).catch(function(e){ failed.push(pr.title + ' (' + e.message + ')'); });
+    });
+  }, Promise.resolve()).then(function(){
+    var gone = {}; done.forEach(function(p){ gone[p.id] = true; });
+    myProjects = myProjects.filter(function(x){ return !gone[x.id]; });
+    if (gone[calSelected]) { calSelected = 'all'; saveCalSettings(); }
+    if (gone[wsProject]) { wsProject = null; wsLoaded = false; files = {}; openedTabs = []; currentFileKey = null; }
+    if (gone[chatProject]) { chatProject = null; chatMsgs = []; chatSig = ''; }
+    calendarEvents = calendarEvents.filter(function(e){ return !gone[e.project]; });
+    meetingDocs.forEach(function(d){ if (gone[d.project]) d.project = null; });
+    projPageIndex = 0;
+    pmSelected = {}; pmConfirm = false; pmBusy = false;
+    renderProjRow();            // 캘린더/회의록/채팅/워크스페이스 선택 박스까지 함께 다시 그림
+    renderProjManage();
+    if (document.querySelector('.view.active[data-view="workspace"]')) enterWorkspaceView();
+    if (done.length) pushToast('🗑️', done.length + '개 프로젝트를 삭제했어요', done.slice(0, 3).map(function(p){ return '"' + p.title + '"'; }).join(', ') + (done.length > 3 ? ' 외 ' + (done.length - 3) + '개' : ''));
+    if (failed.length) pushToast('⚠️', '일부를 삭제하지 못했어요', failed.join(', '));
+    if (!myProjects.length) closeProjManage();
+  });
+}
 function renderCalSettings(){
   var list = document.getElementById('calSettingsList');
   list.innerHTML = '';
@@ -4318,7 +5375,7 @@ function evInMonth(ev){
 }
 function serverEventToLocal(e){
   return {id:'e'+e.id, serverId:e.id, start:e.start_date, end:e.end_date, startTime:e.start_time, endTime:e.end_time,
-    title:e.title, cls:KIND_CLS[e.kind]||'manual', member:'me', project:'p'+e.project_id, source:e.source};
+    title:e.title, cls:KIND_CLS[e.kind]||'manual', member:e.user_id ? 'u'+e.user_id : 'me', project:'p'+e.project_id, source:e.source, docServerId:e.meeting_doc_id || null};
 }
 function buildEvtChip(ev, ds){
   var span = document.createElement('span');
@@ -4371,7 +5428,8 @@ function addCalendarEvent(opts){
     var pid = parseInt(String(base.project).replace(/^p/, ''), 10);
     return apiFetch('/api/calendar/events', {method:'POST', body:JSON.stringify({
       project_id:pid, title:base.title, start_date:base.start, end_date:base.end,
-      start_time:base.startTime, end_time:base.startTime ? base.endTime : null, kind:base.kind, source:base.source
+      start_time:base.startTime, end_time:base.startTime ? base.endTime : null, kind:base.kind, source:base.source,
+      meeting_doc_id:opts.meetingDocId || null
     })}).then(function(row){
       var ev = serverEventToLocal(row);
       calendarEvents.push(ev);
@@ -4390,8 +5448,11 @@ function removeCalendarEvent(id){
   if(!ev) return;
   function done(){
     calendarEvents = calendarEvents.filter(function(e){ return e.id!==id; });
-    renderCalendarEvents(); renderCalSelector(); renderDayDetailList();
-    pushToast('🗑️','일정 삭제됨','캘린더에서 일정을 삭제했어요');
+    var wasAdded = calDetect.filter(function(c){ return c.status==='added'; }).length;
+    syncCandidateStatus();
+    var restored = wasAdded - calDetect.filter(function(c){ return c.status==='added'; }).length;
+    renderCalendarEvents(); renderCalSelector(); renderDayDetailList(); renderDetectCard();
+    pushToast('🗑️','일정 삭제됨', restored>0 ? '캘린더에서 삭제했어요 · "감지된 일정"에 다시 표시돼요' : '캘린더에서 일정을 삭제했어요');
   }
   if(calApiMode && ev.serverId){
     apiFetch('/api/calendar/events/'+ev.serverId, {method:'DELETE'}).then(done).catch(function(e){ pushToast('⚠️','삭제하지 못했어요', e.message); });
@@ -4511,35 +5572,53 @@ var calDetect = [];
 var calDetectEngine = null, calDetectNote = null, calDetectBusy = 0;
 var detectCache = {};   // docId -> 분석한 회의록 원문 (같은 내용은 다시 호출하지 않음)
 function docIso(d){ return String(d).replace(/\./g, '-'); }
+function candKey(docId, e){ return docId+'|'+e.title+'|'+e.start_date+'|'+(e.start_time||''); }
+/* 후보 상태는 캘린더에 실제로 있는지로 결정: 캘린더에서 일정을 지우면 다시 '추가 가능'으로 돌아온다 */
+function syncCandidateStatus(){
+  calDetect.forEach(function(c){
+    if(c.status==='dismissed') return;
+    c.status = calendarEvents.some(function(ev){ return ev.title===c.title && ev.start===c.start; }) ? 'added' : 'new';
+  });
+}
+function saveDocDetections(doc){
+  if(!calApiMode || !doc || !doc.serverId) return;
+  var list = calDetect.filter(function(c){ return c.docId===doc.id; }).map(function(c){
+    return {title:c.title, start_date:c.start, end_date:c.end, start_time:c.startTime, end_time:c.endTime, source:c.source || '', dismissed:c.status==='dismissed'};
+  });
+  apiFetch('/api/meetings/'+doc.serverId, {method:'PATCH', body:JSON.stringify({detections:list})}).catch(function(){});
+}
+function restoreDetections(){
+  calDetect = [];
+  meetingDocs.forEach(function(doc){
+    (doc.detections || []).forEach(function(e){
+      calDetect.push({key:candKey(doc.id, e), docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
+        startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: e.dismissed ? 'dismissed' : 'new'});
+    });
+  });
+  syncCandidateStatus();
+  renderDetectCard();
+}
 function analyzeDoc(doc){
   calDetectBusy++; renderDetectCard();
   return apiFetch('/api/calendar/detect', {method:'POST', body:JSON.stringify({text:doc.raw, title:doc.title, reference_date:docIso(doc.date)})})
     .then(function(res){
       detectCache[doc.id] = doc.raw;
-      calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status!=='new'; });
-      var fresh = [];
+      var before = {}, dismissed = {};
+      calDetect.filter(function(c){ return c.docId===doc.id; }).forEach(function(c){ before[c.key] = true; if(c.status==='dismissed') dismissed[c.key] = true; });
+      calDetect = calDetect.filter(function(c){ return c.docId!==doc.id; });
       res.events.forEach(function(e){
-        var key = doc.id+'|'+e.title+'|'+e.start_date+'|'+(e.start_time||'');
-        if(calDetect.some(function(c){ return c.key===key; })) return;
-        var exists = calendarEvents.some(function(ev){ return ev.title===e.title && ev.start===e.start_date; });
-        var cand = {key:key, docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
-          startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: exists ? 'added' : 'new'};
-        calDetect.push(cand);
-        if(!exists) fresh.push(cand);
+        var key = candKey(doc.id, e);
+        calDetect.push({key:key, docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
+          startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: dismissed[key] ? 'dismissed' : 'new'});
       });
+      syncCandidateStatus();
       calDetectEngine = res.engine; calDetectNote = res.note;
-      return fresh;
+      saveDocDetections(doc);
+      // 이전 분석에 없던 새 일정만 '방금 찾은 일정'으로 취급 (자동 반영 대상)
+      return calDetect.filter(function(c){ return c.docId===doc.id && c.status==='new' && !before[c.key]; });
     })
     .catch(function(e){ calDetectNote = '분석에 실패했어요: '+e.message; pushToast('⚠️','회의록 분석에 실패했어요', e.message); return []; })
     .then(function(list){ calDetectBusy--; renderDetectCard(); return list; });
-}
-var calAutoApply = true;
-(function(){ try{ if(localStorage.getItem('sync_cal_autoapply')==='0') calAutoApply = false; }catch(e){} })();
-function toggleAutoApply(){
-  calAutoApply = !calAutoApply;
-  try{ localStorage.setItem('sync_cal_autoapply', calAutoApply ? '1' : '0'); }catch(e){}
-  var sw = document.getElementById('autoApplySwitch'); if(sw) sw.classList.toggle('on', calAutoApply);
-  pushToast('⚙️', calAutoApply ? '자동 반영 켜짐' : '자동 반영 꺼짐', calAutoApply ? '회의록을 저장하면 감지된 일정이 바로 캘린더에 들어가요' : '감지된 일정은 "캘린더에 추가"를 눌러야 들어가요');
 }
 /* 일정이 들어갈 프로젝트가 없으면 "내 일정" 프로젝트를 자동으로 만든다 */
 function ensureProjectId(){
@@ -4566,8 +5645,9 @@ function addCandidates(list, opts){
     var done = [];
     return list.reduce(function(chain, c){
       return chain.then(function(){
+        var srcDoc = meetingDocs.filter(function(d){ return d.id===c.docId; })[0];
         return addCalendarEvent({title:c.title, start:c.start, end:c.end, startTime:c.startTime, endTime:c.endTime,
-          kind:'ai', project:c.project || pid, source:c.source, member:c.member||'me'
+          kind:'ai', project:c.project || pid, source:c.source, member:c.member||'me', meetingDocId:srcDoc ? srcDoc.serverId : null
         }).then(function(){ c.status = 'added'; done.push(c); });
       }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
     }, Promise.resolve()).then(function(){
@@ -4592,15 +5672,9 @@ function refreshDetections(notify, autoApply){
       if(notify) pushToast('🤖','일정으로 볼 내용이 없어요','회의록에 "9월 20일부터 22일까지"처럼 날짜나 기간을 적으면 캘린더에 반영돼요');
       return;
     }
-    if(autoApply && calAutoApply) return addCandidates(fresh, {auto:true});
+    if(autoApply) return addCandidates(fresh, {auto:true});
     if(notify) pushToast('🤖','일정 후보를 찾았어요', '일정 '+fresh.length+'개를 감지했어요 · 캘린더 탭에서 추가할 수 있어요');
   });
-}
-function reanalyzeDocs(){
-  if(!calApiMode){ pushToast('🔒','로그인이 필요해요','로그인하면 회의록을 AI로 다시 분석할 수 있어요'); return; }
-  detectCache = {};
-  calDetect = calDetect.filter(function(c){ return c.status!=='new'; });
-  refreshDetections(true, false);
 }
 /* 회의록 화면의 버튼: 이 회의록을 지금 분석해서 캘린더에 바로 넣는다 */
 function applyDocToCalendar(docId){
@@ -4609,7 +5683,9 @@ function applyDocToCalendar(docId){
   if(!calApiMode){ pushToast('🔒','로그인이 필요해요','로그인하면 AI가 회의록을 분석해서 캘린더에 넣어줘요'); return; }
   if(!doc.raw || !doc.raw.trim()){ pushToast('📝','내용이 비어 있어요','회의록 내용을 적은 뒤 다시 눌러주세요'); return; }
   pushToast('🤖','회의록을 분석하는 중이에요', doc.title);
-  calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status!=='new'; });
+  // 직접 누른 "캘린더에 반영"은 이전에 무시했거나 지운 일정도 다시 후보로 올려서 추가한다
+  syncCandidateStatus();
+  calDetect = calDetect.filter(function(c){ return c.docId!==doc.id || c.status==='added'; });
   analyzeDoc(doc).then(function(fresh){
     if(!fresh.length){
       var already = calDetect.some(function(c){ return c.docId===doc.id && c.status==='added'; });
@@ -4628,7 +5704,6 @@ function renderDetectCard(){
   if(noteEl){
     noteEl.textContent = !calApiMode ? '' : ((calDetectEngine==='gemini' || calDetectEngine==='claude') ? '🤖 '+(calDetectEngine==='gemini' ? 'Gemini' : 'Claude')+'가 회의록을 분석했어요' : (calDetectNote || ''));
   }
-  var sw = document.getElementById('autoApplySwitch'); if(sw) sw.classList.toggle('on', calAutoApply);
   var ids = calVisibleProjectIds();
   var shown = calDetect.filter(function(c){ return c.status!=='dismissed' && (!c.project || ids.indexOf(c.project)>=0); });
   if(calDetectBusy){
@@ -4677,7 +5752,7 @@ function renderDetectCard(){
     if(c.status!=='added'){
       var no = document.createElement('button'); no.className = 'detect-dismiss'; no.textContent = '무시';
       no.style.background = 'none'; no.style.color = 'var(--text-faint)'; no.style.padding = '0';
-      no.onclick = function(){ c.status = 'dismissed'; renderDetectCard(); };
+      no.onclick = function(){ c.status = 'dismissed'; renderDetectCard(); saveDocDetections(meetingDocs.filter(function(d){ return d.id===c.docId; })[0]); };
       actions.appendChild(no);
     }
     item.appendChild(actions);
@@ -4688,19 +5763,6 @@ function addDetected(key){
   var c = calDetect.filter(function(x){ return x.key===key; })[0];
   if(!c || c.status!=='new') return;
   addCandidates([c], {auto:false});
-}
-function addDetectedFromChat(btn){
-  btn.textContent='✓ 캘린더에 추가됨';
-  btn.disabled = true;
-  btn.style.background='var(--text-faint)';
-  var ds = CAL_TODAY.y+'-'+pad2(CAL_TODAY.m)+'-'+pad2(CAL_TODAY.d);
-  ensureProjectId().then(function(pid){
-    if(!pid){ pushToast('📅','프로젝트가 없어요','프로젝트를 만든 뒤 일정을 추가할 수 있어요'); return; }
-    return addCalendarEvent({title:'캐싱 작업', start:ds, end:ds, startTime:'20:00', kind:'ai', project:pid}).then(function(){
-      goToMonthOf(ds);
-      pushToast('✅','캘린더에 추가됨','캐싱 작업 · 오늘 20:00');
-    });
-  }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
 }
 calReady = true;
 buildCalGrid();
@@ -4722,7 +5784,7 @@ function apiFetch(path, opts){
     if(!r.ok){
       return r.json().catch(function(){ return {}; }).then(function(b){
         var err = new Error(typeof b.detail==='string' ? b.detail : '요청에 실패했어요 ('+r.status+')');
-        err.status = r.status; throw err;
+        err.status = r.status; err.body = b; throw err;
       });
     }
     return r.status===204 ? null : r.json();
@@ -4734,7 +5796,9 @@ function resetCalToday(real){
   buildCalGrid(); updateCalMonthLabel();
 }
 function enterDemoMode(){
-  calApiMode = false;
+  calApiMode = false; calProjectsLoaded = true;
+  wsResetForSessionChange();
+  stopChat();
   meetingDocs = []; renderMeetingDocs();
   resetCalToday(true);
   loadDemoCalendar();
@@ -4742,10 +5806,15 @@ function enterDemoMode(){
   syncCalProjects();
 }
 function projFromServer(p){
-  return {id:'p'+p.id, serverId:p.id, title:p.title, isNew:false, stack:'AI', stackColor:'var(--accent)', status:'', statusClass:'',
-    meta:'AI 워크스페이스', avatars:[{i:(myProfile.name||'나').slice(0,1), c:'#3A6EA5'}], files:'0 files', recentFile:null};
+  var pr = {id:'p'+p.id, serverId:p.id, title:p.title, isNew:false, stack:'AI', stackColor:'var(--accent)', status:'', statusClass:'',
+    meta:'AI 워크스페이스 · '+((p.members||[]).length || 1)+'명',
+    avatars:(p.members && p.members.length ? p.members : [{username:(myProfile.name||'나')}]).slice(0,4).map(function(mm){ return {i:String(mm.username||'?').slice(0,1), c:chatColor(mm.username||'?')}; }),
+    files:'0 files', recentFile:null, members:p.members||[], isOwner:p.is_owner!==false};
+  registerProjectMembers(pr);
+  return pr;
 }
 function startRealSession(){
+  calProjectsLoaded = false;
   homeLandingActive = true;
   resetToNewMemberState();
   applyHomeLandingState();
@@ -4759,6 +5828,7 @@ function enterApiMode(){
   syncCalProjects();
   return apiFetch('/api/projects').then(function(rows){
     myProjects = rows.map(projFromServer);
+    calProjectsLoaded = true;
     projPageIndex = 0;
     renderProjRow();
     if(myProjects.length){ setWidget('projects', true); homeLandingActive = false; applyHomeLandingState(); }
@@ -4771,7 +5841,9 @@ function enterApiMode(){
     meetingDocs = rows.map(docFromServer);
     meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });   // 저장된 회의록은 로그인할 때마다 다시 분석하지 않음
     renderMeetingDocs();
-  }).catch(function(e){ pushToast('⚠️','데이터를 불러오지 못했어요', e.message); });
+    restoreDetections();   // 저장해 둔 분석 결과로 카드 복원 (캘린더에 없는 일정은 다시 '추가 가능')
+    startChat();
+  }).catch(function(e){ calProjectsLoaded = true; pushToast('⚠️','데이터를 불러오지 못했어요', e.message); });
 }
 
 /* ---- community ---- */

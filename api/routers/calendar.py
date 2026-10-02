@@ -2,13 +2,14 @@ from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from database import get_db
-from models import User, Project, CalendarEvent
+from models import User, Project, CalendarEvent, MeetingDoc
 from schemas import (
     CalendarEventCreate, CalendarEventResponse, DetectRequest, DetectResponse, DetectedEvent,
 )
 from services.auth_service import get_current_user
+from services.access import member_project_ids, get_member_project
 from services.schedule_ai import detect_events
 
 router = APIRouter(prefix="/api/calendar", tags=["Calendar"])
@@ -21,10 +22,14 @@ async def list_events(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """내 일정 조회. start~end 와 기간이 겹치는 일정만 반환 (여러 날 일정 포함)"""
-    query = select(CalendarEvent).where(CalendarEvent.user_id == current_user.id)
+    """프로젝트 일정 조회 (내가 멤버인 프로젝트). 다른 팀원의 'private' 일정은 제외. start~end 와 겹치는 일정만 반환"""
+    ids = await member_project_ids(db, current_user)
     if project_id is not None:
-        query = query.where(CalendarEvent.project_id == project_id)
+        ids = [i for i in ids if i == project_id]
+    query = select(CalendarEvent).where(
+        CalendarEvent.project_id.in_(ids or [-1]),
+        or_(CalendarEvent.kind != "private", CalendarEvent.user_id == current_user.id),
+    )
     if start is not None:
         query = query.where(CalendarEvent.end_date >= start)
     if end is not None:
@@ -38,18 +43,22 @@ async def create_event(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = (await db.execute(
-        select(Project).where(Project.id == data.project_id, Project.owner_id == current_user.id)
-    )).scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
+    project = await get_member_project(db, data.project_id, current_user)
 
     end_date = data.end_date or data.start_date
     if end_date < data.start_date:
         raise HTTPException(status_code=400, detail="종료일은 시작일보다 빠를 수 없습니다.")
 
+    doc_id = None
+    if data.meeting_doc_id is not None:
+        owned = (await db.execute(
+            select(MeetingDoc.id).where(MeetingDoc.id == data.meeting_doc_id, MeetingDoc.user_id == current_user.id)
+        )).scalar_one_or_none()
+        doc_id = owned   # 내 회의록이 아니면 연결하지 않음
+
     event = CalendarEvent(
         user_id=current_user.id,
+        meeting_doc_id=doc_id,
         project_id=project.id,
         title=data.title.strip(),
         start_date=data.start_date,
@@ -71,11 +80,12 @@ async def delete_event(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    event = (await db.execute(
-        select(CalendarEvent).where(CalendarEvent.id == event_id, CalendarEvent.user_id == current_user.id)
-    )).scalar_one_or_none()
+    event = (await db.execute(select(CalendarEvent).where(CalendarEvent.id == event_id))).scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+    project = await get_member_project(db, event.project_id, current_user)
+    if event.user_id != current_user.id and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="일정을 만든 사람이나 프로젝트 소유자만 삭제할 수 있어요.")
     await db.delete(event)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

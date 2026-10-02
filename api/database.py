@@ -60,6 +60,11 @@ def _add_missing_columns(sync_conn):
     cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(meeting_docs)"))}
     if cols and "project_id" not in cols:
         sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN project_id INTEGER"))
+    if cols and "detections" not in cols:
+        sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN detections TEXT"))
+    ev_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(calendar_events)"))}
+    if ev_cols and "meeting_doc_id" not in ev_cols:
+        sync_conn.execute(text("ALTER TABLE calendar_events ADD COLUMN meeting_doc_id INTEGER"))
 
 async def init_db():
     """서버 시작 시 데이터베이스 및 테이블 자동 생성"""

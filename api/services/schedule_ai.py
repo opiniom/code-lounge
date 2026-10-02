@@ -161,26 +161,159 @@ async def _detect_gemini(text: str, reference: date, title: Optional[str]) -> Li
         f"회의록 제목: {title or '(없음)'}\n\n"
         f"회의록 본문:\n{text[:8000]}"
     )
+    data = await _gemini_json(_SYSTEM_PROMPT, user_msg, _GEMINI_SCHEMA)
+    items = [_normalize(e) for e in data.get("events", [])]
+    return _dedupe([i for i in items if i])
+
+
+def _gemini_models() -> List[str]:
+    models = [settings.GEMINI_MODEL] + [m.strip() for m in settings.GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
+    seen, out = set(), []
+    for m in models:
+        if m not in seen:
+            seen.add(m)
+            out.append(m)
+    return out
+
+
+async def _gemini_json(system: str, user_msg: str, schema: dict) -> dict:
     body = {
-        "systemInstruction": {"parts": [{"text": _SYSTEM_PROMPT}]},
+        "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
         "generationConfig": {
             "temperature": 0,
             "responseMimeType": "application/json",
-            "responseSchema": _GEMINI_SCHEMA,
+            "responseSchema": schema,
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent"
-    # 키는 URL 이 아닌 헤더로 보내 로그에 남지 않게 한다
     headers = {"x-goog-api-key": settings.GEMINI_API_KEY, "content-type": "application/json"}
+    last_exc: Optional[Exception] = None
     async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(url, headers=headers, json=body)
+        for model in _gemini_models():
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                resp = await client.post(url, headers=headers, json=body)
+                if resp.status_code in (429, 404, 503):   # 한도 초과/없는 모델/일시 과부하 → 다음 모델
+                    last_exc = httpx.HTTPStatusError("gemini model unavailable", request=resp.request, response=resp)
+                    logger.warning("Gemini 모델 %s 사용 불가(HTTP %s), 다음 모델 시도", model, resp.status_code)
+                    continue
+                resp.raise_for_status()
+                parts = resp.json()["candidates"][0]["content"]["parts"]
+                return json.loads("".join(p.get("text", "") for p in parts))
+            except httpx.HTTPError as exc:
+                last_exc = exc
+    raise last_exc or RuntimeError("Gemini 호출 실패")
+
+
+async def _claude_tool(system: str, user_msg: str, tool: dict) -> dict:
+    body = {
+        "model": settings.ANTHROPIC_MODEL, "max_tokens": 1500, "system": system, "tools": [tool],
+        "tool_choice": {"type": "tool", "name": tool["name"]},
+        "messages": [{"role": "user", "content": user_msg}],
+    }
+    headers = {"x-api-key": settings.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
     resp.raise_for_status()
-    parts = resp.json()["candidates"][0]["content"]["parts"]
-    data = json.loads("".join(p.get("text", "") for p in parts))
-    items = [_normalize(e) for e in data.get("events", [])]
-    return _dedupe([i for i in items if i])
+    for block in resp.json().get("content", []):
+        if block.get("type") == "tool_use":
+            return block.get("input", {})
+    return {}
+
+
+# ======================================================================
+# 팀 채팅 → 담당자 + 기한 (예: "이거 누가 해요?" / "제가 금요일까지 할게요")
+# ======================================================================
+_CHAT_SYSTEM = (
+    "당신은 팀 채팅 대화에서 '누가 무엇을 언제까지 하기로 했는지'를 찾아내는 도우미입니다.\n"
+    "- 대화는 한 줄에 '이름: 내용' 형식이고, 마지막 줄이 방금 올라온 메시지입니다.\n"
+    "- 누군가 자원했거나(예: '제가 할게요', '내가 해볼게', '맡을게'), 요청을 받아들이며 기한·시간을 말한 경우만 일정으로 만듭니다.\n"
+    "- assignee 는 실제로 맡겠다고 한 사람의 이름입니다. '내가/제가 할게'라고 말한 사람은 그 메시지의 작성자입니다. 모르면 빈 문자열로 둡니다.\n"
+    "- title 은 해야 할 작업을 20자 안팎의 명사구로 적습니다(예: '캐싱 작업', 'UI 마무리'). 앞선 대화의 요청 내용을 참고해도 됩니다.\n"
+    "- '오늘 밤', '내일', '다음주 화요일', '금요일까지' 같은 표현은 사용자 메시지의 기준일로 계산해 YYYY-MM-DD 로 바꿉니다. (주는 월요일에 시작)\n"
+    "- '금요일까지'처럼 마감만 있으면 그 날짜 하루짜리 일정으로, 시간이 있으면 24시간제 HH:MM, 없으면 null 로 둡니다.\n"
+    "- 단순 잡담, 의견, 날짜가 전혀 없는 약속, 이미 지난 일, 방금 메시지와 무관한 예전 대화 속 약속은 제외합니다.\n"
+    "- source 에는 근거가 된 메시지 원문을 적습니다. 해당하는 내용이 없으면 events 를 빈 배열로 반환합니다."
+)
+_CHAT_PROPS = {
+    "assignee": {"type": "STRING"},
+    "title": {"type": "STRING"},
+    "start_date": {"type": "STRING", "description": "YYYY-MM-DD"},
+    "end_date": {"type": "STRING", "description": "YYYY-MM-DD"},
+    "start_time": {"type": "STRING", "nullable": True},
+    "end_time": {"type": "STRING", "nullable": True},
+    "source": {"type": "STRING"},
+}
+_CHAT_GEMINI_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {"events": {"type": "ARRAY", "items": {
+        "type": "OBJECT", "properties": _CHAT_PROPS, "required": ["title", "start_date", "end_date"]}}},
+    "required": ["events"],
+}
+_CHAT_CLAUDE_TOOL = {
+    "name": "report_commitments",
+    "description": "채팅에서 찾은 담당자·기한이 있는 일정을 보고합니다.",
+    "input_schema": {"type": "object", "properties": {"events": {"type": "array", "items": {
+        "type": "object",
+        "properties": {k: ({"type": ["string", "null"]} if v.get("nullable") else {"type": "string"}) for k, v in _CHAT_PROPS.items()},
+        "required": ["title", "start_date", "end_date"]}}}, "required": ["events"]},
+}
+_COMMIT_RE = re.compile(r"(할게|하겠|맡을게|맡겠|해볼게|해놓을게|제가|내가|담당|맡아)")
+
+
+def _normalize_commit(raw: dict) -> Optional[Dict]:
+    item = _normalize(raw, fallback_title="")
+    if not item or not item["title"]:
+        return None
+    item["assignee"] = str(raw.get("assignee") or "").strip()[:50]
+    return item
+
+
+def detect_chat_rules(lines: List[Tuple[str, str]], reference: date) -> List[Dict]:
+    """API 키가 없을 때: 방금 메시지에 '할게요' 류의 약속 표현과 날짜가 함께 있으면 후보로 만든다."""
+    if not lines:
+        return []
+    author, text = lines[-1]
+    if not _COMMIT_RE.search(text):
+        return []
+    found = detect_rules(text, reference)
+    if not found:
+        return []
+    prev_text = lines[-2][1] if len(lines) > 1 else ""
+    out = []
+    for e in found:
+        title = e["title"]
+        title = re.sub(r"(제가|내가|저는|나는|할게요?|하겠습니다|하겠어요|해볼게요?|맡을게요?)", "", title).strip(" ,.")
+        if len(title) < 2:
+            first = re.split(r"[?.!\n]", prev_text)[0].strip()
+            title = (first[:20].strip() or "맡은 작업")
+        e = dict(e, title=title, assignee=author, source=text)
+        out.append(e)
+    return out
+
+
+async def detect_chat(lines: List[Tuple[str, str]], reference: date) -> Tuple[str, Optional[str], List[Dict]]:
+    """lines: [(작성자, 내용)] 오래된 순. (engine, note, events) 반환."""
+    transcript = "\n".join(f"{a}: {t}" for a, t in lines)[-3500:]
+    user_msg = f"기준일(오늘): {reference.isoformat()} ({WEEKDAY_NAMES[reference.weekday()]}요일)\n\n대화:\n{transcript}"
+    note = None
+    engines = []
+    if settings.GEMINI_API_KEY:
+        engines.append(("gemini", lambda: _gemini_json(_CHAT_SYSTEM, user_msg, _CHAT_GEMINI_SCHEMA)))
+    if settings.ANTHROPIC_API_KEY:
+        engines.append(("claude", lambda: _claude_tool(_CHAT_SYSTEM, user_msg, _CHAT_CLAUDE_TOOL)))
+    for name, call in engines:
+        try:
+            data = await call()
+            items = [_normalize_commit(e) for e in data.get("events", [])]
+            return name, None, _dedupe([i for i in items if i])
+        except Exception as exc:
+            logger.warning("%s 채팅 분석 실패(%s), 다음 방법으로 대체", name, type(exc).__name__)
+            note = "AI 호출에 실패해 기본 분석으로 대체했어요."
+    if not engines:
+        note = "AI 키가 설정되지 않아 기본(규칙 기반) 분석을 사용했어요."
+    return "rules", note, detect_chat_rules(lines, reference)
 
 
 # ======================================================================

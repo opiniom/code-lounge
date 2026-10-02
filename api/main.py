@@ -19,6 +19,8 @@ from routers.submissions import router as submissions_router
 from routers.projects import router as projects_router
 from routers.calendar import router as calendar_router
 from routers.meetings import router as meetings_router
+from routers.chat import router as chat_router
+from routers.files import router as files_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -74,11 +76,23 @@ app.include_router(submissions_router)
 app.include_router(projects_router)
 app.include_router(calendar_router)
 app.include_router(meetings_router)
+app.include_router(chat_router)
+app.include_router(files_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))
 UI_DIR = settings.FRONTEND_DIR if (settings.FRONTEND_DIR and os.path.exists(settings.FRONTEND_DIR)) else DEFAULT_UI_DIR
 INDEX_FILE = os.path.join(UI_DIR, "index.html")
+
+@app.get("/api/version", tags=["UI"])
+async def app_version():
+    """화면(index.html) 버전. 열어 둔 화면이 오래된 코드인지 확인하는 데 쓴다."""
+    import hashlib
+    try:
+        with open(INDEX_FILE, "rb") as f:
+            return {"build": hashlib.sha1(f.read()).hexdigest()[:10]}
+    except OSError:
+        return {"build": "none"}
 
 @app.get("/ui", tags=["UI"])
 @app.get("/app", tags=["UI"])

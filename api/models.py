@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, Date, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -61,6 +61,7 @@ class CalendarEvent(Base):
     all_day = Column(Boolean, default=True, nullable=False)
     kind = Column(String(20), default="manual", nullable=False)  # manual | shared | private | ai
     source = Column(String(300), nullable=True)           # AI 가 일정을 뽑아낸 회의록 문장
+    meeting_doc_id = Column(Integer, ForeignKey("meeting_docs.id", ondelete="SET NULL"), nullable=True, index=True)  # 이 일정을 만든 회의록
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
@@ -76,4 +77,43 @@ class MeetingDoc(Base):
     attendees = Column(Text, nullable=False, default="[]")  # JSON 배열 문자열
     raw = Column(Text, nullable=False, default="")
     status = Column(String(30), default="완료", nullable=False)
+    detections = Column(Text, nullable=True)   # AI 가 이 회의록에서 찾은 일정 후보(JSON). 다시 분석하지 않고 카드를 복원하는 데 사용
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ProjectMember(Base):
+    """프로젝트 멤버. 소유자(owner_id)는 행이 없어도 멤버로 취급한다."""
+    __tablename__ = "project_members"
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_project_member"),)
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), default="member", nullable=False)   # owner | member
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+class ChatMessage(Base):
+    """프로젝트 팀 채팅. kind='ai_detect' 는 AI 가 대화에서 찾은 일정 카드(meta 에 JSON)."""
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    kind = Column(String(20), default="user", nullable=False)     # user | ai_detect
+    text = Column(Text, nullable=False)
+    meta = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class ProjectFile(Base):
+    """프로젝트 워크스페이스의 파일. 경로 기준으로 팀원이 함께 쓴다."""
+    __tablename__ = "project_files"
+    __table_args__ = (UniqueConstraint("project_id", "path", name="uq_project_file_path"),)
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    path = Column(String(300), nullable=False)
+    content = Column(Text, nullable=False, default="")
+    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

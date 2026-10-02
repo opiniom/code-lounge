@@ -149,3 +149,17 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
 - 분석 엔진 우선순위: `GEMINI_API_KEY` → `ANTHROPIC_API_KEY` → 규칙 기반(키 불필요). 키는 반드시 `.env` 에만 넣으세요 (`.env` 는 git 에 올라가지 않습니다).
 - 엔드포인트: `GET/POST /api/projects`, `GET/POST /api/calendar/events`, `DELETE /api/calendar/events/{id}`, `POST /api/calendar/detect`
 - 규칙 기반 분석 테스트: `python tests/test_schedule_rules.py`
+
+---
+
+## 프로젝트 단위 협업 기능
+
+- **프로젝트**: 만들기 / 선택 / 삭제(워크스페이스 ⚙ 프로젝트 관리에서 체크 후 휴지통). 회의록·캘린더·채팅·워크스페이스가 모두 프로젝트 단위로 나뉩니다.
+- **팀원 초대**: 프로젝트 소유자가 이메일로 초대 (상대가 한 번 로그인한 계정). 초대받은 사람만 그 프로젝트의 채팅·캘린더·파일에 접근합니다.
+- **팀 채팅** (`/api/projects/{id}/messages`): 대화에서 "제가 금요일까지 할게요"처럼 담당과 기한이 나오면 AI가 일정 카드를 띄우고, 추가하면 프로젝트 캘린더에 들어갑니다.
+- **워크스페이스 파일** (`/api/projects/{id}/files`): 프로젝트별 파일 저장, 자동 저장, 팀원 변경 감지, 동시 수정 충돌 안내.
+- **회의록** (`/api/meetings`): 저장·수정·삭제. 수정하면 이전 내용에서 만든 AI 일정을 지우고 다시 분석하며, 삭제하면 그 회의록의 AI 일정도 함께 삭제됩니다.
+- **화면 크기 자동 조절**: 창 너비(1440px 기준)에 맞춰 UI 전체를 자동 확대하고, 설정에서 직접 고를 수도 있습니다.
+- **AI 분석 엔진**: Gemini(`GEMINI_API_KEY`, 한도(429) 시 `GEMINI_FALLBACK_MODELS`로 자동 전환) → Claude(`ANTHROPIC_API_KEY`) → 규칙 기반(키 불필요).
+
+> API 키와 OAuth 시크릿은 반드시 `.env`(git 제외)에만 넣으세요. `.env.example`에는 빈 칸만 있습니다.
