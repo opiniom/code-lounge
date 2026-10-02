@@ -139,3 +139,19 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
 
 * SQLite 데이터베이스 파일은 [`c:\backend\data\app.db`](file:///c:/backend/data/app.db)에 자동 생성 및 보존됩니다.
 * 추후 PostgreSQL로 전환하고 싶을 경우, `.env` 파일의 `DATABASE_URL`을 `postgresql+asyncpg://user:password@localhost:5432/dbname`으로 변경하기만 하면 별도의 코드 수정 없이 즉시 전환됩니다.
+
+---
+
+## 소셜 로그인 (Google / Naver) + UI
+
+- UI 프로토타입은 [`frontend/index.html`](frontend/index.html) 한 파일입니다. `.env` 의 `FRONTEND_DIR` 에 `frontend` 폴더 절대 경로를 넣으면 서버가 `http://localhost:8000/app` 으로 서빙합니다.
+- 소셜 로그인 키 발급과 콜백 URL 등록: [`docs/social_login_setup.md`](docs/social_login_setup.md)
+- 로그인 흐름: `/api/auth/{google|naver}/login` → 제공자 로그인 → `/api/auth/{provider}/callback` → `users` / `social_accounts` 기록 → JWT 발급 → UI 로 복귀
+
+로컬 실행 (macOS/Linux):
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r api/requirements.txt
+cp .env.example .env   # 키와 FRONTEND_DIR 입력
+.venv/bin/uvicorn main:app --app-dir api --port 8000
+```

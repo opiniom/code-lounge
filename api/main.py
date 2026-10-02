@@ -1,8 +1,10 @@
 import sys
 from datetime import datetime
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -65,6 +67,14 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(auth_router)
 app.include_router(submissions_router)
+
+@app.get("/app", include_in_schema=False)
+async def serve_frontend():
+    """FRONTEND_DIR 의 index.html 한 파일만 서빙 (폴더 전체 노출 방지)"""
+    index = Path(settings.FRONTEND_DIR) / "index.html" if settings.FRONTEND_DIR else None
+    if not index or not index.is_file():
+        raise HTTPException(status_code=404, detail="FRONTEND_DIR 이 설정되지 않았거나 index.html 이 없습니다.")
+    return FileResponse(index, headers={"Cache-Control": "no-store"})
 
 @app.get("/", tags=["General"])
 async def root():
