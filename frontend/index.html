@@ -1189,20 +1189,6 @@ a{color:inherit;}
         <p class="auth-tag">팀 프로젝트를 위한 AI 워크스페이스</p>
         <p class="auth-desc" id="authDesc">간편 로그인으로 팀 워크스페이스를 바로 이어서 진행하세요.</p>
         
-        <form class="auth-form-box" id="authForm" onsubmit="handleAuthSubmit(event)">
-          <div class="auth-input-field">
-            <label for="authEmailInput">이메일 주소</label>
-            <input type="email" id="authEmailInput" placeholder="name@example.com" required value="developer@university.ac.kr">
-          </div>
-          <div class="auth-input-field">
-            <label for="authPasswordInput">비밀번호</label>
-            <input type="password" id="authPasswordInput" placeholder="비밀번호를 입력하세요" required value="password123!">
-          </div>
-          <button type="submit" class="auth-submit-btn" id="authSubmitBtn">로그인</button>
-        </form>
-
-        <div class="auth-divider">또는 소셜 로그인</div>
-
         <div class="auth-buttons">
           <button class="oauth-btn google" onclick="handleSocialLogin('Google')">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.8Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.26v3.1C3.24 21.3 7.28 24 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58v-3.1H1.26a12 12 0 0 0 0 10.78l4.01-3.1Z"/><path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.23 0 12 0 7.28 0 3.24 2.7 1.26 6.61l4.01 3.1C6.22 6.88 8.87 4.77 12 4.77Z"/></svg>
@@ -3399,45 +3385,6 @@ async function checkBackendHealth() {
   }
 }
 
-async function handleAuthSubmit(e) {
-  e.preventDefault();
-  var email = document.getElementById('authEmailInput').value.trim();
-  var password = document.getElementById('authPasswordInput').value;
-  var submitBtn = document.getElementById('authSubmitBtn');
-  submitBtn.disabled = true;
-  submitBtn.textContent = '로그인 중...';
-
-  try {
-    var res = await fetch(API_BASE + '/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: password })
-    });
-    var data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || '로그인에 실패했습니다.');
-    }
-    authToken = data.access_token;
-    currentUser = data.user;
-    localStorage.setItem('sync_auth_token', authToken);
-    localStorage.setItem('sync_auth_user', JSON.stringify(currentUser));
-
-    myProfile.name = currentUser.username || '사용자';
-    myProfile.role = currentUser.email;
-    var pn = document.getElementById('profileName');
-    if (pn) pn.textContent = myProfile.name;
-
-    startRealSession();
-    goView('home');
-    pushToast('🎉', '로그인 성공', myProfile.name + '님 환영합니다!');
-    loadSubmissions();
-  } catch(err) {
-    alert(err.message);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = '로그인';
-  }
-}
 
 async function runCurrentCode() {
   var code = '';
