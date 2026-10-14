@@ -100,6 +100,11 @@ class ProjectCreate(BaseModel):
 class MemberBrief(BaseModel):
     id: int
     username: str
+    email: Optional[str] = None
+    role: str = "member"
+
+class MemberRoleUpdate(BaseModel):
+    role: str = Field(..., pattern=r"^(leader|member)$")
 
 class ProjectResponse(BaseModel):
     id: int
@@ -227,3 +232,72 @@ class FileResponse_(BaseModel):
     content: str
     updated_at: str
     updated_by: Optional[str] = None
+
+
+# ================================
+# 알림(Notifications) 스키마
+# ================================
+class NotificationResponse(BaseModel):
+    id: int
+    user_id: int
+    project_id: Optional[int] = None
+    title: str
+    message: str
+    category: str
+    link: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ================================
+# 초대 링크(URL 생성기) 스키마
+# ================================
+class InviteLinkCreate(BaseModel):
+    expires_in_hours: Optional[int] = Field(default=72, ge=1, le=720)
+    max_uses: Optional[int] = Field(default=0, ge=0)
+
+class InviteLinkResponse(BaseModel):
+    token: str
+    invite_url: str
+    expires_at: Optional[datetime] = None
+    max_uses: int
+    used_count: int
+
+class InviteInfoResponse(BaseModel):
+    token: str
+    project_id: int
+    project_title: str
+    inviter_name: str
+    is_expired: bool
+    is_already_member: bool = False
+
+class JoinInviteResponse(BaseModel):
+    message: str
+    project_id: int
+    project_title: str
+
+
+# ================================
+# 크롤링(해커톤/공모전) 스키마
+# ================================
+class CrawlUrlRequest(BaseModel):
+    url: str = Field(..., description="크롤링할 공모전/해커톤 웹페이지 URL")
+    category: Optional[str] = Field(default=None, description="카테고리 (해커톤, 공모전 등)")
+
+class CrawledEventResponse(BaseModel):
+    id: int
+    url: str
+    title: str
+    category: str
+    host: Optional[str] = None
+    deadline: Optional[str] = None
+    d_day: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

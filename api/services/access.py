@@ -40,3 +40,24 @@ async def project_users(db: AsyncSession, project: Project) -> List[User]:
     users = (await db.execute(select(User).where(User.id.in_(ordered)))).scalars().all()
     by_id = {u.id: u for u in users}
     return [by_id[i] for i in ordered if i in by_id]
+
+
+async def project_members_info(db: AsyncSession, project: Project) -> List[tuple[User, str]]:
+    """프로젝트 사용자 및 역할(role: leader | member) 목록 반환"""
+    members = (await db.execute(
+        select(ProjectMember).where(ProjectMember.project_id == project.id).order_by(ProjectMember.id)
+    )).scalars().all()
+    role_map = {m.user_id: m.role for m in members}
+    role_map[project.owner_id] = "leader"  # 소유자는 항상 리더/팀장
+
+    ids = [project.owner_id] + [m.user_id for m in members]
+    seen, ordered = set(), []
+    for uid in ids:
+        if uid not in seen:
+            seen.add(uid)
+            ordered.append(uid)
+
+    users = (await db.execute(select(User).where(User.id.in_(ordered)))).scalars().all()
+    by_id = {u.id: u for u in users}
+    return [(by_id[i], role_map.get(i, "member")) for i in ordered if i in by_id]
+

@@ -117,3 +117,49 @@ class ProjectFile(Base):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class Notification(Base):
+    """팀원 및 개인 실시간 알림 (일정 추가, 팀원 초대, AI 브리핑 등)"""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True, index=True)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    category = Column(String(50), default="calendar", nullable=False)  # calendar | chat | project | event
+    link = Column(String(300), nullable=True)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class ProjectInvitation(Base):
+    """프로젝트 고유 초대 링크(URL) 토큰"""
+    __tablename__ = "project_invitations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    token = Column(String(100), unique=True, index=True, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    max_uses = Column(Integer, default=0, nullable=False)  # 0: 무제한
+    used_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CrawledEvent(Base):
+    """실제 크롤링된 해커톤 및 공모전 데이터 (임의 URL 기반 크롤링 포함)"""
+    __tablename__ = "crawled_events"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    url = Column(String(500), nullable=False)
+    title = Column(String(300), nullable=False)
+    category = Column(String(50), default="공모전", nullable=False)  # 해커톤 | 공모전 | 기타
+    host = Column(String(200), nullable=True)
+    deadline = Column(String(100), nullable=True)
+    d_day = Column(String(20), nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+

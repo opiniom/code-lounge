@@ -6,18 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, update
 from database import get_db
 from models import User, Project, ProjectMember, ChatMessage, CalendarEvent, ProjectFile, MeetingDoc
-from schemas import ProjectCreate, ProjectResponse, MemberBrief, InviteRequest
+from schemas import ProjectCreate, ProjectResponse, MemberBrief, InviteRequest, MemberRoleUpdate
 from services.auth_service import get_current_user
-from services.access import member_project_ids, get_member_project, project_users
+from services.access import member_project_ids, get_member_project, project_users, project_members_info
 
 router = APIRouter(prefix="/api/projects", tags=["Projects"])
 
 async def _to_response(db: AsyncSession, project: Project, user: User) -> ProjectResponse:
-    users = await project_users(db, project)
+    members_info = await project_members_info(db, project)
     return ProjectResponse(
         id=project.id, title=project.title, created_at=project.created_at,
         is_owner=(project.owner_id == user.id),
-        members=[MemberBrief(id=u.id, username=u.username) for u in users],
+        members=[MemberBrief(id=u.id, username=u.username, email=u.email, role=role) for u, role in members_info],
     )
 
 @router.get("", response_model=List[ProjectResponse])
@@ -85,6 +85,55 @@ async def invite_member(
     if already:
         raise HTTPException(status_code=400, detail="이미 이 프로젝트의 팀원이에요.")
     db.add(ProjectMember(project_id=project.id, user_id=target.id, role="member"))
+    await db.commit()
+    return await _to_response(db, project, current_user)
+
+
+@router.patch("/{project_id}/members/{user_id}/role", response_model=ProjectResponse)
+async def update_member_role(
+    project_id: int,
+    user_id: int,
+    data: MemberRoleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """팀원 역할 변경 (leader 또는 member). 프로젝트 소유자(팀장)만 변경 가능"""
+    project = await get_member_project(db, project_id, current_user)
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="프로젝트 소유자(팀장)만 팀원 역할을 변경할 수 있습니다.")
+    if user_id == project.owner_id:
+        raise HTTPException(status_code=400, detail="프로젝트 소유자의 역할은 변경할 수 없습니다.")
+    member = (await db.execute(
+        select(ProjectMember).where(ProjectMember.project_id == project.id, ProjectMember.user_id == user_id)
+    )).scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="해당 팀원을 프로젝트에서 찾을 수 없습니다.")
+    member.role = data.role
+    await db.commit()
+    return await _to_response(db, project, current_user)
+
+
+@router.delete("/{project_id}/members/{user_id}", response_model=ProjectResponse)
+async def remove_member(
+    project_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """팀원 추방 또는 탈퇴. 팀장은 팀원을 추방할 수 있고, 팀원은 스스로 프로젝트를 탈퇴할 수 있음"""
+    project = await get_member_project(db, project_id, current_user)
+    is_owner = (project.owner_id == current_user.id)
+    is_self = (current_user.id == user_id)
+    if not (is_owner or is_self):
+        raise HTTPException(status_code=403, detail="팀원 추방 권한이 없습니다.")
+    if user_id == project.owner_id:
+        raise HTTPException(status_code=400, detail="프로젝트 소유자는 탈퇴할 수 없습니다. 프로젝트를 삭제해야 합니다.")
+    member = (await db.execute(
+        select(ProjectMember).where(ProjectMember.project_id == project.id, ProjectMember.user_id == user_id)
+    )).scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="해당 팀원을 프로젝트에서 찾을 수 없습니다.")
+    await db.delete(member)
     await db.commit()
     return await _to_response(db, project, current_user)
 

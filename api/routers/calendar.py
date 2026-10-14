@@ -72,6 +72,27 @@ async def create_event(
     db.add(event)
     await db.commit()
     await db.refresh(event)
+
+    # 비공개 일정이 아닌 경우 팀원들에게 공유 알림 전송
+    if data.kind != "private":
+        from models import Notification
+        from services.access import project_users
+        try:
+            members = await project_users(db, project)
+            for m in members:
+                if m.id != current_user.id:
+                    db.add(Notification(
+                        user_id=m.id,
+                        project_id=project.id,
+                        title=f"새 일정: {event.title}",
+                        message=f"{current_user.username}님이 '{project.title}' 프로젝트에 새 일정을 추가했습니다. ({event.start_date})",
+                        category="calendar",
+                        link=f"/calendar?event={event.id}"
+                    ))
+            await db.commit()
+        except Exception:
+            pass
+
     return event
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -21,6 +21,9 @@ from routers.calendar import router as calendar_router
 from routers.meetings import router as meetings_router
 from routers.chat import router as chat_router
 from routers.files import router as files_router
+from routers.invitations import router as invitations_router
+from routers.events import router as events_router
+from routers.notifications import router as notifications_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -78,6 +81,9 @@ app.include_router(calendar_router)
 app.include_router(meetings_router)
 app.include_router(chat_router)
 app.include_router(files_router)
+app.include_router(invitations_router)
+app.include_router(events_router)
+app.include_router(notifications_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))

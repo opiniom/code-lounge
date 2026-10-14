@@ -411,11 +411,14 @@ a{color:inherit;}
 
 .ws-shell{flex:1 1 auto; display:flex; min-height:0; height:calc(100% - 46px); overflow:hidden; position:relative;}
 .ws-empty-state{
-  position:absolute; inset:0; z-index:6;
+  position:absolute; inset:0; z-index:50;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-align:center; gap:10px; padding:40px; background:var(--bg-elevated);
+  border:none !important;
 }
 .ws-empty-state[hidden]{ display:none !important; }
+.ws-shell.is-empty .ws-resizer-v, .ws-shell.is-empty .ws-resizer-h{ display:none !important; }
+.ws-shell.is-empty .filetree{ border-right:none !important; }
 .ws-empty-icon{font-size:34px;}
 .ws-empty-state h3{font-family:var(--font-display); font-size:19px; font-weight:600;}
 .ws-empty-state p{color:var(--text-muted); font-size:13px; max-width:380px; line-height:1.55;}
@@ -2056,7 +2059,7 @@ a{color:inherit;}
       <div class="section-head">
         <div><span class="view-eyebrow">Team</span><h2 style="font-size:18px;">팀원 관리</h2><span class="sub">상세 정보를 열면 AI 분석과 피드백 기록을 볼 수 있어요</span></div>
       </div>
-      <div class="admin-member-grid">
+      <div class="admin-member-grid" id="adminMemberGrid">
         <div class="admin-member-card card" onclick="openMemberDetail('jiwoo')">
           <div class="pavatar" style="background:#E8542E;">지</div>
           <div class="amc-info"><b>지우</b><span>프론트엔드 · UI/UX</span></div>
@@ -2157,7 +2160,17 @@ a{color:inherit;}
       <div class="mh"><h3>팀원 초대</h3><button class="icon-btn" onclick="closeInviteModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">팀원이 이 서비스에 한 번 로그인(구글/네이버)한 뒤, 그 계정의 이메일로 초대할 수 있어요. 초대하면 이 프로젝트의 채팅과 캘린더를 함께 쓰게 돼요.</p>
       <div class="form-row"><label>이메일</label><input type="email" id="inviteEmail" placeholder="teammate@gmail.com" onkeydown="if(isEnter(event))submitInvite()"></div>
-      <button class="btn primary" onclick="submitInvite()">초대하기</button>
+      <button class="btn primary" onclick="submitInvite()">이메일로 초대하기</button>
+
+      <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
+
+      <div class="mh" style="margin-bottom:6px;"><h4>🔗 초대 링크(URL) 생성기</h4></div>
+      <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">링크를 생성해 팀원에게 보내면, 링크를 클릭하는 것만으로 프로젝트에 자동 합류할 수 있어요.</p>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="text" id="generatedInviteUrl" readonly placeholder="[초대 링크 생성]을 눌러주세요" style="flex:1; padding:8px 10px; font-size:12px; background:var(--bg-elev); border:1px solid var(--border); border-radius:6px; color:var(--text);">
+        <button class="btn ghost" onclick="generateInviteLink()">초대 링크 생성</button>
+        <button class="btn primary" onclick="copyInviteLink()">복사</button>
+      </div>
     </div>
   </div>
 
@@ -2193,7 +2206,39 @@ a{color:inherit;}
         </div>
         <p id="scaleHint" style="font-size:11px; color:var(--text-faint); margin-top:6px; line-height:1.5;"></p>
       </div>
+      <div class="form-row" style="margin-top:14px;">
+        <label>오픈소스 라이선스</label>
+        <button type="button" class="btn ghost" style="width:100%; text-align:left; justify-content:space-between; display:flex;" onclick="openLicensesModal()">
+          <span>📜 오픈소스 라이선스 및 정보</span>
+          <span>→</span>
+        </button>
+      </div>
       <p id="buildTag" style="font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); margin-top:6px;">화면 버전 확인 중…</p>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="licensesModal" onclick="if(event.target===this)closeLicensesModal()">
+    <div class="share-modal" style="max-width:560px; max-height:80vh; overflow-y:auto;">
+      <div class="mh"><h3>오픈소스 라이선스 정보</h3><button class="icon-btn" onclick="closeLicensesModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">sync/ 서비스는 다음 오픈소스 소프트웨어 및 라이브러리를 준수하며 개발되었습니다.</p>
+      <div style="font-size:12px; line-height:1.7; background:var(--bg-elev); padding:12px; border-radius:6px; border:1px solid var(--border); margin-top:10px;">
+        <b>백엔드 프레임워크 & ORM:</b><br>
+        • FastAPI (MIT) · Uvicorn (BSD-3-Clause)<br>
+        • SQLAlchemy 2.0 (MIT) · aiosqlite (MIT)<br>
+        • Pydantic v2 (MIT) · httpx (BSD-3-Clause)<br>
+        • PyJWT (MIT) · bcrypt (Apache-2.0)<br><br>
+        <b>코드 샌드박스 & 런타임:</b><br>
+        • Python 3.11 (PSF License)<br>
+        • OpenJDK / Eclipse Temurin (GPL v2 with CE)<br>
+        • Microsoft .NET CSC (Microsoft EULA / MIT)<br>
+        • Judge0 CE (MIT License)<br><br>
+        <b>프론트엔드 & UI:</b><br>
+        • Monaco Editor (MIT License)<br>
+        • Feather / Lucide Icons (MIT / ISC)
+      </div>
+      <div style="margin-top:12px; text-align:right;">
+        <button class="btn primary" onclick="closeLicensesModal()">확인</button>
+      </div>
     </div>
   </div>
 
@@ -2251,6 +2296,8 @@ function goView(name){
   document.querySelector('.app').classList.toggle('auth-mode', name==='auth');
   closeMenus();
   if(name==='calendar') refreshDetections(false);
+  if(name==='events') loadEvents();
+  if(name==='admin') loadAdminMembers();
   if(name==='workspace') enterWorkspaceView(); else wsStopPolling();
   if(name==='workspace'){
     setTimeout(function(){
@@ -2475,7 +2522,10 @@ function toggleNotif(e){
   e.stopPropagation();
   var wasOpen = document.getElementById('notifPanel').classList.contains('open');
   closeMenus();
-  if(!wasOpen){ document.getElementById('notifPanel').classList.add('open'); }
+  if(!wasOpen){
+    document.getElementById('notifPanel').classList.add('open');
+    loadNotifications();
+  }
 }
 function toggleAvatarMenu(e){
   e.stopPropagation();
@@ -2491,18 +2541,75 @@ document.addEventListener('click', function(e){
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){ closeShare(); closeAddEvent(); closeMemberDetail(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
 });
-function markNotifRead(){
+
+async function loadNotifications(){
+  if(!authToken) return;
+  try {
+    var res = await fetch(API_BASE + '/api/notifications', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if(!res.ok) return;
+    var list = await res.json();
+    var container = document.getElementById('notifList');
+    if(!container) return;
+    if(list.length === 0){
+      container.innerHTML = '<p class="notif-empty" style="padding:16px; color:var(--text-faint); text-align:center;">알림이 없어요.</p>';
+      unreadCount = 0;
+      updateNotifBadge();
+      return;
+    }
+    unreadCount = list.filter(n => !n.is_read).length;
+    updateNotifBadge();
+
+    var html = '';
+    list.forEach(function(n){
+      var unreadCls = n.is_read ? '' : 'unread';
+      var ic = n.category === 'calendar' ? '📅' : (n.category === 'chat' ? '💬' : '🤖');
+      html += '<div class="notif-item ' + unreadCls + '" data-id="' + n.id + '" onclick="markNotificationSingle(' + n.id + ', this)">';
+      html += '  <div class="nic">' + ic + '</div>';
+      html += '  <div class="notif-body"><div class="ntext">' + escapeHtml(n.title) + ' — ' + escapeHtml(n.message) + '</div><span class="ntime">' + (n.created_at ? n.created_at.slice(11, 16) : '') + '</span></div>';
+      html += '  <button class="notif-del" onclick="deleteNotifItem(this, event, ' + n.id + ')"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  } catch(e){}
+}
+
+async function markNotificationSingle(id, el){
+  if(!el.classList.contains('unread')) return;
+  el.classList.remove('unread');
+  unreadCount = Math.max(0, unreadCount - 1);
+  updateNotifBadge();
+  if(!authToken) return;
+  try {
+    await fetch(API_BASE + '/api/notifications/' + id + '/read', {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+  } catch(e){}
+}
+
+async function clearNotif(){
   document.querySelectorAll('.notif-item.unread').forEach(n=>n.classList.remove('unread'));
   unreadCount = 0;
   updateNotifBadge();
+  if(!authToken) return;
+  try {
+    await fetch(API_BASE + '/api/notifications/read-all', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+  } catch(e){}
 }
-function clearNotif(){ markNotifRead(); }
+
 function updateNotifBadge(){
   var el = document.getElementById('notifCount');
+  if(!el) return;
   if(unreadCount<=0){ el.style.display='none'; } else { el.style.display='flex'; el.textContent = unreadCount>9?'9+':unreadCount; }
 }
 function renderNotifEmptyState(){
   var list = document.getElementById('notifList');
+  if(!list) return;
   var hasItems = !!list.querySelector('.notif-item');
   var empty = list.querySelector('.notif-empty');
   if(!hasItems && !empty){
@@ -2514,12 +2621,20 @@ function renderNotifEmptyState(){
     empty.remove();
   }
 }
-function deleteNotifItem(btn, e){
+async function deleteNotifItem(btn, e, notifId){
   if(e) e.stopPropagation();
   var item = btn.closest('.notif-item');
   if(item.classList.contains('unread')){ unreadCount = Math.max(0, unreadCount-1); updateNotifBadge(); }
   item.remove();
   renderNotifEmptyState();
+  if(notifId && authToken){
+    try {
+      await fetch(API_BASE + '/api/notifications/' + notifId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      });
+    } catch(err){}
+  }
 }
 function dismissToast(elOrBtn){
   var t = elOrBtn.classList.contains('toast') ? elOrBtn : elOrBtn.closest('.toast');
@@ -2608,6 +2723,80 @@ function loadWidgetPrefs(){
 loadWidgetPrefs();
 
 /* ---- events ---- */
+var allCrawledEvents = [];
+
+async function loadEvents(force){
+  try {
+    var res = await fetch(API_BASE + '/api/events');
+    if(!res.ok) return;
+    var list = await res.json();
+    allCrawledEvents = list;
+    renderEvents(list);
+    var timeEl = document.getElementById('crawlTime');
+    if(timeEl) timeEl.textContent = '방금 전';
+    if(force) pushToast('🤖','공모전 정보 갱신', list.length + '건의 최신 공모전·해커톤 정보를 불러왔어요');
+  } catch(e){}
+}
+
+function renderEvents(list){
+  var grid = document.getElementById('evtGrid');
+  if(!grid) return;
+  if(!list || list.length === 0){
+    grid.innerHTML = '<div style="padding:24px; color:var(--text-faint); grid-column:1/-1;">수집된 공모전·해커톤 정보가 없습니다. 상단에서 웹 주소를 입력해 크롤링해보세요!</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(ev){
+    var ddayClass = (ev.d_day && ev.d_day.includes('D-') && parseInt(ev.d_day.replace('D-','')) <= 5) ? 'urgent' : 'normal';
+    html += '<div class="evt-card card" data-cat="' + escapeHtml(ev.category) + '">';
+    html += '  <div class="etop">';
+    html += '    <span class="dday ' + ddayClass + '">' + escapeHtml(ev.d_day || '접수중') + '</span>';
+    html += '    <span class="chip">' + escapeHtml(ev.category) + '</span>';
+    html += '    <button class="bookmark-btn" onclick="toggleBookmark(this)"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M6 3h12v18l-6-4-6 4Z"/></svg></button>';
+    html += '  </div>';
+    html += '  <h4>' + escapeHtml(ev.title) + '</h4>';
+    html += '  <div class="evt-meta">주최 · ' + escapeHtml(ev.host || '공식 주최') + (ev.deadline ? ' · 마감 ' + escapeHtml(ev.deadline) : '') + '</div>';
+    if(ev.description) html += '  <div class="evt-prize" style="font-size:12px; line-height:1.4; color:var(--text-dim);">' + escapeHtml(ev.description.slice(0, 80)) + (ev.description.length > 80 ? '...' : '') + '</div>';
+    html += '  <div class="evt-foot">';
+    html += '    <a class="src" href="' + escapeHtml(ev.url) + '" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:underline;">공고 바로가기 ↗</a>';
+    html += '    <div class="actions"><button class="btn ghost" onclick="addEventToCal(this)">캘린더에 추가</button></div>';
+    html += '  </div>';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+async function submitCustomCrawl(){
+  var inp = document.getElementById('crawlCustomUrl');
+  var catSel = document.getElementById('crawlCustomCategory');
+  var url = (inp.value || '').trim();
+  if(!url){
+    pushToast('⚠️', 'URL 입력 필요', '크롤링할 공모전·해커톤 웹사이트 주소를 입력해주세요.');
+    return;
+  }
+  var cat = catSel ? catSel.value : '공모전';
+  var btn = document.getElementById('btnCustomCrawl');
+  if(btn){ btn.disabled = true; btn.textContent = '크롤링 중...'; }
+  try {
+    var headers = { 'Content-Type': 'application/json' };
+    if(authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    var res = await fetch(API_BASE + '/api/events/crawl-url', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ url: url, category: cat })
+    });
+    if(!res.ok) throw new Error('웹페이지 크롤링에 실패했습니다.');
+    var data = await res.json();
+    inp.value = '';
+    pushToast('🎉', '크롤링 성공', "'" + data.title + "' 공모전이 등록되었습니다!");
+    await loadEvents();
+  } catch(err){
+    pushToast('⚠️', '크롤링 실패', err.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'URL 크롤링'; }
+  }
+}
+
 function filterEvents(btn, cat){
   document.querySelectorAll('#evtFilters button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -2620,18 +2809,17 @@ function refreshCrawl(){
   var btn = document.getElementById('refreshBtn');
   if(btn.classList.contains('spinning')) return;
   btn.classList.add('spinning');
-  setTimeout(function(){
+  loadEvents(true).finally(function(){
     btn.classList.remove('spinning');
-    document.getElementById('crawlTime').textContent='방금 전';
-    pushToast('🤖','공모전 정보 갱신','새로운 공모전 3건을 추가로 찾았어요');
-  }, 900);
+  });
 }
 function addEventToCal(btn){
   if(btn.disabled) return;
-  var title = btn.closest('.evt-card').querySelector('h4').textContent;
+  var card = btn.closest('.evt-card');
+  var title = card.querySelector('h4').textContent;
   btn.textContent='✓ 추가됨';
   btn.disabled = true;
-  pushToast('📅','캘린더에 추가됨', title+' 마감일이 캘린더에 추가됐어요');
+  pushToast('📅','캘린더에 추가됨', title+' 일정이 캘린더에 연동됐어요');
 }
 function autoGrow(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 /* 한글/일본어 등 IME 로 글자를 조합하는 중에 누른 Enter 는 '입력 확정'이지 제출이 아니다.
@@ -3213,6 +3401,9 @@ function getFileLanguage(key) {
   var name = (f.tab || '').toLowerCase();
   if (name.endsWith('.py')) return 'python';
   if (name.endsWith('.java')) return 'java';
+  if (name.endsWith('.cs')) return 'csharp';
+  if (name.endsWith('.cpp') || name.endsWith('.cc')) return 'cpp';
+  if (name.endsWith('.c')) return 'c';
   if (name.endsWith('.tsx') || name.endsWith('.ts')) return 'typescript';
   if (name.endsWith('.js') || name.endsWith('.jsx')) return 'javascript';
   if (name.endsWith('.json')) return 'json';
@@ -3227,6 +3418,9 @@ function getMonacoLanguage(key) {
   if (lang === 'javascript') return 'javascript';
   if (lang === 'python') return 'python';
   if (lang === 'java') return 'java';
+  if (lang === 'csharp') return 'csharp';
+  if (lang === 'cpp') return 'cpp';
+  if (lang === 'c') return 'c';
   if (lang === 'json') return 'json';
   if (lang === 'html') return 'html';
   if (lang === 'css') return 'css';
@@ -3250,6 +3444,9 @@ function updateEditorStatusBar() {
     var lang = getFileLanguage(currentFileKey);
     if (lang === 'python') badge.textContent = '🐍 Python 3';
     else if (lang === 'java') badge.textContent = '☕ Java 17';
+    else if (lang === 'csharp') badge.textContent = '🔷 C#';
+    else if (lang === 'cpp') badge.textContent = '⚡ C++';
+    else if (lang === 'c') badge.textContent = '⚙️ C';
     else if (lang === 'typescript') badge.textContent = 'TS TypeScript';
     else if (lang === 'json') badge.textContent = '{} JSON';
     else badge.textContent = lang.toUpperCase();
@@ -3487,15 +3684,23 @@ function renderWsEmpty(){
   var title = document.getElementById('wsEmptyTitle'), desc = document.getElementById('wsEmptyDesc'), icon = document.getElementById('wsEmptyIcon');
   var starter = document.getElementById('wsStarterBtn'), dummy = document.getElementById('wsDummyBtn'), newProj = document.getElementById('wsNewProjBtn');
   var acts = document.getElementById('wsEmptyActions');
+  var shell = document.querySelector('.ws-shell');
+  var resizerV = document.getElementById('wsResizerSidebar');
+  if (shell) shell.classList.toggle('is-empty', !hasFiles);
+
   if (noProject) {
     icon.textContent = '🚀'; title.textContent = '프로젝트를 먼저 만들어주세요';
     desc.textContent = '프로젝트를 만들면 파일, 회의록, 캘린더, 팀 채팅이 그 프로젝트 단위로 나뉘어요.';
     Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b !== newProj); });
-    empty.hidden = false; if (tree) tree.hidden = true; if (col) col.hidden = true;
+    empty.hidden = false;
+    if (tree) tree.hidden = true;
+    if (col) col.hidden = true;
+    if (resizerV) resizerV.hidden = true;
     return;
   }
-  if (tree) tree.hidden = false;
-  if (col) col.hidden = false;
+  if (tree) tree.hidden = !hasFiles;
+  if (col) col.hidden = !hasFiles;
+  if (resizerV) resizerV.hidden = !hasFiles;
   if (calApiMode) {
     icon.textContent = wsLoading ? '⏳' : '📂';
     title.textContent = wsLoading ? '파일을 불러오는 중이에요…' : '아직 파일이 없어요';
@@ -4022,8 +4227,9 @@ async function runCurrentCode() {
   }
   // 파일 확장자/속성으로 언어 자동 감지
   var lang = getFileLanguage(currentFileKey);
-  if (lang !== 'python' && lang !== 'java') {
-    pushToast('ℹ️', '언어 안내', '현재 격리 샌드박스는 Python과 Java 실행을 지원합니다.');
+  var validLangs = ['python', 'java', 'csharp', 'cpp', 'c'];
+  if (!validLangs.includes(lang)) {
+    pushToast('ℹ️', '언어 안내', '격리 샌드박스는 Python, Java, C#, C++, C 실행을 지원합니다.');
     lang = 'python';
   }
   var stdin = document.getElementById('termStdinText').value;
@@ -4350,14 +4556,28 @@ function stopChat(){
   renderChatHeader(); renderChat(); updateChatBadge();
 }
 function buildMsgRow(m){
-  var mine = currentUser && m.user_id === currentUser.id;
+  var isAi = (m.kind === 'ai' || m.author === 'sync AI');
+  var mine = !isAi && currentUser && m.user_id === currentUser.id;
   var row = document.createElement('div');
-  row.className = 'msg-row'+(mine ? ' me' : '');
+  row.className = 'msg-row' + (mine ? ' me' : '') + (isAi ? ' ai-msg' : '');
   var av = document.createElement('div'); av.className = 'mavatar';
-  av.style.background = mine ? '#3A6EA5' : chatColor(m.author); av.textContent = (mine ? '나' : m.author).slice(0, 1);
+  if(isAi){
+    av.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+    av.textContent = '🤖';
+  } else {
+    av.style.background = mine ? '#3A6EA5' : chatColor(m.author);
+    av.textContent = (mine ? '나' : m.author).slice(0, 1);
+  }
   var col = document.createElement('div'); col.className = 'msg-col';
-  var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = mine ? '나' : m.author;
-  var bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = m.text;
+  var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = isAi ? 'sync AI' : (mine ? '나' : m.author);
+  var bubble = document.createElement('div'); bubble.className = 'bubble';
+  if(isAi){
+    bubble.style.background = 'var(--bg-elev)';
+    bubble.style.border = '1px solid var(--border)';
+    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.lineHeight = '1.6';
+  }
+  bubble.textContent = m.text;
   col.appendChild(nm); col.appendChild(bubble);
   if(/^\/회의\s+/.test(m.text)){
     var tag = document.createElement('span'); tag.className = 'chip accent2'; tag.style.marginTop = '2px'; tag.textContent = '📝 회의 메모로 태그됨';
@@ -4513,6 +4733,164 @@ function submitInvite(){
     closeInviteModal(); renderChatHeader(); syncCalProjects();
     pushToast('🎉','팀원을 초대했어요', email+' 님이 이 프로젝트의 채팅과 캘린더에 참여해요');
   }).catch(function(e){ pushToast('⚠️','초대하지 못했어요', e.message); });
+}
+
+async function generateInviteLink(){
+  var sid = chatServerId();
+  if(!sid){
+    pushToast('⚠️','프로젝트 필요','초대 링크를 생성할 프로젝트를 먼저 선택해주세요.');
+    return;
+  }
+  try {
+    var res = await apiFetch('/api/projects/'+sid+'/invite-link', {
+      method: 'POST',
+      body: JSON.stringify({ expires_in_hours: 72, max_uses: 0 })
+    });
+    var base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
+    var fullUrl = base + res.invite_url;
+    var inp = document.getElementById('generatedInviteUrl');
+    if(inp) inp.value = fullUrl;
+    pushToast('🔗','초대 링크 생성 완료','72시간 동안 유효한 고유 초대 링크가 생성되었습니다.');
+  } catch(err){
+    pushToast('⚠️','초대 링크 생성 실패', err.message);
+  }
+}
+
+function copyInviteLink(){
+  var inp = document.getElementById('generatedInviteUrl');
+  if(!inp || !inp.value || inp.value.includes('[')){
+    pushToast('⚠️','복사 실패','먼저 [초대 링크 생성]을 클릭해주세요.');
+    return;
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(inp.value).then(function(){
+      pushToast('📋','복사 완료','초대 링크가 클립보드에 복사되었습니다.');
+    }).catch(function(){
+      inp.select(); document.execCommand('copy');
+      pushToast('📋','복사 완료','초대 링크가 복사되었습니다.');
+    });
+  } else {
+    inp.select(); document.execCommand('copy');
+    pushToast('📋','복사 완료','초대 링크가 복사되었습니다.');
+  }
+}
+
+async function checkInviteParam(){
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('invite');
+    if(!token) return;
+    var info = await apiFetch('/api/invitations/'+token);
+    if(info.is_already_member){
+      pushToast('ℹ️','이미 참여 중', "'" + info.project_title + "' 프로젝트의 팀원입니다.");
+      return;
+    }
+    if(confirm("'" + info.project_title + "' (" + info.inviter_name + "님 초대) 프로젝트에 팀원으로 참여하시겠습니까?")){
+      var joinRes = await apiFetch('/api/invitations/'+token+'/join', { method:'POST' });
+      pushToast('🎉','프로젝트 참여 완료', joinRes.message);
+      if(window.loadCalProjects){
+        await loadCalProjects();
+        selectCalProject(joinRes.project_id);
+      }
+    }
+  } catch(e){
+    if(token) pushToast('⚠️','초대 링크 오류', e.message);
+  }
+}
+
+/* ---- team admin & permissions ---- */
+async function loadAdminMembers(){
+  var sid = chatServerId();
+  var grid = document.getElementById('adminMemberGrid');
+  if(!grid) return;
+  if(!sid){
+    grid.innerHTML = '<div style="padding:16px; color:var(--text-faint); grid-column:1/-1;">선택된 프로젝트가 없습니다.</div>';
+    return;
+  }
+  var cur = calProjectById(sid);
+  if(!cur || !cur.members){
+    try {
+      var pList = await apiFetch('/api/projects');
+      cur = pList.find(function(p){ return p.id === sid; });
+    } catch(e){}
+  }
+  if(!cur || !cur.members) return;
+
+  var myId = currentUser ? currentUser.id : null;
+  var isLeader = cur.is_owner || cur.members.some(function(m){ return m.id === myId && m.role === 'leader'; });
+  var html = '';
+  cur.members.forEach(function(m){
+    var roleLabel = (m.role === 'leader' || m.id === cur.owner_id) ? '👑 팀장' : '팀원';
+    var isSelf = (myId === m.id);
+    html += '<div class="admin-member-card card" style="display:flex; flex-direction:column; gap:8px; padding:16px;">';
+    html += '  <div style="display:flex; align-items:center; gap:12px;">';
+    html += '    <div class="pavatar" style="background:var(--accent);">' + (m.username ? m.username[0] : '팀') + '</div>';
+    html += '    <div style="flex:1;"><b>' + escapeHtml(m.username) + '</b>' + (isSelf ? ' <span class="chip accent2">나</span>' : '') + '<br><span style="font-size:12px; color:var(--text-faint);">' + (m.email || '') + '</span></div>';
+    html += '    <span class="chip">' + roleLabel + '</span>';
+    html += '  </div>';
+
+    if(isLeader && !isSelf){
+      html += '  <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">';
+      html += '    <select onchange="changeMemberRole(' + sid + ',' + m.id + ', this.value)" style="padding:5px 8px; font-size:12px; border-radius:4px; background:var(--bg-elev); color:var(--text); border:1px solid var(--border);">';
+      html += '      <option value="member"' + (m.role === 'member' ? ' selected' : '') + '>팀원</option>';
+      html += '      <option value="leader"' + (m.role === 'leader' ? ' selected' : '') + '>팀장</option>';
+      html += '    </select>';
+      html += '    <button class="btn ghost danger" onclick="kickMember(' + sid + ',' + m.id + ')" style="color:var(--danger, #e53935); font-size:12px; padding:5px 10px;">내보내기</button>';
+      html += '  </div>';
+    } else if(isSelf && !cur.is_owner){
+      html += '  <div style="margin-top:8px;"><button class="btn ghost danger" onclick="leaveProject(' + sid + ',' + m.id + ')" style="font-size:12px; color:var(--danger, #e53935);">프로젝트 탈퇴</button></div>';
+    }
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+async function changeMemberRole(projectId, userId, newRole){
+  try {
+    await apiFetch('/api/projects/' + projectId + '/members/' + userId + '/role', {
+      method: 'PATCH',
+      body: JSON.stringify({ role: newRole })
+    });
+    pushToast('👑', '역할 변경', '팀원 역할이 성공적으로 변경되었습니다.');
+    await loadCalProjects();
+    loadAdminMembers();
+  } catch(e){
+    pushToast('⚠️', '역할 변경 실패', e.message);
+  }
+}
+
+async function kickMember(projectId, userId){
+  if(!confirm('정말 이 팀원을 프로젝트에서 내보내시겠습니까?')) return;
+  try {
+    await apiFetch('/api/projects/' + projectId + '/members/' + userId, { method: 'DELETE' });
+    pushToast('👋', '팀원 내보내기', '팀원이 프로젝트에서 제외되었습니다.');
+    await loadCalProjects();
+    loadAdminMembers();
+  } catch(e){
+    pushToast('⚠️', '내보내기 실패', e.message);
+  }
+}
+
+async function leaveProject(projectId, userId){
+  if(!confirm('이 프로젝트에서 탈퇴하시겠습니까?')) return;
+  try {
+    await apiFetch('/api/projects/' + projectId + '/members/' + userId, { method: 'DELETE' });
+    pushToast('👋', '탈퇴 완료', '프로젝트에서 탈퇴했습니다.');
+    await loadCalProjects();
+    goView('home');
+  } catch(e){
+    pushToast('⚠️', '탈퇴 실패', e.message);
+  }
+}
+
+/* ---- open source licenses modal ---- */
+function openLicensesModal(){
+  var m = document.getElementById('licensesModal');
+  if(m) m.classList.add('open');
+}
+function closeLicensesModal(){
+  var m = document.getElementById('licensesModal');
+  if(m) m.classList.remove('open');
 }
 
 /* ---- notes: composer ---- */
@@ -5920,6 +6298,13 @@ function sendMemberFeedback(fromAi){
   if(!fromAi) document.getElementById('mdFeedbackInput').value='';
   pushToast('✅','피드백 전달됨', m.name+'님에게 피드백을 남겼어요');
 }
+
+// 페이지 로드 시 초대 토큰 확인 및 초기 알림 로드
+setTimeout(function(){
+  checkInviteParam();
+  loadNotifications();
+  loadEvents();
+}, 600);
 </script>
 
 </body>

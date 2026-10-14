@@ -123,7 +123,22 @@ async def send_message(
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
-    background.add_task(analyze_message, project_id, msg.id)
+
+    # 슬래시 명령어 AI 분석 및 응답 처리
+    from services.chat_ai import handle_slash_command
+    ai_reply = await handle_slash_command(project_id, data.text.strip(), current_user.username, db)
+    if ai_reply:
+        bot_msg = ChatMessage(
+            project_id=project_id,
+            user_id=None,
+            kind="ai",
+            text=ai_reply["text"]
+        )
+        db.add(bot_msg)
+        await db.commit()
+    else:
+        background.add_task(analyze_message, project_id, msg.id)
+
     return _to_response(msg, current_user.username)
 
 
