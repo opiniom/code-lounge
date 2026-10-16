@@ -250,9 +250,12 @@
             <button class="dyn-close" onclick="removeWidget('community')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
 
-          <div class="dyn-widget card" data-widget="team">
-            <h4 id="wlTeamTitle">🟢 팀원 접속 현황</h4>
-            <div class="wl-body" id="wlTeam"></div>
+          <div class="dyn-widget card tw" data-widget="team">
+            <div class="dyn-widget-head">
+              <h4><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/></svg>팀원 접속 현황</h4>
+              <span class="tw-pill" id="twPill" hidden></span>
+            </div>
+            <div class="wl-body tw-body" id="wlTeam"></div>
             <button class="dyn-close" onclick="removeWidget('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
 

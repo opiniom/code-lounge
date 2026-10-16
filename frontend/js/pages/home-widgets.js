@@ -14,7 +14,7 @@ function wgPreview(id){
   if(id==='today') return '<div class="wgp-title">📅 오늘의 일정</div>'+row('14:00','#3B82F6',70)+row('16:30','#8B5CF6',52)+row('21:00','#22D3EE',62);
   if(id==='events') return '<div class="wgp-title">🏆 마감 임박 공모전</div>'+row('D-1','#EF4444',74)+row('D-3','#F59E0B',58)+row('D-7','#3B82F6',66);
   if(id==='community') return '<div class="wgp-title">👥 커뮤니티 인기글</div>'+row('질문','#3B82F6',72)+row('모집','#8B5CF6',60)+row('자랑','#EC4899',68);
-  if(id==='team') return '<div class="wgp-title">🟢 팀원 접속 현황</div>'+row('온라인','#22C55E',72)+row('자리비움','#F59E0B',56)+row('오프라인','#94A3B8',64);
+  if(id==='team') return '<div class="wgp-title">👥 팀원 접속 현황</div><div class="wgp-stack">'+['#3B82F6|#22C55E','#EC4899|#F59E0B','#8B5CF6|#22C55E','#06B6D4|#94A3B8'].map(function(x){ var q=x.split('|'); return '<b style="background:'+q[0]+'"><i style="background:'+q[1]+'"></i></b>'; }).join('')+'</div><div class="wgp-sbar"><i style="flex:2;background:#22C55E"></i><i style="flex:1;background:#F59E0B"></i><i style="flex:1;background:var(--border-strong)"></i></div>';
   if(id==='notes') return '<div class="wgp-title">📝 최근 회의록</div>'+row('9/11','#22D3EE',76)+row('9/09','#8B5CF6',54);
   return '';
 }
@@ -66,7 +66,12 @@ function loadWidgetPrefs(){
   try{
     var order = JSON.parse(localStorage.getItem('root_home_widget_order') || 'null');
     var grid = document.getElementById('widgetGrid');
-    if(order && grid) order.forEach(function(id){ var c = grid.querySelector('.dyn-widget[data-widget="'+id+'"]'); if(c) grid.appendChild(c); });
+    if(order && grid){
+      order.forEach(function(id){ var c = grid.querySelector('.dyn-widget[data-widget="'+id+'"]'); if(c) grid.appendChild(c); });
+      // 예전에 저장된 순서에 없던 새 위젯(예: 팀원 접속 현황)은 맨 앞이 아니라 '오늘의 일정' 바로 뒤에 둔다
+      var tw = grid.querySelector('.dyn-widget[data-widget="team"]'), td = grid.querySelector('.dyn-widget[data-widget="today"]');
+      if(tw && td && order.indexOf('team') < 0) grid.insertBefore(tw, td.nextSibling);
+    }
     var raw = localStorage.getItem('root_home_widgets');
     if(!raw) return;
     var ids = JSON.parse(raw);
@@ -166,21 +171,50 @@ function wgLiveNotes(){
 /* 팀원 접속 현황 위젯: 내가 속한 모든 프로젝트의 팀원을 접속 상태 순으로. 상태가 바뀌면 실시간으로 갱신 */
 function wgLiveTeam(){
   var box = document.getElementById('wlTeam'); if(!box || !wgShown('team')) return;
-  if(!calApiMode){ wgEmpty(box, '로그인하면 팀원의 접속 상태가 보여요', '로그인 →', function(){ openLogin(); }); document.getElementById('wlTeamTitle').textContent = '🟢 팀원 접속 현황'; return; }
-  var team = dureTeammates().filter(function(t){ return !t.me; });
-  var rank = { online:0, dnd:1, away:2, offline:3 };
-  team.forEach(function(t){ t.st = pstOf(t.id); }); team.sort(function(a, b){ return rank[a.st] - rank[b.st]; });
-  var on = team.filter(function(t){ return t.st !== 'offline'; }).length;
-  document.getElementById('wlTeamTitle').textContent = '🟢 팀원 접속 현황' + (team.length ? ' · ' + on + '/' + team.length + '명' : '');
+  var pill = document.getElementById('twPill'); if(pill) pill.hidden = true;
+  var empty = function(msg, sub, btn, fn){
+    box.innerHTML = '';
+    var e = wgEl('div', 'tw-empty'); var ic = wgEl('div', 'tw-empty-ic'); ic.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/></svg>';
+    e.appendChild(ic); e.appendChild(wgEl('b', null, msg)); e.appendChild(wgEl('span', null, sub));
+    if(btn){ var b = wgEl('button', 'tw-btn', btn); b.onclick = fn; e.appendChild(b); }
+    box.appendChild(e);
+  };
+  if(!calApiMode){ empty('로그인하면 보여요', '팀원이 지금 온라인인지 실시간으로 알려드려요.', '로그인', function(){ openLogin(); }); return; }
+  var team = dureTeammates();                       // 나 포함, 내가 속한 모든 프로젝트의 팀원
+  if(team.length <= 1){ empty('아직 함께하는 팀원이 없어요', '팀원을 초대하면 접속 상태가 여기 모여요.', '＋ 팀원 초대', function(){ openInviteFromHero(); }); return; }
+  var rank = { online:0, dnd:1, away:2, offline:3 }, cnt = { online:0, away:0, dnd:0, offline:0 };
+  team.forEach(function(t){ t.st = pstOf(t.id); cnt[t.st]++; });
+  team.sort(function(a, b){ return (a.me ? -1 : b.me ? 1 : 0) || rank[a.st] - rank[b.st]; });
+  var live = team.length - cnt.offline;
+  if(pill){ pill.hidden = false; pill.textContent = live + '/' + team.length + ' 온라인'; pill.classList.toggle('on', live > 0); }
   box.innerHTML = '';
-  if(!team.length){ wgEmpty(box, '아직 함께하는 팀원이 없어요', '＋ 팀원 초대하기', function(){ openInviteFromHero(); }); return; }
-  team.slice(0, 6).forEach(function(t){
-    var r = wgEl('div', 'wl-row click'); r.onclick = function(){ openProfile(t.id); };
-    var av = wgEl('span', 'wl-pav', String(t.name).slice(0, 1)); av.style.background = chatColor(t.name); av.dataset.pst = t.st; r.appendChild(av);
-    r.appendChild(wgEl('span', 'wl-x', t.name)); var st = wgEl('span', 'wl-st', PST_META[t.st].label); st.dataset.pst = t.st; r.appendChild(st); box.appendChild(r);
+  // 1) 아바타 스택 (상태 점)
+  var stack = wgEl('div', 'tw-stack');
+  team.slice(0, 7).forEach(function(t, i){
+    var a = wgEl('span', 'tw-av', String(t.name).slice(0, 1)); a.style.zIndex = 20 - i; a.style.background = t.me ? '#06B6D4' : chatColor(t.name); a.dataset.pst = t.st; a.title = t.name + (t.me ? ' (나)' : '') + ' · ' + PST_META[t.st].label;
+    if(!t.me){ a.style.cursor = 'pointer'; a.onclick = function(){ openProfile(t.id); }; }
+    stack.appendChild(a);
   });
-  if(team.length > 6) box.appendChild(wgEl('div', 'wl-more', '외 ' + (team.length - 6) + '명'));
-  var more = wgEl('button', 'wl-link', '팀원 화면 열기 →'); more.onclick = function(){ goView('admin'); }; box.appendChild(more);
+  if(team.length > 7) stack.appendChild(wgEl('span', 'tw-more', '+' + (team.length - 7)));
+  box.appendChild(stack);
+  // 2) 상태 비율 막대 + 범례
+  var bar = wgEl('div', 'tw-bar');
+  ['online', 'dnd', 'away', 'offline'].forEach(function(k){ if(cnt[k]){ var seg = wgEl('i'); seg.dataset.pst = k; seg.style.flexGrow = cnt[k]; seg.title = PST_META[k].label + ' ' + cnt[k] + '명'; bar.appendChild(seg); } });
+  box.appendChild(bar);
+  var lg = wgEl('div', 'tw-legend');
+  [['online', '온라인'], ['away', '자리비움'], ['dnd', '방해금지'], ['offline', '오프라인']].forEach(function(x){ if(cnt[x[0]]){ var s = wgEl('span'); s.dataset.pst = x[0]; s.innerHTML = '<i></i><b></b>'; s.querySelector('b').textContent = x[1] + ' ' + cnt[x[0]]; lg.appendChild(s); } });
+  box.appendChild(lg);
+  // 3) 한 줄씩 (접속 중인 사람이 먼저)
+  var list = wgEl('div', 'tw-list');
+  team.filter(function(t){ return !t.me; }).slice(0, 3).forEach(function(t){
+    var r = wgEl('button', 'tw-row'); r.type = 'button'; r.onclick = function(){ openProfile(t.id); };
+    var a = wgEl('span', 'tw-av sm', String(t.name).slice(0, 1)); a.style.background = chatColor(t.name); a.dataset.pst = t.st; r.appendChild(a);
+    r.appendChild(wgEl('span', 'tw-name', t.name));
+    var st = wgEl('span', 'tw-st', PST_META[t.st].label); st.dataset.pst = t.st; r.appendChild(st); list.appendChild(r);
+  });
+  var others = team.length - 1 - 3; if(others > 0) list.appendChild(wgEl('div', 'tw-restn', '외 ' + others + '명'));
+  box.appendChild(list);
+  var more = wgEl('button', 'tw-link', '팀원 화면 열기'); more.innerHTML += ' <span>→</span>'; more.onclick = function(){ goView('admin'); }; box.appendChild(more);
 }
 function wgRefreshLive(){ wgLiveToday(); wgLiveEvents(); wgLiveCommunity(); wgLiveNotes(); wgLiveTeam(); renderDureOrbit(); }
 loadWidgetPrefs();
