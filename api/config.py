@@ -15,10 +15,15 @@ class Settings(BaseSettings):
         else "sqlite+aiosqlite:///" + os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "app.db").replace("\\", "/")
     )
 
+    # 외부 공유 모드: ./share.sh 로 켜면 true. 코드 실행(내 컴퓨터에서 직접 실행됨)·API 문서·개발용 로그인을 모두 끈다
+    PUBLIC_MODE: bool = False
+    # 개발/테스트 전용: 이메일만으로 로그인하는 /api/auth/social 허용. 기본 꺼짐 (켜면 누구나 어떤 계정으로든 로그인 가능)
+    ALLOW_DEV_LOGIN: bool = False
+
     # JWT 인증 설정
     JWT_SECRET_KEY: str = "your-super-secret-jwt-key-for-local-development-change-in-prod-987654321"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24시간
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30일 (접속할 때마다 /api/auth/refresh 로 연장)
     
     # Judge0 엔드포인트
     JUDGE0_URL: str = "http://judge0-server:2358"
@@ -44,7 +49,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
     # 위 모델의 무료 한도(429)가 차면 순서대로 시도할 모델 (쉼표 구분)
-    GEMINI_FALLBACK_MODELS: str = "gemini-3.1-flash-lite,gemini-flash-lite-latest"
+    GEMINI_FALLBACK_MODELS: str = "gemini-flash-lite-latest,gemini-3.1-flash-lite"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
     

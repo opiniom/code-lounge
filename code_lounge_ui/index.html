@@ -522,13 +522,20 @@ a{color:inherit;}
 .chat-toggle-tab svg{width:16px; height:16px;}
 .chat-toggle-tab .badge{background:#fff; color:var(--accent-strong); border-radius:50%; width:16px; height:16px; font-size:9.5px; display:flex; align-items:center; justify-content:center;}
 
+:root{--chat-w:360px;}
+/* 채팅을 열면 화면을 덮지 않고, 본문이 왼쪽으로 줄어들어 옆에 나란히 붙는다 (넓은 화면) */
+.app.chat-docked .view{margin-right:var(--chat-w); transition:margin-right .26s ease;}
+.app.chat-docked .hh-title{font-size:clamp(26px, calc(3.4vw / var(--ui-zoom)), 44px);}
+.app.chat-docked .home-hero{gap:22px;}
+.app .view{transition:margin-right .26s ease;}
+.app.chat-docked ~ .chat-toggle-tab, body.chat-docked .chat-toggle-tab{right:var(--chat-w);}
 .chat-panel{
-  position:fixed; top:58px; right:0; bottom:0; width:346px; z-index:75;
+  position:fixed; top:66px; right:0; bottom:0; width:var(--chat-w); max-width:100vw; z-index:75;
   border-left:1px solid var(--border); background:var(--bg-elevated); box-shadow:var(--shadow-lg);
   transform:translateX(100%); transition:transform .26s ease;
 }
 .chat-panel.open{transform:translateX(0);}
-.chat-inner{width:346px; height:100%; display:flex; flex-direction:column;}
+.chat-inner{width:100%; height:100%; display:flex; flex-direction:column;}
 .chat-head{display:flex; align-items:center; gap:10px; padding:13px 14px; border-bottom:1px solid var(--border); flex:0 0 auto;}
 .chat-head .gavatar{width:36px; height:36px; border-radius:50%; background:linear-gradient(150deg,var(--accent),#ffb199); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px; flex:0 0 auto;}
 .chat-head .info h4{font-size:13px; font-weight:600;}
@@ -543,6 +550,29 @@ a{color:inherit;}
 .sys-bubble button:disabled{background:var(--text-faint); cursor:default;}
 .sys-bubble .who{font-size:10.5px; color:var(--text-faint);}
 
+.ai-guide{flex:0 0 auto; margin:10px 12px 0; border:1px solid var(--border); background:var(--accent-2-soft); color:var(--accent-2-ink); border-radius:12px; overflow:hidden;}
+.ai-guide-head{display:flex; align-items:center; gap:7px; width:100%; border:none; background:none; color:inherit; padding:9px 12px; font-size:12px; font-weight:700; cursor:pointer; text-align:left;}
+.ai-guide-head .chev{margin-left:auto; transition:transform .15s;}
+.ai-guide.collapsed .ai-guide-head .chev{transform:rotate(-90deg);}
+.ai-guide-body{padding:0 12px 11px; font-size:11.8px; line-height:1.6; color:var(--text); max-height:230px; overflow-y:auto;}
+.ai-guide.collapsed .ai-guide-body{display:none;}
+.ai-guide-body h5{font-size:10.5px; font-family:var(--font-mono); letter-spacing:.04em; text-transform:uppercase; color:var(--accent-2-ink); margin:9px 0 4px;}
+.ai-guide-body ul{margin:0; padding-left:15px; display:flex; flex-direction:column; gap:3px;}
+.ai-guide-body code{font-family:var(--font-mono); font-size:11px; background:var(--surface); padding:1px 5px; border-radius:5px;}
+.ai-chip-row{display:flex; flex-wrap:wrap; gap:5px; margin-top:4px;}
+.ai-chip{border:1px solid var(--border-strong); background:var(--surface); color:var(--text); border-radius:999px; padding:3px 9px; font-size:11px; cursor:pointer;}
+.ai-chip:hover{border-color:var(--accent); color:var(--accent-ink);}
+.ai-act{display:flex; align-items:center; gap:8px; margin-top:4px; font-size:12px; color:var(--text-muted);}
+.ai-act-lbl{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ai-act-btn{font:inherit; font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer;}
+.ai-act-btn:hover{border-color:var(--accent);}
+.ai-act-btn.danger{background:var(--accent); border-color:var(--accent); color:#fff;}
+.ai-act-btn:disabled{opacity:.5; cursor:default;}
+.ai-act-state{font-size:12px; color:var(--text-faint);}
+.ai-confirm{margin-top:6px; padding:8px 10px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2);}
+.ai-confirm-t{font-size:12.5px; font-weight:600; margin-bottom:6px; word-break:break-word;}
+.ai-confirm-r{display:flex; gap:6px;}
+.ai-guide-link{border:none; background:none; color:var(--accent-ink); text-decoration:underline; cursor:pointer; padding:0; font-size:11.5px;}
 .chat-scroll{flex:1 1 auto; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px;}
 .msg-row{display:flex; gap:8px; align-items:flex-end;}
 .msg-row.me{flex-direction:row-reverse;}
@@ -930,6 +960,13 @@ a{color:inherit;}
 .auth-modeswitch{width:100%;}
 .auth-modeswitch button{flex:1;}
 .auth-desc{font-size:12px; color:var(--text-muted); line-height:1.5;}
+.invite-card{width:100%; padding:14px; border:1px solid var(--border); border-radius:var(--radius-m); background:var(--accent-soft); display:flex; flex-direction:column; gap:8px; text-align:left;}
+.invite-card[hidden]{display:none;}
+.invite-card-t{font-weight:700; font-size:14px; line-height:1.5;}
+.invite-card-s{font-size:12.5px; color:var(--text-muted); line-height:1.5;}
+.invite-card input{width:100%; padding:9px 11px; border:1px solid var(--border-strong); border-radius:8px; font:inherit; font-size:14px; background:var(--surface); color:var(--text);}
+.invite-card .btn{width:100%; justify-content:center;}
+.invite-card-or{font-size:11.5px; color:var(--text-faint); text-align:center; margin-top:2px;}
 .auth-buttons{width:100%; display:flex; flex-direction:column; gap:10px; margin-top:4px;}
 .oauth-btn{
   width:100%; display:flex; align-items:center; justify-content:center; gap:9px; padding:11px;
@@ -1007,6 +1044,8 @@ a{color:inherit;}
 /* ================= SHARE MODAL ================= */
 .modal-backdrop{position:fixed; inset:0; background:rgba(20,17,12,.45); z-index:70; display:none; align-items:center; justify-content:center;}
 .modal-backdrop.open{display:flex;}
+.ws-invite-btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:13px; white-space:nowrap;}
+.ws-invite-btn[hidden]{display:none;}
 .share-modal{width:100%; max-width:420px; margin:0 20px; background:var(--surface); border-radius:var(--radius-l); box-shadow:var(--shadow-lg); padding:22px; display:flex; flex-direction:column; gap:16px;}
 .share-modal .mh{display:flex; align-items:center; justify-content:space-between;}
 .share-modal .mh h3{font-size:15px;}
@@ -1068,7 +1107,7 @@ a{color:inherit;}
   .cal-layout, .mypage-grid, .evt-grid, .admin-member-grid{grid-template-columns:1fr;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
   .tabnav{display:none;}
-  .chat-panel{width:100%;}
+  .chat-panel{width:min(var(--chat-w), 88vw);}
   .dyn-widget.wide{grid-column:span 1;}
 }
 
@@ -1357,6 +1396,13 @@ a{color:inherit;}
         <p class="auth-tag">팀 프로젝트를 위한 AI 워크스페이스</p>
         <p class="auth-desc" id="authDesc">간편 로그인으로 팀 워크스페이스를 바로 이어서 진행하세요.</p>
         
+        <div class="invite-card" id="inviteCard" hidden>
+          <div class="invite-card-t" id="inviteCardTitle"></div>
+          <div class="invite-card-s" id="inviteCardSub"></div>
+          <input type="text" id="inviteGuestName" maxlength="20" placeholder="팀에서 쓸 이름 (예: 홍길동)" autocomplete="off" onkeydown="if(isEnter(event))acceptInviteAsGuest()">
+          <button class="btn primary" id="inviteGuestBtn" onclick="acceptInviteAsGuest()">초대 수락하고 들어가기</button>
+          <div class="invite-card-or">또는 아래 계정으로 로그인하면 내 계정으로 참여해요</div>
+        </div>
         <div class="auth-buttons">
           <button class="oauth-btn google" onclick="handleSocialLogin('Google')">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.8Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.26v3.1C3.24 21.3 7.28 24 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58v-3.1H1.26a12 12 0 0 0 0 10.78l4.01-3.1Z"/><path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.23 0 12 0 7.28 0 3.24 2.7 1.26 6.61l4.01 3.1C6.22 6.88 8.87 4.77 12 4.77Z"/></svg>
@@ -1498,15 +1544,16 @@ a{color:inherit;}
       <button class="icon-btn" id="wsManageBtn" title="프로젝트 관리 (선택 삭제)" onclick="openProjManage()">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
       </button>
+      <button class="btn primary ws-invite-btn" id="wsInviteBtn" onclick="openInviteModal(wsProject)" title="이 프로젝트에 팀원 초대">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg>
+        팀원 초대
+      </button>
       <b id="wsCrumbName" hidden></b>
       <span class="chip accent2" id="wsPresenceChip">팀원 3명</span>
       <div class="members">
         <div class="avatar-stack" id="wsMemberStack">
           <div class="mini" style="background:#E8542E;">지</div><div class="mini" style="background:#1F6F5C;">민</div><div class="mini" style="background:#8C4A9C;">하</div>
         </div>
-        <button class="btn ghost" onclick="openShare()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.2M8.3 13.3l7.4 4.2"/></svg>
-        </button>
       </div>
     </div>
     <div class="ws-shell">
@@ -1639,26 +1686,6 @@ a{color:inherit;}
         </div>
       </div>
 
-    </div>
-
-    <div class="modal-backdrop" id="shareModal" onclick="if(event.target===this)closeShare()">
-      <div class="share-modal">
-        <div class="mh"><h3>워크스페이스 공유</h3><button class="icon-btn" onclick="closeShare()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <div class="share-link-row">
-          <input type="text" id="shareLinkInput" readonly value="https://sync.app/w/capstone-ai-reco-8f2k">
-          <button class="btn primary" id="copyShareBtn" onclick="copyShareLink()">복사</button>
-        </div>
-        <div class="share-toggle">
-          <span>링크가 있는 팀원은 누구나 볼 수 있어요</span>
-          <div class="switch on" id="shareSwitch" onclick="this.classList.toggle('on')"></div>
-        </div>
-        <div class="share-members">
-          <div class="share-member"><div class="mini" style="background:#E8542E; margin-left:0;">지</div>지우<span class="role">소유자</span></div>
-          <div class="share-member"><div class="mini" style="background:#1F6F5C; margin-left:0;">민</div>민재<span class="role">편집 가능</span></div>
-          <div class="share-member"><div class="mini" style="background:#8C4A9C; margin-left:0;">하</div>하은<span class="role">편집 가능</span></div>
-          <div class="share-member"><div class="mini" style="background:#3A6EA5; margin-left:0;">나</div>나<span class="role">편집 가능</span></div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -2129,9 +2156,16 @@ a{color:inherit;}
         <button class="icon-btn" id="chatInviteBtn" title="팀원 초대" onclick="openInviteModal()" hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg></button>
         <button class="icon-btn x" onclick="toggleChat()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
+      <div class="ai-guide" id="aiGuide">
+        <button class="ai-guide-head" onclick="toggleAiGuide()" title="AI 사용법 펼치기/접기">
+          <span>💡 AI 사용법</span>
+          <svg class="chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ai-guide-body" id="aiGuideBody"></div>
+      </div>
       <div class="chat-scroll" id="chatScroll"></div>
       <div class="chat-input">
-        <input type="text" id="chatMsgInput" placeholder="팀원에게 메시지 · '/회의 내용'으로 회의 메모 태그" onkeydown="if(isEnter(event))sendChatMsg()">
+        <input type="text" id="chatMsgInput" placeholder="팀원에게 메시지 · 'AI야 …'로 부르면 AI가 알아서 처리해요" onkeydown="if(isEnter(event))sendChatMsg()">
         <button onclick="sendChatMsg()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m4 20 17-8L4 4l2 7-2 9Z"/></svg></button>
       </div>
     </div>
@@ -2155,21 +2189,38 @@ a{color:inherit;}
     </div>
   </div>
 
+  <div class="modal-backdrop" id="inviteAcceptModal">
+    <div class="share-modal">
+      <div class="mh"><h3>🎉 프로젝트 초대</h3></div>
+      <p id="inviteAcceptText" style="font-size:14px; line-height:1.7; margin:4px 0 14px;"></p>
+      <div style="display:flex; gap:8px;">
+        <button class="btn primary" id="inviteAcceptBtn" onclick="acceptInviteLoggedIn()">초대 수락</button>
+        <button class="btn ghost" onclick="declineInvite()">나중에</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
     <div class="share-modal">
-      <div class="mh"><h3>팀원 초대</h3><button class="icon-btn" onclick="closeInviteModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">팀원이 이 서비스에 한 번 로그인(구글/네이버)한 뒤, 그 계정의 이메일로 초대할 수 있어요. 초대하면 이 프로젝트의 채팅과 캘린더를 함께 쓰게 돼요.</p>
-      <div class="form-row"><label>이메일</label><input type="email" id="inviteEmail" placeholder="teammate@gmail.com" onkeydown="if(isEnter(event))submitInvite()"></div>
-      <button class="btn primary" onclick="submitInvite()">이메일로 초대하기</button>
+      <div class="mh"><h3 id="inviteModalTitle">팀원 초대</h3><button class="icon-btn" onclick="closeInviteModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div>
+        <div style="font-size:13px; font-weight:700; margin-bottom:6px;">🔗 초대 링크로 초대</div>
+        <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">링크를 팀원에게 보내면, 받은 사람이 가입 없이 <b>이름만 정하고 [초대 수락]</b>을 눌러 참여해요. (이미 계정이 있으면 로그인 후 수락)</p>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <input type="text" id="generatedInviteUrl" readonly placeholder="초대 링크를 만들고 있어요…" style="flex:1; min-width:0; padding:8px 10px; font-size:12px; background:var(--bg-elev); border:1px solid var(--border); border-radius:6px; color:var(--text);">
+          <button class="btn primary" onclick="copyInviteLink()">복사</button>
+        </div>
+        <p id="inviteShareHint" hidden style="font-size:12px; color:var(--accent-ink); line-height:1.5; margin-top:8px;"></p>
+        <p style="font-size:11.5px; color:var(--text-faint); margin-top:8px;">링크는 72시간 동안 유효해요 · <button class="ai-guide-link" onclick="generateInviteLink(true)">새 링크 만들기</button></p>
+      </div>
 
-      <hr style="margin:16px 0; border:none; border-top:1px solid var(--border);">
+      <hr style="border:none; border-top:1px solid var(--border);">
 
-      <div class="mh" style="margin-bottom:6px;"><h4>🔗 초대 링크(URL) 생성기</h4></div>
-      <p style="font-size:12px; color:var(--text-faint); line-height:1.5;">링크를 생성해 팀원에게 보내면, 링크를 클릭하는 것만으로 프로젝트에 자동 합류할 수 있어요.</p>
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <input type="text" id="generatedInviteUrl" readonly placeholder="[초대 링크 생성]을 눌러주세요" style="flex:1; padding:8px 10px; font-size:12px; background:var(--bg-elev); border:1px solid var(--border); border-radius:6px; color:var(--text);">
-        <button class="btn ghost" onclick="generateInviteLink()">초대 링크 생성</button>
-        <button class="btn primary" onclick="copyInviteLink()">복사</button>
+      <div>
+        <div style="font-size:13px; font-weight:700; margin-bottom:6px;">✉️ 이메일로 초대</div>
+        <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">상대가 sync/ 에 로그인(구글/네이버)한 적이 있다면 그 계정의 이메일로 바로 초대할 수 있어요.</p>
+        <div class="form-row"><label>이메일</label><input type="email" id="inviteEmail" placeholder="teammate@gmail.com" onkeydown="if(isEnter(event))submitInvite()"></div>
+        <button class="btn ghost" style="margin-top:8px;" onclick="submitInvite()">이메일로 초대하기</button>
       </div>
     </div>
   </div>
@@ -2247,6 +2298,11 @@ a{color:inherit;}
       <div class="mh"><h3>프로필 설정</h3><button class="icon-btn" onclick="closeProfileModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <div class="form-row"><label>이름</label><input type="text" id="profileNameInput" placeholder="예: 배찬"></div>
       <div class="form-row"><label>역할 / 소개</label><input type="text" id="profileRoleInput" placeholder="예: 프론트엔드 · 캡스톤 프로젝트"></div>
+      <div class="form-row">
+        <label>AI 이름 (부를 때 쓰는 이름)</label>
+        <input type="text" id="profileAiNameInput" maxlength="12" placeholder="예: 미니 → '미니야 이번 주 일정 알려줘'">
+        <p id="aiNameHint" style="font-size:11px; color:var(--text-faint); line-height:1.5; margin-top:2px;">채팅에서 <b>이름+야</b> 또는 <b>@이름</b>으로 AI를 불러요. 공백·특수문자 없이 한글/영문/숫자 2~12자. 비우면 "AI"예요.</p>
+      </div>
       <div class="form-row">
         <label>아바타 색상</label>
         <div class="avatar-color-picker" id="avatarColorPicker">
@@ -2398,7 +2454,12 @@ function wsResetForSessionChange(){
   if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
   wsUpdateSaveStatus(); wsRenderConflict();
 }
-function mockLogout(){
+/* 로그인 토큰이 만료/무효가 되면: 조용히 로그아웃하고 로그인 화면으로 안내 (채팅·폴링이 오류만 반복하지 않게) */
+function expireSession(){
+  if(!authToken) return;
+  mockLogout('expired');
+}
+function mockLogout(reason){
   calProjectsLoaded = true;
   wsResetForSessionChange();
   stopChat();
@@ -2413,7 +2474,8 @@ function mockLogout(){
   document.getElementById('adminBadge').hidden = true;
   document.getElementById('teamManageMenuItem').hidden = true;
   goView('auth');
-  pushToast('👋', '로그아웃', '로그아웃되었습니다.');
+  if(reason === 'expired') pushToast('⏰', '로그인이 만료됐어요', '보안을 위해 로그인 유효기간이 지났어요. 다시 로그인하면 채팅·AI를 이어서 쓸 수 있어요.');
+  else pushToast('👋', '로그아웃', '로그아웃되었습니다.');
 }
 
 /* ---- settings: theme ---- */
@@ -2482,7 +2544,17 @@ var avatarSwatches = [
   'linear-gradient(150deg,#B08B2E,#E8542E)',
   'linear-gradient(150deg,#1F6F5C,#4FB392)'
 ];
+var myAiName = '';
+/* AI 호출 판별 — 서버(chat_ai.is_ai_request)와 같은 규칙: 메시지 맨 앞의 "이름야 …" / "@이름 …" (이름 = AI·sync·에이아이·프로필에서 정한 이름). 슬래시 명령어는 없다 */
+function aiRequestRe(){
+  var names = ['AI','sync','에이아이'];
+  if(myAiName && myAiName.trim()) names.push(myAiName.trim());
+  var alts = names.map(function(n){ return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|');
+  return new RegExp('^\\s*(@(' + alts + ')(\\s|$)|(' + alts + ')\\s*(야|아|,)\\s*)', 'i');
+}
+function isAiRequest(text){ return aiRequestRe().test(text || ''); }
 function openProfileModal(){
+  document.getElementById('profileAiNameInput').value = myAiName || '';
   document.getElementById('profileNameInput').value = myProfile.name;
   document.getElementById('profileRoleInput').value = myProfile.role;
   syncAvatarSwatchButtons();
@@ -2496,9 +2568,27 @@ function syncAvatarSwatchButtons(){
 function saveProfile(){
   myProfile.name = document.getElementById('profileNameInput').value.trim() || '나';
   myProfile.role = document.getElementById('profileRoleInput').value.trim() || myProfile.role;
-  applyProfileToUI();
-  closeProfileModal();
-  pushToast('✅','프로필 저장됨','내 프로필이 업데이트됐어요');
+  var aiName = document.getElementById('profileAiNameInput').value.trim();
+  function done(){
+    applyProfileToUI();
+    closeProfileModal();
+    updateChatPlaceholder();
+    pushToast('✅','프로필 저장됨', '내 프로필이 업데이트됐어요' + (aiName ? ' · AI는 "'+aiName+'야"로 불러요' : ''));
+  }
+  if(calApiMode && aiName !== (myAiName || '')){
+    apiFetch('/api/auth/me/ai-name', {method:'PUT', body:JSON.stringify({ai_name: aiName})}).then(function(u){
+      myAiName = u.ai_name || ''; if(currentUser) currentUser.ai_name = myAiName;
+      done();
+    }).catch(function(e){ pushToast('⚠️','AI 이름을 저장하지 못했어요', e.message); });
+    return;
+  }
+  if(!calApiMode) myAiName = aiName;   // 로그인 전(게스트)에는 이 화면에서만
+  done();
+}
+function updateChatPlaceholder(){
+  if(typeof renderAiGuide === 'function') renderAiGuide();
+  var inp = document.getElementById('chatMsgInput');
+  if(inp) inp.placeholder = "팀원에게 메시지 · '" + (myAiName || 'AI') + "야 …'로 부르면 AI가 알아서 처리해요";
 }
 function applyProfileToUI(){
   var initial = myProfile.name.trim().slice(0,1) || '나';
@@ -2539,7 +2629,7 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.status-popover') && !e.target.closest('.mdr-status-btn')) closeStatusEditor();
 });
 document.addEventListener('keydown', function(e){
-  if(e.key==='Escape'){ closeShare(); closeAddEvent(); closeMemberDetail(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
+  if(e.key==='Escape'){ closeInviteModal(); closeAddEvent(); closeMemberDetail(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
 });
 
 async function loadNotifications(){
@@ -2670,18 +2760,6 @@ function pushToast(icon, title, desc){
   unreadCount++;
   updateNotifBadge();
   renderNotifEmptyState();
-}
-
-/* ---- share modal ---- */
-function openShare(){ document.getElementById('shareModal').classList.add('open'); }
-function closeShare(){ document.getElementById('shareModal').classList.remove('open'); }
-function copyShareLink(){
-  var input = document.getElementById('shareLinkInput');
-  var btn = document.getElementById('copyShareBtn');
-  function done(){ btn.textContent='복사됨 ✓'; setTimeout(function(){ btn.textContent='복사'; }, 1800); }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(input.value).then(done).catch(function(){ input.select(); done(); });
-  } else { input.select(); done(); }
 }
 
 /* ---- home widgets ---- */
@@ -2976,6 +3054,8 @@ function addProjectFromPrompt(name, row){
   renderProjRow();
   pushToast('✨','프로젝트 생성됨', '"'+name+'" 워크스페이스가 생성되었습니다.');
   openWorkspace(id);
+  // 서버에 저장된 프로젝트라면 바로 팀원 초대 창을 열어 링크를 보낼 수 있게 한다
+  if(calApiMode && row){ setTimeout(function(){ openInviteModal(id); }, 400); }
 }
 function openWorkspace(id){
   if (calApiMode && calProjectById(id)) {
@@ -3902,6 +3982,8 @@ function renderWsSelector(){
 function renderWsHeader(){
   var chip = document.getElementById('wsPresenceChip'), stack = document.getElementById('wsMemberStack');
   var cur = calProjectById(wsProject);
+  var invBtn = document.getElementById('wsInviteBtn');
+  if (invBtn) invBtn.hidden = !!(calApiMode && cur && cur.isOwner === false);   // 팀장만 초대 가능
   if (!calApiMode || !cur) { return; }
   var members = cur.members || [];
   if (chip) { chip.hidden = false; chip.textContent = '팀원 ' + (members.length || 1) + '명'; chip.title = members.map(function(m){ return m.username; }).join(', '); }
@@ -4176,6 +4258,23 @@ function escapeHtml(str) {
 /* ---- Backend API Integration ---- */
 var API_BASE = localStorage.getItem('sync_api_base') || 'http://localhost:8000';
 var authToken = localStorage.getItem('sync_auth_token') || null;
+var pendingInviteMem = '';
+function getPendingInvite(){ try{ return pendingInviteMem || localStorage.getItem('sync_pending_invite') || ''; }catch(e){ return pendingInviteMem; } }
+function setPendingInvite(t){
+  pendingInviteMem = t || '';
+  try{ if(t) localStorage.setItem('sync_pending_invite', t); else localStorage.removeItem('sync_pending_invite'); }catch(e){}
+}
+// 초대 링크(?invite=…)로 열렸다면 값을 보관하고 주소창에서는 지운다 (로그인 이동을 거쳐도 유지)
+(function(){
+  try{
+    var t = new URLSearchParams(location.search).get('invite');
+    if(t){
+      setPendingInvite(t);
+      var u = new URL(location.href); u.searchParams.delete('invite');
+      history.replaceState({}, document.title, u.pathname + (u.search || '') + u.hash);
+    }
+  }catch(e){}
+})();
 var currentUser = null;
 try {
   var u = localStorage.getItem('sync_auth_user');
@@ -4441,22 +4540,30 @@ async function checkAutoLogin() {
       startRealSession();
       goView('home');
       loadSubmissions();
+      processPendingInvite();
+      // 접속할 때마다 로그인 유효기간 연장 (실패해도 기존 토큰 유지)
+      fetch(API_BASE + '/api/auth/refresh', { method:'POST', headers:{ 'Authorization': 'Bearer ' + authToken } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){ if(d && d.access_token){ authToken = d.access_token; try{ localStorage.setItem('sync_auth_token', d.access_token); }catch(e){} } })
+        .catch(function(){});
     } else {
       authToken = null;
-      localStorage.removeItem('sync_auth_token');
+      try{ localStorage.removeItem('sync_auth_token'); localStorage.removeItem('sync_auth_user'); }catch(e){}
+      if (res.status === 401) pushToast('⏰', '로그인이 만료됐어요', '다시 로그인하면 이전 프로젝트와 채팅이 그대로 이어져요.');
+      processPendingInvite();
     }
   } catch(e){}
 }
 checkAutoLogin();
 
 /* ---- team chat (프로젝트별 채팅 + AI 일정 감지) ---- */
-var pendingMeetingLines = [];
 var chatProject = null;      // 프런트 프로젝트 id ('p3')
 var chatMsgs = [];           // 서버 메시지
 var chatLocal = [];          // 이 세션에서만 보이는 안내 말풍선
 var chatSig = '';
 var chatTimer = null;
 var chatBusy = false;
+var chatNoteSig = null;
 function chatServerId(){ var m = /^p(\d+)$/.exec(chatProject || ''); return m ? parseInt(m[1], 10) : null; }
 function chatSeenKey(){ return 'sync_chat_seen_'+(currentUser ? currentUser.id : 'x')+'_'+chatProject; }
 function chatSeenId(){ try{ return parseInt(localStorage.getItem(chatSeenKey()) || '0', 10); }catch(e){ return 0; } }
@@ -4472,9 +4579,72 @@ function fmtChatTime(iso){
   return (h<12 ? '오전 ' : '오후 ')+(h%12===0 ? 12 : h%12)+':'+pad2(m);
 }
 function chatPanelOpen(){ return document.getElementById('chatPanel').classList.contains('open'); }
+/* 채팅 패널: 넓은 화면에서는 본문 옆에 붙여서(도킹) 화면을 가리지 않고, 좁은 화면에서만 위에 겹쳐 띄운다 */
+function chatCanDock(){ return (window.innerWidth / (window.__uiScale || 1)) >= 960; }
+function syncChatDock(){
+  var app = document.querySelector('.app');
+  var open = chatPanelOpen();
+  var dock = open && chatCanDock();
+  if(app) app.classList.toggle('chat-docked', dock);
+  document.body.classList.toggle('chat-docked', dock);
+  setTimeout(function(){ if(window.monaco && monacoEditor) monacoEditor.layout(); }, 300);
+}
+window.addEventListener('resize', function(){ if(chatPanelOpen()) syncChatDock(); });
 function toggleChat(){
   document.getElementById('chatPanel').classList.toggle('open');
-  if(chatPanelOpen()){ renderChatHeader(); loadChat(true); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
+  syncChatDock();
+  if(chatPanelOpen()){ renderChatHeader(); renderAiGuide(); loadChat(true); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
+}
+/* ---- AI 사용법 (채팅 옆 패널에 정리) ---- */
+function aiGuideCollapsed(){
+  // 사용자가 직접 접거나 펼친 적이 있으면 그 선택을 따르고, 처음에는 대화가 쌓이기 전까지만 펼쳐 둔다
+  try {
+    var v = localStorage.getItem('sync_ai_guide_collapsed');
+    if (v === '1') return true;
+    if (v === '0') return false;
+  } catch(e){}
+  return chatMsgs.filter(function(m){ return m.kind === 'user'; }).length >= 4;
+}
+function toggleAiGuide(){
+  var g = document.getElementById('aiGuide');
+  var c = g.classList.toggle('collapsed');
+  try { localStorage.setItem('sync_ai_guide_collapsed', c ? '1' : '0'); } catch(e){}
+}
+function fillChatInput(text){
+  var i = document.getElementById('chatMsgInput');
+  if(!i) return;
+  i.value = text; i.focus();
+  i.setSelectionRange(text.length, text.length);
+}
+function renderAiGuide(){
+  var g = document.getElementById('aiGuide'), body = document.getElementById('aiGuideBody');
+  if(!g || !body) return;
+  g.classList.toggle('collapsed', aiGuideCollapsed());
+  var n = myAiName || 'AI';
+  body.innerHTML = '';
+  function h(t){ var e = document.createElement('h5'); e.textContent = t; body.appendChild(e); }
+  function ul(items){
+    var u = document.createElement('ul');
+    items.forEach(function(html){ var li = document.createElement('li'); li.innerHTML = html; u.appendChild(li); });
+    body.appendChild(u);
+  }
+  function chips(list){
+    var r = document.createElement('div'); r.className = 'ai-chip-row';
+    list.forEach(function(t){ var b = document.createElement('button'); b.className = 'ai-chip'; b.textContent = t; b.onclick = function(){ fillChatInput(t); }; r.appendChild(b); });
+    body.appendChild(r);
+  }
+  function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  h('AI 부르기');
+  ul(['메시지 맨 앞에 이름을 붙이면 돼요: <code>' + esc(n) + '야 …</code> 또는 <code>@' + esc(n) + ' …</code>', '명령어는 외울 필요 없어요. <b>평소 말투</b>로 시키면 AI가 알아서 판단해요.']);
+  h('이런 것을 시킬 수 있어요 (눌러서 입력)');
+  chips([n + '야 이번 주 마감이 뭐야?', n + '야 내가 맡은 일 알려줘', n + '야 어제 회의 내용 요약해줘', n + '야 다음 주 화요일 3시에 중간발표 일정 잡아줘', n + '야 그 일정 4시로 바꿔줘', n + '야 오늘 대화 정리해서 회의록 만들어줘']);
+  h('안전장치');
+  ul(['일정 추가·수정·회의록 생성은 <b>바로 실행</b>하고, <b>되돌리기</b> 버튼이 나와요.', '<b>삭제</b>는 항상 확인 카드로 한 번 더 물어봐요. (부른 사람만 누를 수 있어요)', '이름을 붙이지 않은 평소 대화에는 AI가 아무것도 바꾸지 않아요.']);
+  h('자동으로 해줘요');
+  ul(['대화에서 <b>"제가 금요일까지 할게요"</b>처럼 담당·기한이 나오면 일정 카드가 생겨요. 눌러서 캘린더에 추가!']);
+  var p = document.createElement('p'); p.style.marginTop = '8px';
+  p.innerHTML = 'AI 이름은 <button class="ai-guide-link" onclick="openProfileModal()">프로필 설정</button>에서 바꿀 수 있어요.';
+  body.appendChild(p);
 }
 function renderChatHeader(){
   var sel = document.getElementById('chatProjectSel');
@@ -4525,8 +4695,20 @@ function loadChat(force){
   if(!calApiMode || !sid || chatBusy) return Promise.resolve();
   chatBusy = true;
   return apiFetch('/api/projects/'+sid+'/messages').then(function(rows){
-    var sig = rows.map(function(m){ return m.id+(m.meta ? ':'+m.meta.status : ''); }).join(',');
+    var sig = rows.map(function(m){
+      var x = m.meta || {};
+      return m.id+(m.meta ? ':'+(x.status || '')
+        +(x.actions ? ':'+x.actions.map(function(a){ return a.undone ? 'u' : 'd'; }).join('') : '')
+        +(x.confirms ? ':'+x.confirms.map(function(c){ return c.status; }).join('') : '') : '');
+    }).join(',');
     var changed = sig !== chatSig;
+    // AI 가 회의록을 만들거나 지웠으면 회의록 목록도 새로 불러온다 (처음 로드는 제외)
+    var noteSig = rows.filter(function(m){ return m.kind==='ai' && m.meta; }).map(function(m){
+      return (m.meta.actions || []).filter(function(a){ return a.type==='note_added'; }).map(function(a){ return a.id+(a.undone?'u':''); }).join(',')
+        +(m.meta.confirms || []).filter(function(c){ return c.action==='delete_note'; }).map(function(c){ return c.status; }).join(',');
+    }).join('|');
+    if(chatNoteSig !== null && noteSig !== chatNoteSig) refreshMeetingDocs();
+    chatNoteSig = noteSig;
     chatSig = sig; chatMsgs = rows;
     if(changed || force){
       renderChat();
@@ -4546,7 +4728,7 @@ function refreshTeamEvents(){
 }
 function startChat(){
   renderChatHeader();
-  chatMsgs = []; chatSig = '';
+  chatMsgs = []; chatSig = ''; chatNoteSig = null;
   loadChat(true);
   if(chatTimer) clearInterval(chatTimer);
   chatTimer = setInterval(function(){ if(!document.hidden) loadChat(false); }, 3000);
@@ -4555,6 +4737,79 @@ function stopChat(){
   if(chatTimer){ clearInterval(chatTimer); chatTimer = null; }
   chatMsgs = []; chatLocal = []; chatSig = ''; chatProject = null;
   renderChatHeader(); renderChat(); updateChatBadge();
+}
+/* AI 답변의 **굵게**, `코드`, 목록(-, *)을 안전하게(텍스트 노드로만) 표시 */
+function renderAiText(el, text){
+  el.textContent = '';
+  String(text || '').split('\n').forEach(function(line, i){
+    if(i > 0) el.appendChild(document.createElement('br'));
+    var m = /^\s*[-*•]\s+(.*)$/.exec(line);
+    if(m){ el.appendChild(document.createTextNode('• ')); line = m[1]; }
+    var re = /(\*\*[^*]+\*\*|`[^`]+`)/g, last = 0, t;
+    while((t = re.exec(line)) !== null){
+      if(t.index > last) el.appendChild(document.createTextNode(line.slice(last, t.index)));
+      var tok = t[0], node;
+      if(tok.charAt(0) === '`'){ node = document.createElement('code'); node.textContent = tok.slice(1, -1); node.style.cssText = 'font-family:var(--font-mono); font-size:.92em; background:var(--surface-3); padding:1px 5px; border-radius:5px;'; }
+      else { node = document.createElement('strong'); node.textContent = tok.slice(2, -2); }
+      el.appendChild(node);
+      last = t.index + tok.length;
+    }
+    if(last < line.length) el.appendChild(document.createTextNode(line.slice(last)));
+  });
+}
+/* AI 가 한 일: 되돌리기 / 삭제 확인 카드 (AI 를 부른 사람에게만 버튼이 보인다) */
+var AI_ACT_LABEL = {event_added:'일정 추가', event_updated:'일정 수정', note_added:'회의록 생성'};
+function appendAiActions(col, m){
+  var meta = m.meta || {};
+  var mine = !!(currentUser && meta.requester_id === currentUser.id);
+  (meta.actions || []).forEach(function(a, i){
+    var row = document.createElement('div'); row.className = 'ai-act';
+    var lbl = document.createElement('span'); lbl.className = 'ai-act-lbl';
+    lbl.textContent = (AI_ACT_LABEL[a.type] || '작업') + ' · ' + a.title;
+    row.appendChild(lbl);
+    if(a.undone){ var done = document.createElement('span'); done.className = 'ai-act-state'; done.textContent = '↩️ 되돌림'; row.appendChild(done); }
+    else if(mine){
+      var b = document.createElement('button'); b.className = 'ai-act-btn'; b.textContent = '되돌리기';
+      b.onclick = function(){ b.disabled = true; aiActionCall(m, 'undo', i); };
+      row.appendChild(b);
+    }
+    col.appendChild(row);
+  });
+  (meta.confirms || []).forEach(function(c, i){
+    var card = document.createElement('div'); card.className = 'ai-confirm';
+    var t = document.createElement('div'); t.className = 'ai-confirm-t'; t.textContent = '🗑️ 삭제 확인 · ' + c.label; card.appendChild(t);
+    if(c.status === 'pending'){
+      if(mine){
+        var yes = document.createElement('button'); yes.className = 'ai-act-btn danger'; yes.textContent = '삭제';
+        var no = document.createElement('button'); no.className = 'ai-act-btn'; no.textContent = '취소';
+        yes.onclick = function(){ yes.disabled = no.disabled = true; aiActionCall(m, 'confirm', i); };
+        no.onclick = function(){ yes.disabled = no.disabled = true; aiActionCall(m, 'cancel', i); };
+        var r = document.createElement('div'); r.className = 'ai-confirm-r'; r.appendChild(yes); r.appendChild(no); card.appendChild(r);
+      } else {
+        var w = document.createElement('div'); w.className = 'ai-act-state'; w.textContent = 'AI를 부른 사람의 확인을 기다리고 있어요'; card.appendChild(w);
+      }
+    } else {
+      var st = document.createElement('div'); st.className = 'ai-act-state';
+      st.textContent = c.status === 'cancelled' ? '취소했어요 — 삭제하지 않았어요' : (c.result || '처리했어요');
+      card.appendChild(st);
+    }
+    col.appendChild(card);
+  });
+}
+function aiActionCall(m, verb, index){
+  var sid = chatServerId();
+  apiFetch('/api/projects/'+sid+'/messages/'+m.id+'/'+verb+'/'+index, {method:'POST'}).then(function(){
+    refreshTeamEvents(); refreshMeetingDocs();
+    return loadChat(true);
+  }).catch(function(e){ if(e.status!==401) pushToast('⚠️','처리하지 못했어요', e.message); loadChat(true); });
+}
+function refreshMeetingDocs(){
+  if(!calApiMode) return;
+  apiFetch('/api/meetings').then(function(rows){
+    meetingDocs = rows.map(docFromServer);
+    meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });
+    renderMeetingDocs();
+  }).catch(function(){});
 }
 function buildMsgRow(m){
   var isAi = (m.kind === 'ai' || m.author === 'sync AI');
@@ -4570,7 +4825,7 @@ function buildMsgRow(m){
     av.textContent = (mine ? '나' : m.author).slice(0, 1);
   }
   var col = document.createElement('div'); col.className = 'msg-col';
-  var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = isAi ? 'sync AI' : (mine ? '나' : m.author);
+  var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = isAi ? ((m.meta && m.meta.ai_name) || 'sync AI') : (mine ? '나' : m.author);
   var bubble = document.createElement('div'); bubble.className = 'bubble';
   if(isAi){
     bubble.style.background = 'var(--bg-elev)';
@@ -4578,12 +4833,9 @@ function buildMsgRow(m){
     bubble.style.whiteSpace = 'pre-wrap';
     bubble.style.lineHeight = '1.6';
   }
-  bubble.textContent = m.text;
+  if(isAi) renderAiText(bubble, m.text); else bubble.textContent = m.text;
   col.appendChild(nm); col.appendChild(bubble);
-  if(/^\/회의\s+/.test(m.text)){
-    var tag = document.createElement('span'); tag.className = 'chip accent2'; tag.style.marginTop = '2px'; tag.textContent = '📝 회의 메모로 태그됨';
-    col.appendChild(tag);
-  }
+  if(isAi && m.meta) appendAiActions(col, m);
   var tm = document.createElement('span'); tm.className = 'msg-time'; tm.textContent = fmtChatTime(m.created_at);
   col.appendChild(tm);
   row.appendChild(av); row.appendChild(col);
@@ -4627,6 +4879,15 @@ function renderChat(){
       else scroll.appendChild(buildMsgRow(m));
     });
     chatLocal.forEach(function(el){ scroll.appendChild(el); });
+    if(chatAiWait){
+      var answered = chatMsgs.some(function(m){ return m.kind==='ai' && m.id > chatAiWait.after; });
+      if(answered || Date.now() - chatAiWait.since > 45000){ chatAiWait = null; }
+      else {
+        var typing = document.createElement('div'); typing.className = 'msg-row ai-msg';
+        typing.innerHTML = "<div class='mavatar' style='background:linear-gradient(135deg, var(--accent), var(--accent-2));'>🤖</div><div class='typing-dots'><span></span><span></span><span></span></div>";
+        scroll.appendChild(typing);
+      }
+    }
   }
   if(nearBottom || chatMsgs.length<=1) scroll.scrollTop = scroll.scrollHeight;
 }
@@ -4674,87 +4935,103 @@ function appendSystemBubble(icon, label, text, withBtn){
   }
   chatLocal.push(div); renderChat();
 }
-function runMeetingSummarize(){
-  if(pendingMeetingLines.length===0){
-    appendSystemBubble('🤖','AI','아직 "/회의"로 태그된 메모가 없어요. 먼저 "/회의 내용"으로 기록해주세요.');
-    return;
-  }
-  var thinking = appendTypingBubble();
-  var lines = pendingMeetingLines.slice();
-  pendingMeetingLines = [];
-  setTimeout(function(){
-    thinking.remove();
-    var today = new Date();
-    var dateStr = today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0');
-    var attendeeNames = (calProjectById(chatProject) && calProjectById(chatProject).members || []).map(function(mm){ return mm.username; });
-    var doc = buildDocFromLines('채팅에서 정리한 회의 메모', dateStr, attendeeNames.length ? attendeeNames : ['나'], lines);
-    doc.project = chatProject || calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
-    meetingDocs.unshift(doc);
-    syncCalProjects();
-    syncDocToCalendar(doc);
-    appendSystemBubble('📝','AI 회의록 정리', lines.length+'건 정리 완료 · 결정사항 '+doc.decisions.length+' · 액션아이템 '+doc.actions.length, true);
-    pushToast('📝','회의록 업데이트','채팅에서 정리한 내용이 회의록에 반영됐어요 · 결정 '+doc.decisions.length+' · 액션 '+doc.actions.length);
-  }, 1100);
-}
 function sendChatMsg(){
   var input = document.getElementById('chatMsgInput');
   var val = input.value.trim();
   if(!val) return;
   input.value='';
-  var meetingMatch = val.match(/^\/회의\s+(.+)/);
-  var isSummarizeCmd = /^\/회의정리/.test(val) || (/회의록/.test(val) && /(정리|작성)/.test(val));
-  if(meetingMatch) pendingMeetingLines.push(meetingMatch[1]);
 
   var sid = chatServerId();
   if(calApiMode && sid){
     apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val})}).then(function(msg){
+      try{
       chatMsgs.push(msg); chatSig += (chatSig ? ',' : '')+msg.id;
+      var waitAi = isAiRequest(val);
+      if(waitAi) chatAiWait = {after: msg.id, since: Date.now()};
       renderChat(); chatMarkSeen();
-      // AI 가 대화를 분석하는 동안(백그라운드) 몇 번 더 확인해서 일정 카드가 바로 뜨게 한다
-      [1500, 3500, 7000].forEach(function(t){ setTimeout(function(){ loadChat(true); }, t); });
-      if(isSummarizeCmd) runMeetingSummarize();
-    }).catch(function(e){ pushToast('⚠️','메시지를 보내지 못했어요', e.message); input.value = val; });
+      // AI 가 대화를 분석/답변하는 동안(백그라운드) 몇 번 더 확인해서 일정 카드·답변이 바로 뜨게 한다
+      (waitAi ? [1500, 3000, 5000, 8000, 12000, 18000, 28000] : [1500, 3500, 7000]).forEach(function(t){ setTimeout(function(){ loadChat(true); }, t); });
+      }catch(uiErr){ console.error(uiErr); }   // 화면 갱신 오류는 '전송 실패'가 아님 (메시지는 이미 저장됨)
+    }, function(e){ if(e.status!==401) pushToast('⚠️','메시지를 보내지 못했어요', e.message); input.value = val; });
     return;
   }
   // 게스트/프로젝트 없음: 이 화면에서만 보이는 임시 대화
   if(!calApiMode) pushToast('🔒','로그인 후 팀 채팅이 저장돼요','지금은 이 화면에서만 보이는 임시 대화예요');
-  appendMyMessage(val, meetingMatch ? '📝 회의 메모로 태그됨' : null);
-  if(isSummarizeCmd) runMeetingSummarize();
+  appendMyMessage(val, null);
 }
 /* ---- team invite ---- */
-function openInviteModal(){ document.getElementById('inviteEmail').value = ''; document.getElementById('inviteModal').classList.add('open'); setTimeout(function(){ document.getElementById('inviteEmail').focus(); }, 100); }
-function closeInviteModal(){ document.getElementById('inviteModal').classList.remove('open'); }
+/* 초대 창: 대상 프로젝트(프런트 id 'p3')를 받는다. 없으면 채팅에서 보고 있는 프로젝트 */
+var inviteTarget = null;
+var inviteLinkCache = {};   // 서버 프로젝트 id → {url, at}
+function inviteTargetFront(){ return inviteTarget || chatProject; }
+function inviteTargetId(){ var m = /^p(\d+)$/.exec(inviteTargetFront() || ''); return m ? parseInt(m[1], 10) : null; }
+function openInviteModal(frontId){
+  if(!calApiMode){ pushToast('🔒','로그인 후 팀원을 초대할 수 있어요','로그인하면 프로젝트마다 초대 링크를 만들 수 있어요'); return; }
+  inviteTarget = (typeof frontId === 'string' && frontId) ? frontId : null;
+  var cur = calProjectById(inviteTargetFront());
+  var sid = inviteTargetId();
+  if(!cur || !sid){ pushToast('⚠️','프로젝트 필요','팀원을 초대할 프로젝트를 먼저 만들거나 선택해주세요.'); return; }
+  if(cur.isOwner === false){ pushToast('ℹ️','팀장만 초대할 수 있어요','프로젝트를 만든 팀장에게 초대를 요청해주세요.'); return; }
+  document.getElementById('inviteModalTitle').textContent = "'" + cur.title + "' 팀원 초대";
+  document.getElementById('inviteEmail').value = '';
+  var inp = document.getElementById('generatedInviteUrl'); if(inp) inp.value = '';
+  var hint = document.getElementById('inviteShareHint'); if(hint) hint.hidden = true;
+  document.getElementById('inviteModal').classList.add('open');
+  generateInviteLink(false);   // 열자마자 링크를 만들어 바로 복사할 수 있게
+}
+function closeInviteModal(){ var m = document.getElementById('inviteModal'); if(m) m.classList.remove('open'); }
 function submitInvite(){
   var email = document.getElementById('inviteEmail').value.trim();
-  var sid = chatServerId();
+  var sid = inviteTargetId();
   if(!email || !sid) return;
   apiFetch('/api/projects/'+sid+'/members', {method:'POST', body:JSON.stringify({email:email})}).then(function(row){
-    var cur = calProjectById(chatProject);
+    var cur = calProjectById(inviteTargetFront());
     if(cur){ cur.members = row.members; registerProjectMembers(cur); }
-    closeInviteModal(); renderChatHeader(); syncCalProjects();
+    closeInviteModal(); renderChatHeader(); renderWsHeader(); syncCalProjects();
     pushToast('🎉','팀원을 초대했어요', email+' 님이 이 프로젝트의 채팅과 캘린더에 참여해요');
   }).catch(function(e){ pushToast('⚠️','초대하지 못했어요', e.message); });
 }
 
-async function generateInviteLink(){
-  var sid = chatServerId();
+async function generateInviteLink(force){
+  var sid = inviteTargetId();
+  var inp = document.getElementById('generatedInviteUrl');
   if(!sid){
     pushToast('⚠️','프로젝트 필요','초대 링크를 생성할 프로젝트를 먼저 선택해주세요.');
     return;
   }
+  var cached = inviteLinkCache[sid];
+  if(!force && cached && Date.now() - cached.at < 30*60*1000){
+    if(inp) inp.value = cached.url;
+    applyInviteHint(cached.local);
+    return;
+  }
+  if(inp) inp.placeholder = '초대 링크를 만들고 있어요…';
   try {
     var res = await apiFetch('/api/projects/'+sid+'/invite-link', {
       method: 'POST',
       body: JSON.stringify({ expires_in_hours: 72, max_uses: 0 })
     });
-    var base = window.location.origin + window.location.pathname.replace(/\/+$/, '');
-    var fullUrl = base + res.invite_url;
-    var inp = document.getElementById('generatedInviteUrl');
+    // 외부 공유 모드(./share.sh)가 켜져 있으면 그 공개 주소로, 아니면 지금 접속한 주소로 링크를 만든다
+    var share = null;
+    try{ share = await fetch(API_BASE + '/api/share-url').then(function(r){ return r.ok ? r.json() : null; }); }catch(e){}
+    var query = (res.invite_url.split('?')[1] || '');
+    var origin = (share && share.url) ? share.url : window.location.origin;
+    var fullUrl = origin + '/app?' + query;
+    var local = !(share && share.url) && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+    inviteLinkCache[sid] = {url: fullUrl, at: Date.now(), local: local};
     if(inp) inp.value = fullUrl;
-    pushToast('🔗','초대 링크 생성 완료','72시간 동안 유효한 고유 초대 링크가 생성되었습니다.');
+    applyInviteHint(local);
+    if(force) pushToast('🔗','새 초대 링크를 만들었어요', '72시간 동안 유효해요.');
   } catch(err){
+    if(inp) inp.placeholder = '초대 링크를 만들지 못했어요';
     pushToast('⚠️','초대 링크 생성 실패', err.message);
   }
+}
+function applyInviteHint(local){
+  var hint = document.getElementById('inviteShareHint');
+  if(!hint) return;
+  hint.hidden = !local;
+  hint.textContent = '⚠️ 이 링크는 이 컴퓨터에서만 열려요. 떨어져 있는 팀원에게는 터미널에서 ./share.sh 로 공유 모드를 켠 뒤 링크를 만들어 보내세요.';
 }
 
 function copyInviteLink(){
@@ -4776,27 +5053,110 @@ function copyInviteLink(){
   }
 }
 
-async function checkInviteParam(){
-  try {
-    var params = new URLSearchParams(window.location.search);
-    var token = params.get('invite');
-    if(!token) return;
-    var info = await apiFetch('/api/invitations/'+token);
-    if(info.is_already_member){
-      pushToast('ℹ️','이미 참여 중', "'" + info.project_title + "' 프로젝트의 팀원입니다.");
-      return;
+/* 초대 링크: 링크의 ?invite= 값은 로그인(구글/네이버 이동)을 거쳐도 사라지지 않게 저장해 두었다가 처리한다 */
+var inviteBusy = false;
+function showInviteCard(token){
+  fetch(API_BASE + '/api/invitations/' + encodeURIComponent(token)).then(function(r){
+    return r.ok ? r.json() : r.json().catch(function(){ return {}; }).then(function(b){ throw new Error(b.detail || '유효하지 않은 초대 링크입니다.'); });
+  }).then(function(info){
+    var card = document.getElementById('inviteCard'); if(!card) return;
+    if(info.is_expired){
+      pushToast('⚠️','초대 링크가 만료됐어요','초대한 사람에게 새 링크를 요청해 주세요.');
+      setPendingInvite(''); return;
     }
-    if(confirm("'" + info.project_title + "' (" + info.inviter_name + "님 초대) 프로젝트에 팀원으로 참여하시겠습니까?")){
-      var joinRes = await apiFetch('/api/invitations/'+token+'/join', { method:'POST' });
-      pushToast('🎉','프로젝트 참여 완료', joinRes.message);
-      if(window.loadCalProjects){
-        await loadCalProjects();
-        selectCalProject(joinRes.project_id);
-      }
+    document.getElementById('inviteCardTitle').textContent = info.inviter_name + '님이 \'' + info.project_title + '\' 프로젝트에 초대했어요';
+    document.getElementById('inviteCardSub').textContent = '팀에서 쓸 이름만 정하면 바로 참여할 수 있어요. 가입은 필요 없어요.';
+    card.hidden = false;
+    var d = document.getElementById('authDesc'); if(d) d.textContent = '초대를 수락하고 팀 워크스페이스에 들어오세요.';
+    setTimeout(function(){ var i = document.getElementById('inviteGuestName'); if(i) i.focus(); }, 100);
+  }).catch(function(e){
+    pushToast('⚠️','초대 링크 오류', e.message);
+    setPendingInvite('');
+  });
+}
+function acceptInviteAsGuest(){
+  var token = getPendingInvite();
+  var inp = document.getElementById('inviteGuestName');
+  var name = inp ? inp.value.trim() : '';
+  if(!token) return;
+  if(!name){ pushToast('✍️','이름을 입력해 주세요','팀원들에게 보여질 이름이에요.'); if(inp) inp.focus(); return; }
+  var btn = document.getElementById('inviteGuestBtn'); if(btn) btn.disabled = true;
+  fetch(API_BASE + '/api/invitations/' + encodeURIComponent(token) + '/guest-join', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:name})
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(b){
+      if(!r.ok) throw new Error(typeof b.detail === 'string' ? b.detail : '참여하지 못했어요 ('+r.status+')');
+      return b;
+    });
+  }).then(function(res){
+    authToken = res.access_token;
+    try{ localStorage.setItem('sync_auth_token', authToken); }catch(e){}
+    setPendingInvite('');
+    document.getElementById('inviteCard').hidden = true;
+    return checkAutoLogin().then(function(){
+      return loadCalProjects().then(function(){ selectCalProject(res.project_id); });
+    }).then(function(){ pushToast('🎉','프로젝트 참여 완료', res.message); });
+  }).catch(function(e){
+    pushToast('⚠️','참여하지 못했어요', e.message);
+  }).then(function(){ if(btn) btn.disabled = false; });
+}
+function openInviteAccept(info){
+  document.getElementById('inviteAcceptText').textContent = info.inviter_name + '님이 \'' + info.project_title + '\' 프로젝트에 초대했어요. 팀원으로 참여할까요?';
+  document.getElementById('inviteAcceptModal').classList.add('open');
+}
+function declineInvite(){
+  setPendingInvite('');
+  document.getElementById('inviteAcceptModal').classList.remove('open');
+}
+function acceptInviteLoggedIn(){
+  var token = getPendingInvite(); if(!token) return;
+  var btn = document.getElementById('inviteAcceptBtn'); if(btn) btn.disabled = true;
+  apiFetch('/api/invitations/' + encodeURIComponent(token) + '/join', { method:'POST' }).then(function(res){
+    setPendingInvite('');
+    document.getElementById('inviteAcceptModal').classList.remove('open');
+    pushToast('🎉','프로젝트 참여 완료', res.message);
+    return loadCalProjects().then(function(){ selectCalProject(res.project_id); });
+  }).catch(function(e){
+    if(e.status !== 401) pushToast('⚠️','초대를 수락하지 못했어요', e.message);
+    if(e.status === 400 || e.status === 404){ setPendingInvite(''); document.getElementById('inviteAcceptModal').classList.remove('open'); }
+  }).then(function(){ if(btn) btn.disabled = false; });
+}
+async function processPendingInvite(){
+  var token = getPendingInvite();
+  if(!token || inviteBusy) return;
+  if(!authToken){ showInviteCard(token); return; }
+  inviteBusy = true;
+  try {
+    var info = await apiFetch('/api/invitations/' + encodeURIComponent(token));
+    if(info.is_expired){
+      pushToast('⚠️','초대 링크가 만료됐어요','초대한 사람에게 새 링크를 요청해 주세요.');
+      setPendingInvite('');
+    } else if(info.is_already_member){
+      pushToast('ℹ️','이미 참여 중', "'" + info.project_title + "' 프로젝트의 팀원입니다.");
+      setPendingInvite('');
+      loadCalProjects().then(function(){ selectCalProject(info.project_id); });
+    } else {
+      openInviteAccept(info);
     }
   } catch(e){
-    if(token) pushToast('⚠️','초대 링크 오류', e.message);
-  }
+    if(e.status !== 401) pushToast('⚠️','초대 링크 오류', e.message);
+    if(e.status === 404) setPendingInvite('');
+  } finally { inviteBusy = false; }
+}
+function checkInviteParam(){
+  // 로그인 안 된 상태로 열었을 때만 여기서 처리 (로그인된 경우는 자동 로그인 확인이 끝난 뒤 처리)
+  if(!authToken) processPendingInvite();
+}
+
+/* 프로젝트 목록만 서버에서 다시 불러오기 */
+function loadCalProjects(){
+  return apiFetch('/api/projects').then(function(rows){
+    myProjects = rows.map(projFromServer);
+    calProjectsLoaded = true;
+    renderProjRow();
+    syncCalProjects();
+    if(myProjects.length){ setWidget('projects', true); homeLandingActive = false; applyHomeLandingState(); }
+  });
 }
 
 /* ---- team admin & permissions ---- */
@@ -4996,18 +5356,31 @@ function openComposeModal(){
   document.getElementById('composeModal').classList.add('open');
 }
 function closeComposeModal(){ var el = document.getElementById('composeModal'); if(el) el.classList.remove('open'); }
+/* 회의 메모를 AI 가 논의/결정/액션아이템으로 정리 (로그인 필요). 실패하면 null → 기본 분류로 대체 */
+function structureWithAi(lines, title){
+  if(!calApiMode) return Promise.resolve(null);
+  return apiFetch('/api/meetings/structure', {method:'POST', body:JSON.stringify({lines:lines, title:title||null})})
+    .catch(function(e){ pushToast('ℹ️','AI가 정리하지 못해 기본 분류로 만들었어요', e.message); return null; });
+}
+function applyStructure(doc, res){
+  if(!res) return doc;
+  doc.others = res.discussion || []; doc.decisions = res.decisions || []; doc.actions = res.actions || [];
+  doc.aiStructured = true;
+  return doc;
+}
 function generateAiRecord(){
   var meta = validateRequired();
   if(!meta) return;
+  var editor = document.getElementById('noteEditor');
+  var lines = editor.innerText.trim().split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if(!lines.length){ pushToast('📝','내용을 적어주세요','회의 내용을 적은 뒤 AI가 정리해요'); return; }
   var btn = document.getElementById('aiRecordBtn');
   var original = btn.innerHTML;
   btn.disabled = true;
-  btn.textContent = '🤖 AI가 분석 중...';
-  setTimeout(function(){
-    var editor = document.getElementById('noteEditor');
-    var text = editor.innerText.trim();
-    var lines = text.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  btn.textContent = '🤖 AI가 정리하는 중...';
+  structureWithAi(lines, meta.title).then(function(res){
     var doc = buildDocFromLines(meta.title, meta.date, meta.attendees, lines);
+    applyStructure(doc, res);
     doc.project = meta.project;
     meetingDocs.unshift(doc);
     if(meta.project && calSelected!=='all' && calSelected!==meta.project) calSelected = meta.project;   // 새 회의록이 보이는 프로젝트로 이동
@@ -5016,8 +5389,8 @@ function generateAiRecord(){
     btn.disabled = false;
     btn.innerHTML = original;
     closeComposeModal();
-    pushToast('📄','AI록 생성 완료', doc.title+' · 결정 '+doc.decisions.length+' · 액션 '+doc.actions.length);
-  }, 1300);
+    pushToast('📄', res ? 'AI 회의록 정리 완료' : '회의록 저장됨', doc.title+' · 결정 '+doc.decisions.length+' · 액션 '+doc.actions.length);
+  });
 }
 
 /* ---- notes: document gallery + side drawer ---- */
@@ -5324,7 +5697,8 @@ var guestNoticeShown = false;
 function persistDoc(doc){
   if(!calApiMode) return Promise.resolve(doc);
   doc._p = (doc._p || Promise.resolve()).then(function(){
-    var body = {title:doc.title, attendees:doc.attendees, raw:doc.raw || '', status:doc.status};
+    var body = {title:doc.title, attendees:doc.attendees, raw:doc.raw || '', status:doc.status,
+      structure:{others:doc.others || [], decisions:doc.decisions || [], actions:doc.actions || []}};
     var m = /^p(\d+)$/.exec(doc.project || '');
     if(m) body.project_id = parseInt(m[1], 10);
     if(doc.serverId){
@@ -5341,6 +5715,7 @@ function persistDoc(doc){
 function docFromServer(row){
   var lines = (row.raw || '').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
   var d = buildDocFromLines(row.title, row.doc_date.replace(/-/g, '.'), row.attendees, lines);
+  if(row.structure){ d.others = row.structure.others || []; d.decisions = row.structure.decisions || []; d.actions = row.structure.actions || []; }
   d.serverId = row.id; d.status = row.status; d.raw = row.raw;
   d.project = row.project_id ? 'p'+row.project_id : null;
   d.detections = row.detections || [];
@@ -6159,10 +6534,11 @@ function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {}, {Authorization:'Bearer '+getToken()});
   return fetch(API_BASE+path, opts).then(function(r){
-    if(r.status===401) setToken(null);
+    var expired = r.status===401 && !!getToken();
+    if(r.status===401){ if(calApiMode && authToken) expireSession(); else setToken(null); }
     if(!r.ok){
       return r.json().catch(function(){ return {}; }).then(function(b){
-        var err = new Error(typeof b.detail==='string' ? b.detail : '요청에 실패했어요 ('+r.status+')');
+        var err = new Error(expired ? '로그인이 만료됐어요. 다시 로그인해 주세요.' : (typeof b.detail==='string' ? b.detail : '요청에 실패했어요 ('+r.status+')'));
         err.status = r.status; err.body = b; throw err;
       });
     }
@@ -6193,6 +6569,8 @@ function projFromServer(p){
   return pr;
 }
 function startRealSession(){
+  myAiName = (currentUser && currentUser.ai_name) || '';
+  updateChatPlaceholder();
   calProjectsLoaded = false;
   homeLandingActive = true;
   resetToNewMemberState();

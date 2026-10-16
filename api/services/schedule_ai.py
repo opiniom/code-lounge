@@ -176,6 +176,30 @@ def _gemini_models() -> List[str]:
     return out
 
 
+async def _gemini_generate(body: dict) -> dict:
+    """Gemini generateContent 호출. 어떤 이유로든 한 모델이 실패하면(한도 429, 과부하 503, 미지원 400/404 …) 예비 모델로 순서대로 넘어간다."""
+    headers = {"x-goog-api-key": settings.GEMINI_API_KEY, "content-type": "application/json"}
+    last_exc: Optional[Exception] = None
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        for model in _gemini_models():
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                resp = await client.post(url, headers=headers, json=body)
+                if resp.status_code == 400 and "thinkingConfig" in body.get("generationConfig", {}):
+                    # 일부 모델(flash-lite 계열)은 thinkingConfig 를 받지 않는다 → 빼고 한 번 더
+                    slim = {**body, "generationConfig": {k: v for k, v in body["generationConfig"].items() if k != "thinkingConfig"}}
+                    resp = await client.post(url, headers=headers, json=slim)
+                if resp.status_code != 200:
+                    last_exc = httpx.HTTPStatusError("gemini model failed", request=resp.request, response=resp)
+                    logger.warning("Gemini 모델 %s 실패(HTTP %s), 다음 모델 시도", model, resp.status_code)
+                    continue
+                return resp.json()
+            except httpx.HTTPError as exc:
+                last_exc = exc
+                logger.warning("Gemini 모델 %s 호출 오류(%s), 다음 모델 시도", model, type(exc).__name__)
+    raise last_exc or RuntimeError("Gemini 호출 실패")
+
+
 async def _gemini_json(system: str, user_msg: str, schema: dict) -> dict:
     body = {
         "systemInstruction": {"parts": [{"text": system}]},
@@ -187,23 +211,44 @@ async def _gemini_json(system: str, user_msg: str, schema: dict) -> dict:
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
-    headers = {"x-goog-api-key": settings.GEMINI_API_KEY, "content-type": "application/json"}
-    last_exc: Optional[Exception] = None
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for model in _gemini_models():
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-            try:
-                resp = await client.post(url, headers=headers, json=body)
-                if resp.status_code in (429, 404, 503):   # 한도 초과/없는 모델/일시 과부하 → 다음 모델
-                    last_exc = httpx.HTTPStatusError("gemini model unavailable", request=resp.request, response=resp)
-                    logger.warning("Gemini 모델 %s 사용 불가(HTTP %s), 다음 모델 시도", model, resp.status_code)
-                    continue
-                resp.raise_for_status()
-                parts = resp.json()["candidates"][0]["content"]["parts"]
-                return json.loads("".join(p.get("text", "") for p in parts))
-            except httpx.HTTPError as exc:
-                last_exc = exc
-    raise last_exc or RuntimeError("Gemini 호출 실패")
+    data = await _gemini_generate(body)
+    parts = data["candidates"][0]["content"]["parts"]
+    return json.loads("".join(p.get("text", "") for p in parts))
+
+
+async def llm_text(system: str, user_msg: str, max_tokens: int = 700) -> Tuple[str, str]:
+    """자유 형식 답변 생성. (engine, text) 반환. 쓸 수 있는 AI 가 없거나 모두 실패하면 RuntimeError."""
+    errors = []
+    if settings.GEMINI_API_KEY:
+        try:
+            data = await _gemini_generate({
+                "systemInstruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens, "thinkingConfig": {"thinkingBudget": 0}},
+            })
+            parts = data["candidates"][0]["content"]["parts"]
+            text = "".join(p.get("text", "") for p in parts).strip()
+            if text:
+                return "gemini", text
+            errors.append("gemini: 빈 응답")
+        except Exception as exc:
+            logger.warning("gemini 답변 생성 실패(%s)", type(exc).__name__)
+            errors.append("gemini")
+    if settings.ANTHROPIC_API_KEY:
+        try:
+            body = {"model": settings.ANTHROPIC_MODEL, "max_tokens": max_tokens, "system": system,
+                    "messages": [{"role": "user", "content": user_msg}]}
+            headers = {"x-api-key": settings.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+            async with httpx.AsyncClient(timeout=40.0) as client:
+                resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+            resp.raise_for_status()
+            text = "".join(b.get("text", "") for b in resp.json().get("content", []) if b.get("type") == "text").strip()
+            if text:
+                return "claude", text
+        except Exception as exc:
+            logger.warning("claude 답변 생성 실패(%s)", type(exc).__name__)
+            errors.append("claude")
+    raise RuntimeError("AI 답변을 만들 수 없어요: " + (", ".join(errors) or "AI 키가 설정되지 않았어요"))
 
 
 async def _claude_tool(system: str, user_msg: str, tool: dict) -> dict:
@@ -220,6 +265,55 @@ async def _claude_tool(system: str, user_msg: str, tool: dict) -> dict:
         if block.get("type") == "tool_use":
             return block.get("input", {})
     return {}
+
+
+# ======================================================================
+# 회의 메모 → 구조화 (논의 / 결정 / 액션아이템)
+# ======================================================================
+_STRUCT_SYSTEM = (
+    "당신은 회의 메모를 회의록으로 정리하는 도우미입니다. 입력은 한 줄에 하나씩 적힌 메모입니다.\n"
+    "- discussion: 일반 논의·공유 내용, decisions: 확정된 결정사항, actions: 누가/무엇을/언제까지 해야 하는 액션아이템.\n"
+    "- 메모에 없는 내용을 지어내지 말고, 문장은 원문을 최대한 살려 간결하게 다듬습니다. 하나의 메모는 한 곳에만 넣습니다.\n"
+    "- title 은 회의 내용을 대표하는 20자 안팎의 제목입니다."
+)
+_STRUCT_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "title": {"type": "STRING"},
+        "discussion": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "decisions": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "actions": {"type": "ARRAY", "items": {"type": "STRING"}},
+    },
+    "required": ["discussion", "decisions", "actions"],
+}
+
+
+async def structure_meeting(lines: List[str], title: Optional[str] = None) -> Dict:
+    """회의 메모를 AI 로 구조화. AI 를 쓸 수 없으면 RuntimeError."""
+    memo = "\n".join(f"- {l.strip()}" for l in lines if l.strip())[:6000]
+    user_msg = f"회의 제목(사용자 입력): {title or '(없음)'}\n\n메모:\n{memo}"
+    if settings.GEMINI_API_KEY:
+        try:
+            data = await _gemini_json(_STRUCT_SYSTEM, user_msg, _STRUCT_SCHEMA)
+            return {"engine": "gemini", "title": data.get("title"), "discussion": data.get("discussion", []),
+                    "decisions": data.get("decisions", []), "actions": data.get("actions", [])}
+        except Exception as exc:
+            logger.warning("gemini 회의록 구조화 실패(%s)", type(exc).__name__)
+    if settings.ANTHROPIC_API_KEY:
+        try:
+            tool = {"name": "report_minutes", "description": "구조화된 회의록",
+                    "input_schema": {"type": "object", "properties": {
+                        "title": {"type": "string"},
+                        "discussion": {"type": "array", "items": {"type": "string"}},
+                        "decisions": {"type": "array", "items": {"type": "string"}},
+                        "actions": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["discussion", "decisions", "actions"]}}
+            data = await _claude_tool(_STRUCT_SYSTEM, user_msg, tool)
+            return {"engine": "claude", "title": data.get("title"), "discussion": data.get("discussion", []),
+                    "decisions": data.get("decisions", []), "actions": data.get("actions", [])}
+        except Exception as exc:
+            logger.warning("claude 회의록 구조화 실패(%s)", type(exc).__name__)
+    raise RuntimeError("AI 를 쓸 수 없어요")
 
 
 # ======================================================================

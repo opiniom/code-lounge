@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from database import get_db
 from models import User, MeetingDoc, Project, CalendarEvent
-from schemas import MeetingDocCreate, MeetingDocUpdate, MeetingDocResponse
+from schemas import MeetingDocCreate, MeetingDocUpdate, MeetingDocResponse, StructureRequest, StructureResponse
 from services.auth_service import get_current_user
 from services.access import get_member_project
+from services.schedule_ai import structure_meeting
 
 router = APIRouter(prefix="/api/meetings", tags=["Meetings"])
 
@@ -20,8 +21,12 @@ def _to_response(doc: MeetingDoc) -> MeetingDocResponse:
         detections = json.loads(doc.detections or "[]")
     except ValueError:
         detections = []
+    try:
+        structure = json.loads(doc.structure) if doc.structure else None
+    except ValueError:
+        structure = None
     return MeetingDocResponse(
-        id=doc.id, detections=detections, project_id=doc.project_id, title=doc.title, doc_date=doc.doc_date,
+        id=doc.id, structure=structure, detections=detections, project_id=doc.project_id, title=doc.title, doc_date=doc.doc_date,
         attendees=[str(a) for a in attendees], raw=doc.raw or "", status=doc.status,
     )
 
@@ -37,6 +42,17 @@ async def _check_project(db: AsyncSession, project_id, user: User):
     if project_id is None:
         return
     await get_member_project(db, project_id, user)
+
+@router.post("/structure", response_model=StructureResponse)
+async def structure(data: StructureRequest, current_user: User = Depends(get_current_user)):
+    """회의 메모를 AI 가 논의·결정사항·액션아이템으로 정리 (저장은 하지 않음)"""
+    try:
+        r = await structure_meeting(data.lines, data.title)
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="지금은 AI가 정리하지 못했어요 (사용 한도 또는 네트워크 문제).")
+    clean = lambda xs: [str(x).strip() for x in xs if str(x).strip()]
+    return StructureResponse(engine=r["engine"], title=(r.get("title") or None),
+                             discussion=clean(r["discussion"]), decisions=clean(r["decisions"]), actions=clean(r["actions"]))
 
 @router.get("", response_model=List[MeetingDocResponse])
 async def list_meetings(
@@ -62,6 +78,7 @@ async def create_meeting(
     doc = MeetingDoc(
         user_id=current_user.id, project_id=data.project_id, title=data.title.strip(), doc_date=data.doc_date,
         attendees=json.dumps(data.attendees, ensure_ascii=False), raw=data.raw, status=data.status,
+        structure=json.dumps(data.structure, ensure_ascii=False) if data.structure else None,
     )
     db.add(doc)
     await db.commit()
@@ -81,6 +98,8 @@ async def update_meeting(
         doc.project_id = data.project_id
     if data.title is not None:
         doc.title = data.title.strip()
+    if data.structure is not None:
+        doc.structure = json.dumps(data.structure, ensure_ascii=False)
     if data.detections is not None:
         encoded = json.dumps(data.detections, ensure_ascii=False)
         if len(encoded) > 30000:

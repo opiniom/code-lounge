@@ -1,3 +1,5 @@
+import re
+import secrets
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -5,11 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
-from models import User, Project, ProjectMember, ProjectInvitation
+from models import User, Project, ProjectMember, ProjectInvitation, Notification
 from schemas import (
-    InviteLinkCreate, InviteLinkResponse, InviteInfoResponse, JoinInviteResponse
+    InviteLinkCreate, InviteLinkResponse, InviteInfoResponse, JoinInviteResponse,
+    GuestJoinRequest, GuestJoinResponse, UserResponse,
 )
-from services.auth_service import get_current_user, get_current_user_optional
+from services.auth_service import get_current_user, get_current_user_optional, create_access_token
 from services.access import get_member_project
 
 router = APIRouter(tags=["Invitations"])
@@ -170,4 +173,75 @@ async def join_by_invite(
         message=f"'{project.title}' 프로젝트에 성공적으로 참여했습니다!",
         project_id=project.id,
         project_title=project.title
+    )
+
+
+# 링크에 사용 횟수 제한(max_uses)이 없을 때, 게스트 참여 상한 (링크가 퍼져도 무한정 늘어나지 않게)
+GUEST_JOIN_CAP = 30
+
+
+def _clean_name(raw: str) -> str:
+    name = re.sub(r"[\x00-\x1f\x7f<>]", "", raw or "")
+    return re.sub(r"\s+", " ", name).strip()[:20]
+
+
+@router.post("/api/invitations/{token}/guest-join", response_model=GuestJoinResponse)
+async def guest_join_by_invite(
+    token: str,
+    data: GuestJoinRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """초대 링크를 받은 사람이 별도 가입·로그인 없이 이름만 정해 참여한다 (링크 자체가 초대장 역할).
+
+    - 링크의 유효기간·최대 사용 횟수를 그대로 따른다.
+    - 이 브라우저에서만 쓰는 임시 팀원 계정이 만들어진다 (이메일 없음, 비밀번호 없음).
+    """
+    inv = (await db.execute(
+        select(ProjectInvitation).where(ProjectInvitation.token == token)
+    )).scalar_one_or_none()
+    if not inv:
+        raise HTTPException(status_code=404, detail="유효하지 않은 초대 링크입니다.")
+    now = datetime.utcnow()
+    if inv.expires_at and inv.expires_at < now:
+        raise HTTPException(status_code=400, detail="초대 링크 유효기간이 만료되었습니다.")
+    limit = inv.max_uses if inv.max_uses > 0 else GUEST_JOIN_CAP
+    if inv.used_count >= limit:
+        raise HTTPException(status_code=400, detail="이 초대 링크로 들어올 수 있는 인원을 넘었어요. 새 링크를 요청해 주세요.")
+
+    name = _clean_name(data.username)
+    if not name:
+        raise HTTPException(status_code=400, detail="팀에서 쓸 이름을 입력해 주세요.")
+
+    project = (await db.execute(select(Project).where(Project.id == inv.project_id))).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
+
+    user = User(
+        email=f"guest-{secrets.token_hex(8)}@guest.sync.local",
+        hashed_password="",
+        username=name,
+        oauth_provider="invite",
+        is_active=True,
+    )
+    db.add(user)
+    await db.flush()
+    db.add(ProjectMember(project_id=project.id, user_id=user.id, role="member"))
+    inv.used_count += 1
+
+    # 초대한 사람과 프로젝트 소유자에게 알림
+    for uid in {u for u in (inv.created_by, project.owner_id) if u}:
+        db.add(Notification(
+            user_id=uid, project_id=project.id, title="새 팀원이 참여했어요",
+            message=f"{name}님이 초대 링크로 '{project.title}' 프로젝트에 참여했습니다.",
+            category="project", link=None,
+        ))
+    await db.commit()
+    await db.refresh(user)
+
+    return GuestJoinResponse(
+        access_token=create_access_token(data={"sub": str(user.id), "email": user.email}),
+        user=UserResponse.model_validate(user),
+        message=f"'{project.title}' 프로젝트에 참여했습니다!",
+        project_id=project.id,
+        project_title=project.title,
     )

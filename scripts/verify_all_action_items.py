@@ -201,7 +201,7 @@ async def run_tests():
         # ---------------------------------------------------------------------
         # [과제 2] 채팅 AI 연동 기능 (슬래시 명령어 요약, 캘린더 분석) 검증
         # ---------------------------------------------------------------------
-        print("\n[과제 2] 채팅 AI 슬래시 명령어 (/요약, /캘린더, /도움말) 검증")
+        print("\n[과제 2] 채팅 AI (이름으로 부르면 AI가 알아서 처리) 검증")
         # 2-1. 회의록 하나 생성
         await client.post(
             "/api/meetings",
@@ -215,38 +215,45 @@ async def run_tests():
             headers=headers_leader
         )
 
-        # 2-2. 슬래시 명령어 '/도움말' 전송
-        help_msg = await client.post(
-            f"/api/projects/{project_id}/messages",
-            json={"text": "/도움말"},
-            headers=headers_leader
-        )
-        assert help_msg.status_code == 201
-        # 메시지 목록 조회하여 AI 봇 응답 확인
-        msgs = (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json()
-        ai_msgs = [m for m in msgs if m["kind"] == "ai"]
-        assert len(ai_msgs) > 0
-        print(f"  ✓ '/도움말' AI 응답 수신 성공:\n    {ai_msgs[-1]['text'][:60]}...")
+        async def ask(text: str):
+            """AI를 부르는 메시지를 보내고 AI 답변(비동기 처리)을 기다린다"""
+            sent = await client.post(f"/api/projects/{project_id}/messages", json={"text": text}, headers=headers_leader)
+            assert sent.status_code == 201
+            sent_id = sent.json()["id"]
+            for _ in range(40):
+                await asyncio.sleep(1.5)
+                msgs = (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json()
+                found = [m for m in msgs if m["kind"] == "ai" and m["id"] > sent_id]
+                if found:
+                    return found[0]
+            raise AssertionError(f"AI 응답이 없습니다: {text}")
 
-        # 2-3. 슬래시 명령어 '/요약' 전송
-        await client.post(
-            f"/api/projects/{project_id}/messages",
-            json={"text": "/요약"},
-            headers=headers_leader
-        )
-        msgs2 = (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json()
-        summary_msg = [m for m in msgs2 if m["kind"] == "ai"][-1]
-        print(f"  ✓ '/요약' 회의록 AI 분석 브리핑 수신 성공:\n    {summary_msg['text'][:80]}...")
+        # 2-2. 이름 없는 평소 대화에는 AI가 답하지 않는다
+        before = len([m for m in (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json() if m["kind"] == "ai"])
+        await client.post(f"/api/projects/{project_id}/messages", json={"text": "/요약"}, headers=headers_leader)
+        await asyncio.sleep(2)
+        after = len([m for m in (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json() if m["kind"] == "ai"])
+        assert after == before, "이름 없는 메시지에는 AI가 응답하면 안 됩니다"
+        print("  ✓ 이름 없는 메시지(슬래시 포함)에는 AI가 반응하지 않음")
 
-        # 2-4. 슬래시 명령어 '/캘린더' 전송
-        await client.post(
-            f"/api/projects/{project_id}/messages",
-            json={"text": "/캘린더"},
-            headers=headers_leader
-        )
-        msgs3 = (await client.get(f"/api/projects/{project_id}/messages", headers=headers_leader)).json()
-        cal_msg = [m for m in msgs3 if m["kind"] == "ai"][-1]
-        print(f"  ✓ '/캘린더' 일정 AI 분석 브리핑 수신 성공:\n    {cal_msg['text'][:80]}...")
+        # 2-3. 이름으로 부르면 자연어 질문에 답한다
+        ans = await ask("AI야 이번 회의에서 결정된 게 뭐야?")
+        print(f"  ✓ 'AI야 …' 질문 응답 수신:\n    {ans['text'][:80]}...")
+
+        # 2-4. 자연어로 일정 추가 → 캘린더에 반영 + 되돌리기 정보 포함
+        added = await ask("AI야 10월 30일에 워크숍 일정 추가해줘")
+        assert added["meta"] and added["meta"].get("actions"), "일정 추가 작업 결과가 없습니다"
+        print(f"  ✓ 자연어 일정 추가 성공: {added['text'][-60:]}")
+
+        # 2-5. 삭제는 확인 카드를 거쳐야 실행된다
+        dele = await ask("AI야 워크숍 일정 삭제해줘")
+        assert dele["meta"] and dele["meta"].get("confirms"), "삭제 확인 카드가 없습니다"
+        ev_before = (await client.get(f"/api/calendar/events?project_id={project_id}", headers=headers_leader)).json()
+        confirm = await client.post(f"/api/projects/{project_id}/messages/{dele['id']}/confirm/0", headers=headers_leader)
+        assert confirm.status_code == 200
+        ev_after = (await client.get(f"/api/calendar/events?project_id={project_id}", headers=headers_leader)).json()
+        assert len(ev_after) == len(ev_before) - 1
+        print("  ✓ 삭제는 확인 후에만 실행됨")
 
     print("\n" + "=" * 60)
     print("🎉 축하합니다! 모든 미체크 과제 (과제 1 ~ 7 + 통합검증 11)가 성공적으로 완료되었습니다!")

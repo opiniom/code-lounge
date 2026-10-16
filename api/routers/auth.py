@@ -1,3 +1,4 @@
+import re
 import secrets
 import urllib.parse
 from typing import Optional
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from models import User
-from schemas import UserLogin, UserResponse, TokenResponse, SocialLoginRequest
+from schemas import AiNameUpdate, UserLogin, UserResponse, TokenResponse, SocialLoginRequest
 from services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from config import settings
 
@@ -40,6 +41,29 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         token_type="bearer",
         user=UserResponse.model_validate(user)
     )
+
+_AI_NAME_RE = re.compile(r"^[0-9A-Za-z가-힣_\-]{2,12}$")
+
+@router.put("/me/ai-name", response_model=UserResponse)
+async def set_ai_name(
+    data: AiNameUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """채팅에서 AI 를 부를 이름 설정 (비우면 기본값 'AI')"""
+    name = (data.ai_name or "").strip()
+    if name and not _AI_NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="AI 이름은 공백·특수문자 없이 한글/영문/숫자 2~12자로 정해주세요.")
+    current_user.ai_name = name or None
+    await db.commit()
+    await db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(current_user: User = Depends(get_current_user)):
+    """유효한 토큰으로 새 토큰 발급 (접속할 때마다 로그인 유효기간 연장)"""
+    token = create_access_token(data={"sub": str(current_user.id), "email": current_user.email})
+    return TokenResponse(access_token=token, token_type="bearer", user=UserResponse.model_validate(current_user))
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
@@ -228,7 +252,9 @@ async def naver_callback(
 
 @router.post("/social", response_model=TokenResponse, tags=["OAuth"])
 async def social_login(payload: SocialLoginRequest, db: AsyncSession = Depends(get_db)):
-    """프론트엔드 직접 소셜 로그인 API (팝업 로그인 및 즉시 인증 지원)"""
+    """개발/테스트 전용 로그인 (이메일만으로 로그인). 기본 꺼짐 — 외부에 열린 서버에서 켜면 누구나 타인 계정으로 로그인할 수 있다."""
+    if not settings.ALLOW_DEV_LOGIN or settings.PUBLIC_MODE:
+        raise HTTPException(status_code=404, detail="Not Found")
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
     

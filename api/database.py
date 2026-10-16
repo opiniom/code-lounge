@@ -60,8 +60,13 @@ def _add_missing_columns(sync_conn):
     cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(meeting_docs)"))}
     if cols and "project_id" not in cols:
         sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN project_id INTEGER"))
+    if cols and "structure" not in cols:
+        sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN structure TEXT"))
     if cols and "detections" not in cols:
         sync_conn.execute(text("ALTER TABLE meeting_docs ADD COLUMN detections TEXT"))
+    user_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(users)"))}
+    if user_cols and "ai_name" not in user_cols:
+        sync_conn.execute(text("ALTER TABLE users ADD COLUMN ai_name VARCHAR(30)"))
     ev_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(calendar_events)"))}
     if ev_cols and "meeting_doc_id" not in ev_cols:
         sync_conn.execute(text("ALTER TABLE calendar_events ADD COLUMN meeting_doc_id INTEGER"))

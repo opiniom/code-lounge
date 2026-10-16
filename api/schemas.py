@@ -36,10 +36,14 @@ class UserResponse(BaseModel):
     username: str
     is_active: bool
     oauth_provider: Optional[str] = None
+    ai_name: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class AiNameUpdate(BaseModel):
+    ai_name: Optional[str] = Field(default=None, max_length=30)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -168,6 +172,7 @@ class DetectResponse(BaseModel):
 # 회의록 스키마
 # ================================
 class MeetingDocCreate(BaseModel):
+    structure: Optional[dict] = None
     project_id: Optional[int] = None
     title: str = Field(..., min_length=1, max_length=200)
     doc_date: date
@@ -176,6 +181,7 @@ class MeetingDocCreate(BaseModel):
     status: str = Field(default="완료", max_length=30)
 
 class MeetingDocUpdate(BaseModel):
+    structure: Optional[dict] = None
     detections: Optional[List[dict]] = Field(default=None, max_length=50)
     project_id: Optional[int] = None
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
@@ -185,6 +191,7 @@ class MeetingDocUpdate(BaseModel):
 
 class MeetingDocResponse(BaseModel):
     id: int
+    structure: Optional[dict] = None
     detections: List[dict] = Field(default_factory=list)
     project_id: Optional[int] = None
     title: str
@@ -274,6 +281,17 @@ class InviteInfoResponse(BaseModel):
     is_expired: bool
     is_already_member: bool = False
 
+class GuestJoinRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=20, description="팀에서 쓸 이름")
+
+class GuestJoinResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+    message: str
+    project_id: int
+    project_title: str
+
 class JoinInviteResponse(BaseModel):
     message: str
     project_id: int
@@ -301,3 +319,15 @@ class CrawledEventResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+
+class StructureRequest(BaseModel):
+    lines: List[str] = Field(..., max_length=300)
+    title: Optional[str] = Field(default=None, max_length=200)
+
+class StructureResponse(BaseModel):
+    engine: str
+    title: Optional[str] = None
+    discussion: List[str] = Field(default_factory=list)
+    decisions: List[str] = Field(default_factory=list)
+    actions: List[str] = Field(default_factory=list)

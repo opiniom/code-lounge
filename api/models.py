@@ -13,6 +13,7 @@ class User(Base):
     oauth_provider = Column(String(50), nullable=True)  # 'google', 'naver', or None (local)
     oauth_id = Column(String(255), nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    ai_name = Column(String(30), nullable=True)   # 채팅에서 AI 를 부를 때 쓰는 이름 (예: "미니" → "미니야 …")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # 1:N 관계 (사용자의 코드 실행 히스토리)
@@ -77,6 +78,7 @@ class MeetingDoc(Base):
     attendees = Column(Text, nullable=False, default="[]")  # JSON 배열 문자열
     raw = Column(Text, nullable=False, default="")
     status = Column(String(30), default="완료", nullable=False)
+    structure = Column(Text, nullable=True)    # 논의/결정/액션아이템으로 나눈 결과(JSON). AI 구조화·직접 수정 결과를 그대로 보관
     detections = Column(Text, nullable=True)   # AI 가 이 회의록에서 찾은 일정 후보(JSON). 다시 분석하지 않고 카드를 복원하는 데 사용
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

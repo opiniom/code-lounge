@@ -2,7 +2,7 @@ import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -57,7 +57,11 @@ app = FastAPI(
     title="Code Execution & Auth Backend API",
     description="개인 PC 자체 데이터베이스, JWT 인증, 안전한 코드 실행 샌드박스를 제공하는 올인원 백엔드",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # 외부 공유 모드에서는 API 문서를 숨긴다
+    docs_url=None if settings.PUBLIC_MODE else "/docs",
+    redoc_url=None if settings.PUBLIC_MODE else "/redoc",
+    openapi_url=None if settings.PUBLIC_MODE else "/openapi.json",
 )
 
 import os
@@ -89,6 +93,22 @@ app.include_router(notifications_router)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))
 UI_DIR = settings.FRONTEND_DIR if (settings.FRONTEND_DIR and os.path.exists(settings.FRONTEND_DIR)) else DEFAULT_UI_DIR
 INDEX_FILE = os.path.join(UI_DIR, "index.html")
+
+SHARE_URL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "share_url.txt")
+
+@app.get("/api/share-url", tags=["UI"])
+async def share_url():
+    """외부 공유 모드(./share.sh)일 때 팀원에게 보낼 공개 주소. 초대 링크를 이 주소로 만든다."""
+    url = None
+    if settings.PUBLIC_MODE:
+        try:
+            with open(SHARE_URL_FILE, "r", encoding="utf-8") as f:
+                candidate = f.read().strip().rstrip("/")
+            if candidate.startswith("https://") and " " not in candidate:
+                url = candidate
+        except OSError:
+            pass
+    return {"public_mode": settings.PUBLIC_MODE, "url": url}
 
 @app.get("/api/version", tags=["UI"])
 async def app_version():
@@ -163,6 +183,12 @@ async def execute_code(
     소스 코드를 받아 격리된 샌드박스에서 실행합니다.
     인증 토큰(Bearer Token)이 동봉된 경우 결과가 DB에 자동 저장됩니다.
     """
+    # 외부 공유 모드: 로컬 샌드박스는 서버를 연 사람의 컴퓨터에서 직접 실행되므로 끈다
+    if settings.PUBLIC_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="공유 모드에서는 보안을 위해 코드 실행이 꺼져 있어요. 코드 실행은 서버를 연 사람의 컴퓨터에서만 쓸 수 있어요.",
+        )
     # 1. 샌드박스 실행 (Judge0 또는 로컬 샌드박스)
     is_judge0_healthy, _ = await judge0_client.check_health()
     if is_judge0_healthy:

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import date, datetime
 from typing import List, Optional
@@ -12,6 +13,7 @@ from services.auth_service import get_current_user
 from services.access import get_member_project
 from services.schedule_ai import detect_chat
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects/{project_id}/messages", tags=["Chat"])
 
 # AI 분석을 돌릴 만한 메시지인지 가볍게 거르는 힌트 (날짜·시간 표현 또는 '할게요' 류 약속 표현)
@@ -110,6 +112,31 @@ async def analyze_message(project_id: int, message_id: int):
         return
 
 
+async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None):
+    """AI 요청을 처리해 답변(과 실행 결과)을 AI 메시지로 저장 (백그라운드). 일정·회의록 변경도 여기서 일어난다."""
+    from services.chat_ai import run_agent
+    try:
+        async with async_session_maker() as db:
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            if user is None:
+                return
+            try:
+                reply, meta = await run_agent(db, project_id, user, text, ai_name, trigger_id)
+                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai", text=reply,
+                                   meta=json.dumps(meta, ensure_ascii=False)))
+                await db.commit()
+            except Exception:
+                logger.exception("AI 요청 처리 실패 (project=%s)", project_id)
+                await db.rollback()
+                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai",
+                                   text="⚠️ 지금은 AI가 요청을 처리하지 못했어요. 잠시 후 다시 불러주세요.",
+                                   meta=json.dumps({"requester_id": user_id, **({"ai_name": ai_name} if ai_name else {})}, ensure_ascii=False)))
+                await db.commit()
+    except Exception:
+        logger.exception("AI 답변 저장 실패 (project=%s)", project_id)
+        return
+
+
 @router.post("", response_model=ChatMessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
     project_id: int,
@@ -124,21 +151,12 @@ async def send_message(
     await db.commit()
     await db.refresh(msg)
 
-    # 슬래시 명령어 AI 분석 및 응답 처리
-    from services.chat_ai import handle_slash_command
-    ai_reply = await handle_slash_command(project_id, data.text.strip(), current_user.username, db)
-    if ai_reply:
-        bot_msg = ChatMessage(
-            project_id=project_id,
-            user_id=None,
-            kind="ai",
-            text=ai_reply["text"]
-        )
-        db.add(bot_msg)
-        await db.commit()
+    # AI 이름을 불러 건 말("뚜비야 …", "@뚜비 …")은 백그라운드에서 AI가 처리해 채팅에 올린다 (응답을 기다리지 않음)
+    from services.chat_ai import is_ai_request
+    if is_ai_request(data.text, current_user.ai_name):
+        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id)
     else:
         background.add_task(analyze_message, project_id, msg.id)
-
     return _to_response(msg, current_user.username)
 
 
@@ -199,3 +217,78 @@ async def dismiss_detection(
         meta["status"] = "dismissed"
         msg.meta = json.dumps(meta, ensure_ascii=False)
         await db.commit()
+
+
+# ======================================================================
+# AI 작업 되돌리기 / 삭제 확인 — 요청한 사람만 누를 수 있다
+# ======================================================================
+async def _get_ai_action_msg(db: AsyncSession, project_id: int, message_id: int, user: User):
+    msg = (await db.execute(
+        select(ChatMessage).where(
+            ChatMessage.id == message_id, ChatMessage.project_id == project_id, ChatMessage.kind == "ai"
+        )
+    )).scalar_one_or_none()
+    if not msg:
+        raise HTTPException(status_code=404, detail="AI 메시지를 찾을 수 없습니다.")
+    meta = json.loads(msg.meta or "{}")
+    if meta.get("requester_id") != user.id:
+        raise HTTPException(status_code=403, detail="AI를 부른 사람만 누를 수 있어요.")
+    return msg, meta
+
+
+def _item(meta: dict, key: str, index: int) -> dict:
+    items = meta.get(key) or []
+    if index < 0 or index >= len(items):
+        raise HTTPException(status_code=404, detail="대상을 찾을 수 없습니다.")
+    return items[index]
+
+
+@router.post("/{message_id}/undo/{index}", response_model=ChatMessageResponse)
+async def undo_ai_action(
+    project_id: int, message_id: int, index: int,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """AI 가 추가/수정한 일정·회의록을 되돌린다"""
+    from services.chat_ai import undo_action
+    project = await get_member_project(db, project_id, current_user)
+    msg, meta = await _get_ai_action_msg(db, project_id, message_id, current_user)
+    entry = _item(meta, "actions", index)
+    if not entry.get("undone"):
+        await undo_action(db, project, current_user, entry)
+        entry["undone"] = True
+        msg.meta = json.dumps(meta, ensure_ascii=False)
+        await db.commit()
+    return _to_response(msg, "AI")
+
+
+@router.post("/{message_id}/confirm/{index}", response_model=ChatMessageResponse)
+async def confirm_ai_delete(
+    project_id: int, message_id: int, index: int,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """AI 가 물어본 삭제를 실제로 실행"""
+    from services.chat_ai import execute_confirmed
+    project = await get_member_project(db, project_id, current_user)
+    msg, meta = await _get_ai_action_msg(db, project_id, message_id, current_user)
+    item = _item(meta, "confirms", index)
+    if item.get("status") == "pending":
+        item["result"] = await execute_confirmed(db, project, current_user, item)
+        item["status"] = "done"
+        msg.meta = json.dumps(meta, ensure_ascii=False)
+        await db.commit()
+    return _to_response(msg, "AI")
+
+
+@router.post("/{message_id}/cancel/{index}", response_model=ChatMessageResponse)
+async def cancel_ai_delete(
+    project_id: int, message_id: int, index: int,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    await get_member_project(db, project_id, current_user)
+    msg, meta = await _get_ai_action_msg(db, project_id, message_id, current_user)
+    item = _item(meta, "confirms", index)
+    if item.get("status") == "pending":
+        item["status"] = "cancelled"
+        msg.meta = json.dumps(meta, ensure_ascii=False)
+        await db.commit()
+    return _to_response(msg, "AI")
