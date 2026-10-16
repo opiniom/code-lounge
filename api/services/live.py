@@ -200,3 +200,60 @@ async def relay_typing(user, project_id: int, on: bool) -> None:
     if user.id not in aud:
         return
     await hub.send(aud - {user.id}, {"t": "typing", "project_id": project_id, "user_id": user.id, "name": user.username, "on": bool(on)})
+
+
+# ---------- 워크스페이스 '누가 어느 파일을 보는/수정 중인지' (저장하지 않는 순간 상태, 메모리에만 보관) ----------
+_ws_state: Dict[int, Dict[int, dict]] = {}     # project_id -> user_id -> {path, editing}
+_ws_where: Dict[int, int] = {}                 # user_id -> 지금 워크스페이스를 열어 둔 project_id
+
+
+async def _audience(project_id: int) -> Set[int]:
+    import time
+    from database import async_session_maker
+    hit = _aud_cache.get(project_id)
+    if not hit or time.time() - hit[0] > 60:
+        async with async_session_maker() as db:
+            aud = await project_audience(db, project_id)
+        _aud_cache[project_id] = (time.time(), aud)
+        return aud
+    return hit[1]
+
+
+async def _ws_broadcast(user_id: int, name: str, project_id: int, path: Optional[str], editing: bool) -> None:
+    aud = await _audience(project_id)
+    await hub.send(aud - {user_id}, {"t": "wspres", "project_id": project_id, "user_id": user_id, "name": name, "path": path, "editing": editing})
+
+
+async def relay_ws_presence(user, project_id: int, path: Optional[str], editing: bool) -> None:
+    """클라이언트가 보낸 '지금 이 파일을 보고/수정하는 중' 신호를 프로젝트 팀원에게 전달한다.
+    path 가 None 이면 워크스페이스를 떠난 것. 보낸 사람에게는 현재 다른 팀원들의 상태(스냅샷)를 돌려준다."""
+    aud = await _audience(project_id)
+    if user.id not in aud:
+        return
+    path = (path or "")[:240] or None
+    prev = _ws_where.get(user.id)
+    if prev is not None and prev != project_id:                      # 다른 프로젝트로 옮겨 감 → 이전 프로젝트에서는 사라짐
+        _ws_state.get(prev, {}).pop(user.id, None)
+        await _ws_broadcast(user.id, user.username, prev, None, False)
+    if path is None:
+        _ws_state.get(project_id, {}).pop(user.id, None)
+        _ws_where.pop(user.id, None)
+    else:
+        _ws_state.setdefault(project_id, {})[user.id] = {"path": path, "editing": bool(editing), "name": user.username}
+        _ws_where[user.id] = project_id
+    await _ws_broadcast(user.id, user.username, project_id, path, bool(editing) and path is not None)
+    items = [{"user_id": uid, "name": v["name"], "path": v["path"], "editing": v["editing"]}
+             for uid, v in _ws_state.get(project_id, {}).items() if uid != user.id and uid in aud and hub.is_online(uid)]
+    await hub.send({user.id}, {"t": "wssnap", "project_id": project_id, "items": items})
+
+
+async def clear_ws_presence(user_id: int, name: str = "") -> None:
+    """연결이 끊기면 그 사람의 '작업 중' 표시를 지운다"""
+    pid = _ws_where.pop(user_id, None)
+    if pid is None:
+        return
+    _ws_state.get(pid, {}).pop(user_id, None)
+    try:
+        await _ws_broadcast(user_id, name, pid, None, False)
+    except Exception:
+        logger.exception("ws presence clear failed")

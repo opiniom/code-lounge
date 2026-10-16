@@ -358,13 +358,16 @@ async def live_socket(websocket: WebSocket):
             msg = await websocket.receive_text()
             if msg == "ping":
                 await websocket.send_text("pong")
-            elif msg.startswith("{") and len(msg) < 200:
+            elif msg.startswith("{") and len(msg) < 700:
                 try:
                     d = json.loads(msg)
                 except ValueError:
                     continue
                 if d.get("t") == "typing" and isinstance(d.get("project_id"), int):
                     await live.relay_typing(user, d["project_id"], bool(d.get("on", True)))
+                elif d.get("t") == "ws" and isinstance(d.get("project_id"), int):
+                    p_ = d.get("path")
+                    await live.relay_ws_presence(user, d["project_id"], p_ if isinstance(p_, str) else None, bool(d.get("editing")))
     except WebSocketDisconnect:
         pass
     except Exception:
@@ -372,6 +375,7 @@ async def live_socket(websocket: WebSocket):
     finally:
         if live.hub.disconnect(uid, websocket):
             live.hub.schedule_offline(uid)
+            await live.clear_ws_presence(uid, user.username)
 
 
 @app.websocket("/ws/events")

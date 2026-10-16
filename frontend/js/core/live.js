@@ -40,6 +40,7 @@ function liveResync(){
   loadNotifications(true); pstLoadTeam();
   apiFetch('/api/meetings').then(function(rows){ liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; }); }).catch(function(){});
   if(chatServerId()) loadChat(false);
+  if(typeof wsPresStart === 'function' && wsPresInWorkspace()) wsPresStart();      // 재연결되면 내 작업 위치를 다시 알린다
 }
 /* 팀원이 회의록을 만들면 목록에 바로 올리고, 새 글이면 한 번만 조용히 알려준다 */
 var liveSeenDocs = null;
@@ -75,6 +76,7 @@ function liveHandle(m){
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': liveNotes(m); break;
     case 'files': wsPollSoon(); break;
+    case 'wspres': case 'wssnap': if(typeof wsPresHandle === 'function') wsPresHandle(m); break;
     case 'projects':
       if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); tmRefresh(); }).catch(function(){});
       break;

@@ -124,7 +124,7 @@ function renderFileTree() {
       var dn = node.dirs[dirName];
       var closed = !wsSearch && wsCollapsed[dn.path];
       var dirNode = document.createElement('div');
-      dirNode.className = 'ftree-node folder' + (closed ? ' closed' : '');
+      dirNode.className = 'ftree-node folder' + (closed ? ' closed' : ''); dirNode.dataset.path = dn.path;
       dirNode.innerHTML = ICON_CHEV + ICON_FOLDER + '<span class="fname"></span><span class="fcnt">' + countFiles(dn) + '</span>';
       dirNode.querySelector('.fname').textContent = dirName;
       var childContainer = document.createElement('div');
@@ -137,6 +137,7 @@ function renderFileTree() {
         var nowClosed = wsCollapsed[dn.path];
         childContainer.style.display = nowClosed ? 'none' : 'block';
         dirNode.classList.toggle('closed', nowClosed);
+        if (typeof wsPresPaint === 'function') wsPresPaint();
       };
       frag.appendChild(dirNode);
       frag.appendChild(childContainer);
@@ -187,6 +188,7 @@ function renderFileTree() {
     return frag;
   }
   treeEl.appendChild(buildBranch(root));
+  if (typeof wsPresPaint === 'function') wsPresPaint();
 }
 
 /* ---- 워크스페이스: 파일 데이터 / 새 프로젝트 시작 파일 ---- */
@@ -346,6 +348,7 @@ function initMonacoEditor() {
       if (currentFileKey && files[currentFileKey]) {
         files[currentFileKey].raw = monacoEditor.getValue();
         wsMarkDirty(currentFileKey);
+        if (typeof wsPresTyped === 'function') wsPresTyped();
       }
       updateEditorStatusBar();
     });
@@ -422,6 +425,7 @@ function renderTabs() {
       monacoEditor.layout();
     }
   }
+  if (typeof wsPresPaint === 'function') { wsPresPaint(); wsPresSync(); }
 }
 
 function closeFileTab(key, ev) {
@@ -769,9 +773,10 @@ function enterWorkspaceView(){
     : (calDefaultProject() || (myProjects[0] && myProjects[0].id) || null);
   if (!target) { files = {}; openedTabs = []; currentFileKey = null; wsProject = null; renderWsEmpty(); renderFileTree(); renderTabs(); return; }
   if (target !== wsProject || !wsLoaded) loadWorkspace(target);
-  else { wsStartPolling(); renderWsHeader(); }
+  else { wsStartPolling(); renderWsHeader(); if (typeof wsPresStart === 'function') wsPresStart(); }
 }
 function loadWorkspace(id){
+  if (typeof wsPresLeave === 'function') wsPresLeave();   // 이전 프로젝트에서의 '작업 중' 표시는 지우고 시작
   if(calApiMode && id && chatProject !== id && typeof switchChatProject === 'function') switchChatProject(id);   // 워크스페이스에서 프로젝트를 바꾸면 채팅·통화도 같은 프로젝트로
   wsStopPolling();
   wsFlushSaves();
@@ -793,6 +798,7 @@ function loadWorkspace(id){
     renderWsEmpty(); renderFileTree();
     if (openKey) wsOpenKey(openKey); else renderTabs();
     wsStartPolling();
+    if (typeof wsPresStart === 'function') wsPresStart();
   }).catch(function(e){ wsLoading = false; renderWsEmpty(); pushToast('⚠️', '파일을 불러오지 못했어요', e.message); });
 }
 function renderFileContent_empty(){

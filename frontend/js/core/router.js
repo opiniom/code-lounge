@@ -67,7 +67,7 @@ function goView(name){
   if(name==='admin') loadAdminMembers();
   if(name==='mypage') renderMyPage();
   if(name==='profile') renderProfile();
-  if(name==='workspace') enterWorkspaceView(); else wsStopPolling();
+  if(name==='workspace') enterWorkspaceView(); else { wsStopPolling(); if(typeof wsPresLeave === 'function') wsPresLeave(); }
   if(name==='workspace'){
     setTimeout(function(){
       if(window.monaco && monacoEditor) monacoEditor.layout();

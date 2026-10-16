@@ -35,6 +35,7 @@
     "js/pages/home-widgets.js",
     "js/pages/events.js",
     "js/pages/workspace.js",
+    "js/pages/workspace-presence.js",
     "js/core/api.js",
     "js/pages/chat.js",
     "js/pages/call.js",
