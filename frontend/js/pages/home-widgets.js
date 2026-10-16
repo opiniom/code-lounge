@@ -197,6 +197,7 @@ function wgLiveTeam(){
   var live = team.length - cnt.offline;
   if(pill){ pill.hidden = false; pill.textContent = live + '/' + team.length + ' 온라인'; pill.classList.toggle('on', live > 0); }
   box.innerHTML = '';
+  var hp0 = homeProject(); if(hp0){ var pn = wgEl('div', 'tw-projname'); pn.innerHTML = '<i></i><b></b>'; pn.querySelector('i').style.background = calProjColor(hp0); pn.querySelector('b').textContent = hp0.title; box.appendChild(pn); }
   // 1) 아바타 스택 (상태 점)
   var stack = wgEl('div', 'tw-stack');
   team.slice(0, 7).forEach(function(t, i){
@@ -236,18 +237,52 @@ var DURE_COUNT = 7, DURE_AI_INDEX = 4;
 var DURE_ANGLES = []; for(var _i = 0; _i < DURE_COUNT; _i++) DURE_ANGLES.push(Math.round(_i * 360 / DURE_COUNT * 100) / 100);
 var DURE_SLOTS = DURE_ANGLES.filter(function(_a, i){ return i !== DURE_AI_INDEX; });
 var dureSig = '';
+/* 홈에서 고른 '지금 프로젝트': 궤도·팀원 위젯은 이 프로젝트의 팀원만 보여준다 (친구가 늘어도 홈이 복잡해지지 않게) */
+function homeProject(){
+  if(!calApiMode || !myProjects.length) return null;
+  var stored = null; try { stored = localStorage.getItem('sync_home_project'); } catch(e){}
+  return calProjectById(stored) || calProjectById(chatProject) || myProjects[0];
+}
+function setHomeProject(id){
+  try { localStorage.setItem('sync_home_project', id); } catch(e){}
+  if(id !== chatProject && typeof switchChatProject === 'function') switchChatProject(id);     // 채팅·통화도 같은 프로젝트로
+  dureSig = ''; renderDureOrbit(); wgLiveTeam();
+}
 function dureTeammates(){
-  var seen = {}, list = [];
+  var list = [];
   if(!calApiMode || !currentUser) return list;
   list.push({ id:currentUser.id, name:myProfile.name || currentUser.username || '나', me:true });
-  seen[currentUser.id] = 1;
-  myProjects.forEach(function(p){ (p.members || []).forEach(function(m){
+  var cur = homeProject(), seen = {}; seen[currentUser.id] = 1;
+  ((cur && cur.members) || []).forEach(function(m){
     if(m && m.id != null && !seen[m.id]){ seen[m.id] = 1; list.push({ id:m.id, name:m.username || '팀원', me:false }); }
-  }); });
+  });
   var rank = { online:0, dnd:1, away:2, offline:3 };
   var others = list.slice(1).sort(function(a, b){ return rank[pstOf(a.id)] - rank[pstOf(b.id)]; });
   return [list[0]].concat(others);
 }
+/* 궤도 아래의 프로젝트 선택 */
+function dureRenderProj(){
+  var box = document.getElementById('dureProj'); if(!box) return;
+  var cur = homeProject();
+  if(!cur){ box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false; box.innerHTML = '';
+  var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dure-proj-btn'; btn.setAttribute('aria-haspopup', 'listbox');
+  btn.innerHTML = '<span class="pd"></span><b></b><small></small><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  btn.querySelector('.pd').style.background = calProjColor(cur); btn.querySelector('b').textContent = cur.title; btn.querySelector('small').textContent = ((cur.members || []).length || 1) + '명';
+  box.appendChild(btn);
+  if(myProjects.length > 1){
+    var menu = document.createElement('div'); menu.className = 'dure-proj-menu'; menu.setAttribute('role', 'listbox');
+    myProjects.forEach(function(p){
+      var it = document.createElement('button'); it.type = 'button'; it.className = 'dure-proj-it' + (p.id === cur.id ? ' on' : ''); it.setAttribute('role', 'option');
+      it.innerHTML = '<span class="pd"></span><b></b><small></small><i>✓</i>'; it.querySelector('.pd').style.background = calProjColor(p); it.querySelector('b').textContent = p.title; it.querySelector('small').textContent = ((p.members || []).length || 1) + '명';
+      it.onclick = function(e){ e.stopPropagation(); box.classList.remove('open'); setHomeProject(p.id); };
+      menu.appendChild(it);
+    });
+    box.appendChild(menu);
+    btn.onclick = function(e){ e.stopPropagation(); box.classList.toggle('open'); };
+  } else { btn.classList.add('single'); btn.querySelector('svg').remove(); }
+}
+document.addEventListener('click', function(e){ var b = document.getElementById('dureProj'); if(b && !e.target.closest('#dureProj')) b.classList.remove('open'); });
 function dureNode(angle, color, label, title, extra){
   var d = document.createElement('div'); d.className = 'dn' + (extra && extra.cls ? ' ' + extra.cls : ''); d.style.setProperty('--a', angle + 'deg');
   if(color) d.style.setProperty('--c', color);
@@ -270,8 +305,9 @@ function renderDureOrbit(){
   var todayN = calApiMode ? calendarEvents.filter(function(e){ return e.start <= today && (e.end || e.start) >= today; }).length : 0;
   var notesN = calApiMode ? (meetingDocs || []).length : 0;
   var online = team.filter(function(t){ return pstOf(t.id) === 'online' || pstOf(t.id) === 'dnd' || pstOf(t.id) === 'away'; }).length;
-  var sig = [team.map(function(t){ return t.id + ':' + pstOf(t.id); }).join(','), calApiMode ? 1 : 0, todayN, notesN].join('|');
+  var hp = homeProject(), sig = [hp ? hp.id + ':' + hp.title : '', team.map(function(t){ return t.id + ':' + pstOf(t.id); }).join(','), calApiMode ? 1 : 0, todayN, notesN, myProjects.map(function(p){ return p.id + p.title; }).join(',')].join('|');
   if(sig === dureSig) return; dureSig = sig;
+  dureRenderProj();
   box.innerHTML = '';
   var invite = function(){ openInviteFromHero(); };
   var visible = team.length > DURE_SLOTS.length ? DURE_SLOTS.length - 1 : team.length;

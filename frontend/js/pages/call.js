@@ -9,6 +9,17 @@ function toggleCall(){
   if(callOpen()){ pollCallRoster(); }
   renderCall();
 }
+/* 통화방은 항상 '지금 채팅 중인 프로젝트'의 것만 보여준다.
+   프로젝트를 바꾸면: 통화 중이던 방에서 자동으로 나오고, 새 프로젝트의 통화방 목록으로 바뀐다 (다른 프로젝트와 섞이지 않게) */
+function callSyncProject(){
+  var sid = chatServerId();
+  if((call.joined || call.connecting || call.ws) && call.sid && call.sid !== sid){
+    var from = callProjectTitle();
+    leaveCall(true);
+    pushToast('📞', '통화방에서 나왔어요', '「' + from + '」 통화에서 나왔어요. 프로젝트를 바꿔서 「' + callProjectTitle() + '」의 통화방으로 바뀌었어요.', { duration:4200 });
+  }
+  if(call.shownSid !== sid){ call.shownSid = sid; call.rooms = []; call.roomKey = call.joined ? call.roomKey : null; renderCall(); pollCallRoster(); }
+}
 function callColor(name){ return chatColor(name || '?'); }
 function callProjectTitle(){
   var cur = calProjectById(call.sid ? 'p'+call.sid : chatProject);

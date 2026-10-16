@@ -121,6 +121,7 @@ function renderChatHeader(){
   chatRenderPresence();
   invite.hidden = !cur.isOwner;
   var rn = document.getElementById('chatRenameBtn'); if(rn) rn.hidden = !cur.isOwner;
+  if(typeof callSyncProject === 'function') callSyncProject();
 }
 /* 채팅방 팀원 접속 상태: 머리말에 팀원 아바타(상태 점) + "N명 접속 중", 말풍선 아바타의 점도 같이 갱신 */
 function chatRenderPresence(){
@@ -148,6 +149,8 @@ function chatRenderPresence(){
 function switchChatProject(id){
   chatProject = id; chatMsgs = []; chatSig = ''; CHAT_TYPING = {}; chatForceBottom = true;
   renderChatHeader(); renderChat(); loadChat(true);
+  if(typeof callSyncProject === 'function') callSyncProject();
+  if(typeof dureRenderProj === 'function'){ dureSig = ''; renderDureOrbit(); if(typeof wgLiveTeam === 'function') wgLiveTeam(); }
 }
 function updateChatBadge(){
   var badge = document.getElementById('chatBadge');

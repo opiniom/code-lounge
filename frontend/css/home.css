@@ -123,9 +123,9 @@
 .hh-tag{font-size:clamp(17px, calc(1.7vw / var(--ui-zoom)), 24px); font-weight:600; color:var(--text); letter-spacing:-.01em; margin:-2px auto 0;}
 .hh-tag b{color:var(--accent);}
 .hh-tag-en{font-size:13.5px; color:var(--text-faint); margin:-8px auto 0; max-width:520px;}
-.hh-rotor{display:flex; align-items:baseline; justify-content:center; gap:8px; font-size:15px; color:var(--text-muted); margin:0 auto;}
+.hh-rotor{display:flex; align-items:center; justify-content:center; gap:8px; font-size:15px; color:var(--text-muted); margin:0 auto;}
 .rot{position:relative; display:inline-block; height:1.6em; width:6.4em; overflow:hidden; text-align:left;}
-.rot i{position:absolute; left:0; top:0; font-style:normal; font-weight:700; color:var(--accent-ink); opacity:0; transform:translateY(100%); animation:rotWord 12.5s infinite;}
+.rot i{position:absolute; left:0; top:0; line-height:1.6em; font-style:normal; font-weight:700; color:var(--accent-ink); opacity:0; transform:translateY(100%); animation:rotWord 12.5s infinite;}
 .rot i:nth-child(1){animation-delay:0s;} .rot i:nth-child(2){animation-delay:2.5s;} .rot i:nth-child(3){animation-delay:5s;}
 .rot i:nth-child(4){animation-delay:7.5s;} .rot i:nth-child(5){animation-delay:10s;}
 @keyframes rotWord{0%{opacity:0; transform:translateY(100%);} 4%,17%{opacity:1; transform:translateY(0);} 21%,100%{opacity:0; transform:translateY(-100%);}}
@@ -268,3 +268,19 @@ html[data-motion="reduce"] .dure-orbit, html[data-motion="reduce"] .dn span, htm
 .dn-plus:hover span, .dn-plus:focus-visible span{color:var(--accent-ink); border-color:var(--accent); transform:scale(1.1);} .dn-plus:focus-visible{outline:none;}
 .dn-plus.ghost{opacity:.45;} .dn-plus.ghost:hover{opacity:1;}
 .dure-chip[hidden]{display:none;} .dure-chip.click{cursor:pointer; transition:border-color .15s, color .15s;} .dure-chip.click:hover{border-color:var(--accent); color:var(--text);}
+
+/* '한곳에서 ○○' 한 줄: 글자 높이를 맞춘다 */
+.hh-rotor .rot-label, .hh-rotor .rot{line-height:1.6em;} .hh-rotor .rot-label{white-space:nowrap;}
+.hh-rotor .rot{vertical-align:middle; display:block;}
+/* 궤도 아래 프로젝트 선택 */
+.dure-proj{position:relative; display:flex; justify-content:center; margin:2px auto 14px; z-index:5;} .dure-proj[hidden]{display:none;}
+.dure-proj-btn{display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:7px 13px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); border-radius:999px; font:inherit; font-size:13px; cursor:pointer; transition:border-color .15s, box-shadow .15s;}
+.dure-proj-btn:hover{border-color:var(--accent);} .dure-proj-btn.single{cursor:default;} .dure-proj-btn.single:hover{border-color:var(--border-strong);}
+.dure-proj-btn .pd, .dure-proj-it .pd{width:8px; height:8px; border-radius:50%; flex:0 0 auto;}
+.dure-proj-btn b{font-weight:700; letter-spacing:-.02em; max-width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .dure-proj-btn small{color:var(--text-faint); font-size:11.5px;} .dure-proj-btn svg{opacity:.6; transition:transform .2s;}
+.dure-proj.open .dure-proj-btn svg{transform:rotate(180deg);}
+.dure-proj-menu{display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; margin:0 auto; width:max-content; min-width:230px; max-width:min(340px, 92vw); padding:6px; background:var(--bg-elevated); border:1px solid var(--border-strong); border-radius:16px; box-shadow:0 22px 50px -18px rgba(0,0,0,.55); flex-direction:column; gap:2px; max-height:260px; overflow-y:auto;}
+.dure-proj.open .dure-proj-menu{display:flex; animation:ntIn .2s cubic-bezier(.2,.9,.3,1) both;}
+.dure-proj-it{display:flex; align-items:center; gap:9px; padding:9px 10px; border:none; background:none; border-radius:11px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left;} .dure-proj-it:hover{background:var(--surface-2);} .dure-proj-it.on{background:var(--accent-soft);}
+.dure-proj-it b{flex:1; min-width:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .dure-proj-it small{color:var(--text-faint); font-size:11.5px;} .dure-proj-it i{font-style:normal; font-weight:800; color:var(--accent-ink); opacity:0;} .dure-proj-it.on i{opacity:1;}
+.app.home-landing-mode .dure-proj{margin-top:6px;}

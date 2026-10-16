@@ -772,6 +772,7 @@ function enterWorkspaceView(){
   else { wsStartPolling(); renderWsHeader(); }
 }
 function loadWorkspace(id){
+  if(calApiMode && id && chatProject !== id && typeof switchChatProject === 'function') switchChatProject(id);   // 워크스페이스에서 프로젝트를 바꾸면 채팅·통화도 같은 프로젝트로
   wsStopPolling();
   wsFlushSaves();
   wsProject = id; wsLoaded = false; wsLoading = true;
