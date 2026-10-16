@@ -69,6 +69,11 @@ cd code-lounge
 - **다른 장소(다른 네트워크)에서 통화하려면 TURN 중계 서버가 필요합니다.** `.env` 의 `TURN_URLS` 와 `TURN_USERNAME`/`TURN_CREDENTIAL`(Metered 등) 또는 `TURN_SECRET`(직접 운영하는 coturn)을 설정하세요. 설정이 없으면 화면에 안내가 표시되고, 같은 네트워크에서만 확실히 연결돼요.
 - 마이크는 `https` 또는 `localhost` 주소에서만 쓸 수 있어요.
 
+### 🗂 화면 주소와 폴더 구조
+
+화면마다 주소가 있어요: `/app`(홈) · `/app/login` · `/app/workspace` · `/app/meetings` · `/app/calendar` · `/app/events` · `/app/community`(글은 `/app/community/12`) · `/app/mypage` · `/app/admin`.
+화면 소스는 `frontend/` 아래 `css/`, `js/core|shell|pages/` 로 나뉘어 있습니다. 자세한 구조는 [frontend/README.md](frontend/README.md).
+
 ### 🟢 내 상태 (온라인 · 자리비움 · 방해금지)
 
 상단의 상태 버튼(예전 "API 연결됨" 자리)에서 내 상태를 고를 수 있어요.

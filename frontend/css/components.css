@@ -1,0 +1,46 @@
+/* ================= AVATAR MENU ================= */
+.avatar-wrap{position:relative;}
+.avatar-menu{
+  position:absolute; top:44px; right:0; width:180px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-m); box-shadow:var(--shadow-lg); z-index:60; display:none; flex-direction:column; padding:6px;
+}
+.avatar-menu.open{display:flex;}
+.avatar-menu button{
+  border:none; background:none; text-align:left; padding:9px 10px; border-radius:8px; font-size:12.5px; cursor:pointer;
+  color:var(--text); display:flex; align-items:center; gap:8px;
+}
+.avatar-menu button:hover{background:var(--surface-2);}
+.avatar-menu button svg{width:14px; height:14px; color:var(--text-faint);}
+.avatar-menu hr{border:none; border-top:1px solid var(--border); margin:5px 2px;}
+
+/* ================= SHARE MODAL ================= */
+.modal-backdrop{position:fixed; inset:0; background:rgba(20,17,12,.45); z-index:70; display:none; align-items:center; justify-content:center;}
+.modal-backdrop.open{display:flex;}
+.ws-invite-btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:13px; white-space:nowrap;}
+.ws-invite-btn[hidden]{display:none;}
+.share-modal{width:100%; max-width:420px; margin:0 20px; background:var(--surface); border-radius:var(--radius-l); box-shadow:var(--shadow-lg); padding:22px; display:flex; flex-direction:column; gap:16px;}
+.share-modal .mh{display:flex; align-items:center; justify-content:space-between;}
+.share-modal .mh h3{font-size:15px;}
+.share-link-row{display:flex; gap:8px;}
+.share-link-row input{flex:1; min-width:0; border:1px solid var(--border); background:var(--surface-2); border-radius:10px; padding:9px 12px; font-size:12px; font-family:var(--font-mono); outline:none; color:var(--text-muted);}
+.share-toggle{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; padding:10px 12px; background:var(--surface-2); border-radius:10px;}
+.theme-options{display:flex; gap:8px;}
+.theme-opt{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px;
+  border:1px solid var(--border); background:var(--surface); border-radius:10px; font-size:12px; color:var(--text-muted); cursor:pointer;
+}
+.theme-opt svg{width:18px; height:18px;}
+.theme-opt:hover{border-color:var(--border-strong); color:var(--text);}
+.theme-opt.active{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink);}
+.avatar-color-picker{display:flex; gap:9px;}
+.avatar-swatch{width:32px; height:32px; border-radius:9px; border:2px solid transparent; cursor:pointer; padding:0; outline-offset:2px;}
+.avatar-swatch.active{border-color:var(--text);}
+.switch{width:34px; height:20px; border-radius:999px; background:var(--border-strong); position:relative; cursor:pointer; flex:0 0 auto; transition:background .15s;}
+.switch::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .15s;}
+.switch.on{background:var(--accent-2);}
+.switch.on::after{left:16px;}
+.share-members{display:flex; flex-direction:column; gap:9px;}
+.share-member{display:flex; align-items:center; gap:9px; font-size:12.5px;}
+.share-member .mini{margin-left:0;}
+.share-member .role{margin-left:auto; font-size:11px; color:var(--text-faint);}
+

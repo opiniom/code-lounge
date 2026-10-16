@@ -1,0 +1,72 @@
+/* ================= NOTIFICATIONS / TOAST ================= */
+.notif-wrap{position:relative;}
+.notif-count{
+  position:absolute; top:-4px; right:-4px; background:linear-gradient(135deg,#EF4444,#F43F5E); color:#fff; font-size:9.5px; font-weight:800;
+  min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-brand); border:2px solid var(--bg-elevated); font-variant-numeric:tabular-nums; animation:ntBadge .35s cubic-bezier(.2,1.4,.3,1);
+}
+@keyframes ntBadge{from{transform:scale(.4);} to{transform:scale(1);}}
+.notif-panel{
+  position:absolute; top:48px; right:-6px; width:392px; max-width:calc(100vw - 24px); z-index:60; display:none; flex-direction:column; overflow:hidden;
+  background:color-mix(in srgb, var(--bg-elevated) 94%, transparent); backdrop-filter:blur(22px) saturate(1.3); -webkit-backdrop-filter:blur(22px) saturate(1.3);
+  border:1px solid var(--border-strong); border-radius:22px; box-shadow:0 30px 70px -22px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03) inset;
+  transform-origin:calc(100% - 28px) -8px;
+}
+.notif-panel.open{display:flex; animation:ntIn .26s cubic-bezier(.2,.9,.3,1) both;}
+@keyframes ntIn{from{opacity:0; transform:translateY(-8px) scale(.96);} to{opacity:1; transform:none;}}
+.nt-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 8px;}
+.nt-title{display:flex; align-items:center; gap:10px;}
+.nt-title b{font-family:var(--font-brand); font-size:20px; font-weight:800; letter-spacing:-.04em;}
+.nt-pill{font-size:11px; font-weight:700; color:var(--accent-ink); background:var(--accent-soft); padding:3px 9px; border-radius:999px; letter-spacing:-.01em;}
+.nt-readall{border:none; background:none; color:var(--accent-ink); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; padding:5px 8px; margin-right:-8px; border-radius:8px; transition:background .15s, opacity .15s;}
+.nt-readall:hover:not(:disabled){background:var(--accent-soft);} .nt-readall:disabled{opacity:.35; cursor:default;}
+.nt-tabs{display:flex; gap:4px; margin:6px 20px 8px; padding:3px; background:var(--surface-2); border:1px solid var(--border); border-radius:11px; align-self:flex-start;}
+.nt-tabs button{border:none; background:none; color:var(--text-muted); font:inherit; font-size:12.5px; font-weight:600; padding:5px 14px; border-radius:8px; cursor:pointer; transition:all .15s;}
+.nt-tabs button.on{background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.25), 0 0 0 1px var(--border-strong);}
+.notif-list{max-height:min(440px, calc(70vh / var(--ui-zoom))); overflow-y:auto; display:flex; flex-direction:column; padding:2px 10px 12px; scrollbar-width:thin;}
+.nt-group{font-size:11.5px; font-weight:700; color:var(--text-faint); padding:12px 10px 6px; letter-spacing:-.01em; position:sticky; top:0; z-index:1; background:linear-gradient(var(--bg-elevated) 60%, transparent);}
+.notif-item{display:flex; align-items:flex-start; gap:12px; padding:11px 12px; border-radius:14px; position:relative; cursor:pointer; transition:background .15s; outline:none;}
+.notif-item:hover, .notif-item:focus-visible{background:var(--surface-2);}
+.notif-item:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.notif-item .nic{width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:var(--nc, var(--accent)); background:color-mix(in srgb, var(--nc, var(--accent)) 16%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--nc, var(--accent)) 28%, transparent);}
+.notif-item .notif-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; padding-right:14px;}
+.nt-row1{display:flex; align-items:baseline; gap:8px; justify-content:space-between;}
+.notif-item .ntext{font-size:13.5px; font-weight:600; letter-spacing:-.02em; line-height:1.4; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.notif-item .ntime{font-size:11.5px; color:var(--text-faint); white-space:nowrap; flex:0 0 auto; font-variant-numeric:tabular-nums;}
+.notif-item .nmsg{font-size:12.5px; line-height:1.5; color:var(--text-faint); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; letter-spacing:-.012em;}
+.notif-item.unread{background:color-mix(in srgb, var(--accent) 7%, transparent);}
+.notif-item.unread:hover{background:color-mix(in srgb, var(--accent) 12%, transparent);}
+.notif-item.unread .ntext{color:var(--text); font-weight:700;} .notif-item.unread .nmsg{color:var(--text-muted);}
+.nt-dot{position:absolute; right:14px; bottom:14px; width:8px; height:8px; border-radius:50%; background:var(--accent); display:none; box-shadow:0 0 0 3px var(--accent-soft);}
+.notif-item.unread .nt-dot{display:block;}
+.notif-del{position:absolute; top:8px; right:8px; border:none; background:var(--surface-3); color:var(--text-muted); cursor:pointer; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s, background .15s, color .15s;}
+.notif-item:hover .notif-del, .notif-item:focus-within .notif-del{opacity:1;} .notif-del:hover{background:#EF4444; color:#fff;}
+.notif-item:hover .ntime{opacity:0;}
+.nt-empty{display:flex; flex-direction:column; align-items:center; gap:6px; padding:44px 24px 40px; text-align:center;}
+.nt-empty-ic{width:60px; height:60px; border-radius:20px; display:flex; align-items:center; justify-content:center; color:var(--accent-ink); background:var(--accent-soft); margin-bottom:8px;}
+.nt-empty b{font-size:14.5px; letter-spacing:-.02em;} .nt-empty span{font-size:12.5px; color:var(--text-faint); line-height:1.55;}
+
+.toast-stack{position:fixed; top:74px; right:20px; z-index:95; display:flex; flex-direction:column; gap:10px; align-items:flex-end; pointer-events:none;}
+.toast{
+  pointer-events:auto; position:relative; overflow:hidden; width:340px; max-width:calc(100vw - 32px);
+  background:color-mix(in srgb, var(--bg-elevated) 92%, transparent); backdrop-filter:blur(18px) saturate(1.3); -webkit-backdrop-filter:blur(18px) saturate(1.3);
+  border:1px solid var(--border-strong); box-shadow:0 22px 50px -18px rgba(0,0,0,.6);
+  border-radius:18px; padding:13px 14px 15px 13px; display:flex; gap:12px; align-items:center;
+  animation:toastIn .42s cubic-bezier(.2,1.1,.3,1) both; transition:opacity .28s ease, transform .28s ease;
+}
+.toast.click{cursor:pointer;} .toast.click:hover{border-color:var(--tc);}
+.toast.out{opacity:0; transform:translateX(24px) scale(.97);}
+.toast.bump{animation:toastBump .35s ease;}
+.toast .nic{width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:var(--tc); background:color-mix(in srgb, var(--tc) 17%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tc) 30%, transparent);}
+.toast .toast-body{flex:1; min-width:0;}
+.toast .tt{font-size:13.5px; font-weight:700; letter-spacing:-.02em; line-height:1.4;}
+.toast .td{font-size:12.5px; color:var(--text-muted); margin-top:2px; line-height:1.5; letter-spacing:-.012em; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+.toast-close{border:none; background:none; color:var(--text-faint); cursor:pointer; width:22px; height:22px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; align-self:flex-start; margin:-3px -4px 0 0; opacity:.6; transition:all .15s;}
+.toast-close:hover{opacity:1; background:var(--surface-3); color:var(--text);}
+.toast .tbar{position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--tc); opacity:.85; transform-origin:left; animation:toastBar 5s linear forwards;}
+@keyframes toastIn{from{opacity:0; transform:translateX(30px) scale(.94);} to{opacity:1; transform:none;}}
+@keyframes toastBar{from{transform:scaleX(1);} to{transform:scaleX(0);}}
+@keyframes toastBump{0%,100%{transform:none;} 40%{transform:scale(1.03);}}
+@media (max-width:640px){ .toast-stack{left:16px; right:16px; top:68px; align-items:stretch;} .toast{width:auto;} .notif-panel{position:fixed; top:64px; right:12px; left:12px; width:auto;} }
+@media (prefers-reduced-motion: reduce){ .toast, .notif-panel.open, .notif-count{animation:none;} .toast .tbar{animation-duration:1ms;} }
+

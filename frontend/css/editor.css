@@ -1,0 +1,196 @@
+/* ================= VS CODE WORKSPACE THEME ================= */
+:root {
+  --vscode-bg: #FFFFFF;
+  --vscode-head-bg: #F3F3F3;
+  --vscode-border: #E5E5E5;
+  --vscode-tab-bg: #ECECEC;
+  --vscode-tab-text: #616161;
+  --vscode-tab-active-bg: #FFFFFF;
+  --vscode-tab-active-text: #222222;
+  --vscode-sidebar-bg: #F8F8F8;
+  --vscode-sidebar-border: #E5E5E5;
+  --vscode-statusbar-bg: #007ACC;
+  --vscode-statusbar-text: #FFFFFF;
+  --vscode-term-bg: #181818;
+  --vscode-term-head: #252526;
+  --vscode-term-text: #D4D4D4;
+  --vscode-action-color: #555555;
+  --vscode-action-hover: #111111;
+  --vscode-action-hover-bg: rgba(0,0,0,0.06);
+}
+
+:root[data-theme="dark"] {
+  --vscode-bg: #1E1E1E;
+  --vscode-head-bg: #252526;
+  --vscode-border: #2D2D2D;
+  --vscode-tab-bg: #2D2D2D;
+  --vscode-tab-text: #969696;
+  --vscode-tab-active-bg: #1E1E1E;
+  --vscode-tab-active-text: #FFFFFF;
+  --vscode-sidebar-bg: #252526;
+  --vscode-sidebar-border: #2D2D2D;
+  --vscode-statusbar-bg: #007ACC;
+  --vscode-statusbar-text: #FFFFFF;
+  --vscode-term-bg: #141414;
+  --vscode-term-head: #252526;
+  --vscode-term-text: #E6E6E6;
+  --vscode-action-color: #CCCCCC;
+  --vscode-action-hover: #FFFFFF;
+  --vscode-action-hover-bg: rgba(255,255,255,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --vscode-bg: #1E1E1E;
+    --vscode-head-bg: #252526;
+    --vscode-border: #2D2D2D;
+    --vscode-tab-bg: #2D2D2D;
+    --vscode-tab-text: #969696;
+    --vscode-tab-active-bg: #1E1E1E;
+    --vscode-tab-active-text: #FFFFFF;
+    --vscode-sidebar-bg: #252526;
+    --vscode-sidebar-border: #2D2D2D;
+    --vscode-statusbar-bg: #007ACC;
+    --vscode-statusbar-text: #FFFFFF;
+    --vscode-term-bg: #141414;
+    --vscode-term-head: #252526;
+    --vscode-term-text: #E6E6E6;
+    --vscode-action-color: #CCCCCC;
+    --vscode-action-hover: #FFFFFF;
+    --vscode-action-hover-bg: rgba(255,255,255,0.1);
+  }
+}
+
+/* ---- Editor Column & Head Bar ---- */
+.editor-col{
+  flex:1 1 auto; display:flex; flex-direction:column; min-width:0; min-height:0; height:100%;
+  background:var(--vscode-bg); position:relative; overflow:hidden;
+}
+.editor-col[hidden], .filetree[hidden]{ display:none !important; }
+.editor-head-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--vscode-border); background:var(--vscode-head-bg);
+  flex:0 0 38px; height:38px; user-select:none;
+}
+.editor-head-bar .editor-tabs{
+  border-bottom:none; display:flex; align-items:stretch; overflow-x:auto; flex:1 1 auto; height:100%;
+}
+.editor-head-bar .editor-tabs::-webkit-scrollbar{height:3px;}
+.editor-head-bar .editor-tabs::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.3);}
+
+/* ---- Tab Buttons ---- */
+.etab{
+  display:inline-flex; align-items:center; gap:7px; padding:0 14px; height:100%; font-size:12px; font-family:var(--font-mono);
+  color:var(--vscode-tab-text); background:var(--vscode-tab-bg); border-right:1px solid var(--vscode-border);
+  cursor:pointer; white-space:nowrap; user-select:none; transition:background .15s, color .15s;
+}
+.etab:hover{color:var(--vscode-tab-active-text);}
+.etab.active{
+  color:var(--vscode-tab-active-text); background:var(--vscode-tab-active-bg);
+  border-top:2px solid var(--accent); font-weight:600;
+}
+.etab .dot{width:7px; height:7px; border-radius:50%; flex:0 0 auto;}
+.etab-title{max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.etab-close{
+  display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:3px;
+  font-size:13px; color:inherit; opacity:0.4; transition:all .15s; margin-left:4px;
+}
+.etab-close:hover{opacity:1; background:rgba(255,255,255,0.25); color:#FF6B6B;}
+
+/* ---- Editor Actions ---- */
+.editor-actions{display:flex; align-items:center; gap:8px; padding-right:12px; flex:0 0 auto;}
+.editor-actions .btn.ghost{
+  color:var(--vscode-action-color); border:1px solid transparent; background:transparent;
+  padding:5px 9px; font-size:12px; border-radius:6px; cursor:pointer;
+}
+.editor-actions .btn.ghost:hover{
+  color:var(--vscode-action-hover); background:var(--vscode-action-hover-bg);
+}
+.ws-run-btn{
+  display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff;
+  border:none; border-radius:6px; padding:6px 14px; font-size:12px; font-weight:600;
+  cursor:pointer; transition:background .15s, transform .1s; box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.ws-run-btn:hover{background:var(--accent-hover, #D4421E);}
+.ws-run-btn:active{transform:scale(0.97);}
+.ws-run-btn:disabled{opacity:0.6; cursor:not-allowed;}
+.ws-run-btn svg{width:13px; height:13px;}
+
+/* ---- Monaco Editor Container ---- */
+.editor-body{
+  flex:1 1 auto; background:var(--vscode-bg); display:flex; position:relative;
+  min-height:0; overflow:hidden; width:100%; height:100%;
+}
+.monaco-container{
+  width:100%; height:100%; flex:1 1 auto; min-height:0; overflow:hidden; position:relative;
+}
+.editor-no-files{
+  flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--text-faint); gap:12px; font-family:var(--font-mono); font-size:13px;
+  background:var(--vscode-bg); width:100%; height:100%;
+}
+.editor-no-files p{margin:0; color:var(--text-muted);}
+
+/* ---- Status Bar ---- */
+.editor-statusbar{
+  height:24px; background:var(--vscode-statusbar-bg); color:var(--vscode-statusbar-text);
+  display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+  font-size:11px; font-family:var(--font-mono); flex:0 0 24px; user-select:none;
+}
+.editor-statusbar .sb-left, .editor-statusbar .sb-right{display:flex; align-items:center; gap:12px;}
+.editor-statusbar .sb-badge{
+  background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:4px;
+  color:#FFFFFF; font-weight:600;
+}
+
+/* ---- Terminal Panel ---- */
+.ws-terminal{
+  display:flex; flex-direction:column; background:var(--vscode-term-bg);
+  height:230px; min-height:60px; flex:0 0 auto; overflow:hidden;
+}
+.ws-terminal.collapsed{display:none !important;}
+.ws-terminal.maximized{height:calc(100% - 40px) !important;}
+.ws-term-header{
+  display:flex; align-items:center; justify-content:space-between; background:var(--vscode-term-head);
+  border-bottom:1px solid rgba(255,255,255,0.08); padding:0 12px; height:34px; flex:0 0 34px; user-select:none;
+}
+.ws-term-tabs{display:flex; gap:2px;}
+.ws-term-tab{
+  background:none; border:none; padding:7px 12px; font-size:12px; font-family:var(--font-mono);
+  color:#999; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s;
+}
+.ws-term-tab:hover{color:#EEE;}
+.ws-term-tab.active{color:#FFF; border-bottom-color:var(--accent); font-weight:600;}
+.ws-term-meta{display:flex; align-items:center; gap:8px; font-size:11.5px; font-family:var(--font-mono);}
+.term-status-chip{padding:2px 7px; border-radius:4px; font-weight:600; font-size:11px;}
+.term-status-chip.success{background:#2E7D4F22; color:#49C978;}
+.term-status-chip.error{background:#D9534F22; color:#FF6B6B;}
+.term-status-chip.running{background:#3B82F622; color:#93C5FD;}
+
+.ws-term-body{
+  flex:1 1 auto; overflow:auto; padding:12px 16px; font-family:'JetBrains Mono', 'D2Coding', 'Cascadia Code', Consolas, monospace;
+  font-size:12.5px; line-height:1.65; background:var(--vscode-term-bg); color:var(--vscode-term-text); user-select:text;
+}
+.ws-term-body pre{margin:0; white-space:pre-wrap; word-break:break-all; font-family:inherit;}
+.ws-term-body .term-err{color:#FF6B6B;}
+.ws-term-body .term-dim{color:#888888;}
+.ws-term-stdin{
+  width:100%; height:100%; background:transparent; border:none; outline:none; resize:none;
+  color:var(--vscode-term-text); font-family:'JetBrains Mono', 'D2Coding', monospace; font-size:12.5px;
+}
+
+.auth-form-box{display:flex; flex-direction:column; gap:10px; margin:14px 0 10px 0;}
+.auth-input-field{display:flex; flex-direction:column; gap:4px; text-align:left;}
+.auth-input-field label{font-size:11.5px; font-weight:600; color:var(--text-faint);}
+.auth-input-field input{padding:9px 12px; border:1px solid var(--border); border-radius:7px; background:var(--bg); color:var(--text); font-size:13px; outline:none;}
+.auth-input-field input:focus{border-color:var(--accent);}
+.auth-submit-btn{background:var(--accent); color:#fff; border:none; padding:10px; border-radius:7px; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:4px;}
+.auth-submit-btn:hover{background:#D4421E;}
+.auth-divider{display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-faint); margin:10px 0;}
+.auth-divider::before, .auth-divider::after{content:''; flex:1; height:1px; background:var(--border);}
+
+.sub-item{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:6px; cursor:pointer; border:1px solid #333; margin-bottom:6px; background:#1C1F26;}
+.sub-item:hover{background:#262A34;}
+.sub-item .sub-left{display:flex; align-items:center; gap:8px;}
+.sub-item .sub-time{font-size:10.5px; color:#888;}
+

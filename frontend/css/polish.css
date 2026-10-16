@@ -1,0 +1,86 @@
+/* ================= 타이포·디테일 다듬기 (Pretendard + Plus Jakarta Sans) ================= */
+.section-head{align-items:flex-end; margin-bottom:22px; flex-wrap:wrap;}
+.section-head h2{font-family:var(--font-brand); font-size:clamp(26px, 3.2vw, 34px); font-weight:800; letter-spacing:-.04em; line-height:1.15; margin:6px 0 6px;}
+.section-head .sub{font-family:var(--font-body); font-size:13.5px; color:var(--text-muted); letter-spacing:-.01em; display:block;}
+.view-eyebrow, .eyebrow{font-family:var(--font-brand); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-ink);}
+.view-eyebrow::before{content:''; width:7px; height:7px; border-radius:50%; background:var(--brand-grad); display:inline-block; margin-right:7px; vertical-align:1px;}
+.btn.primary{font-weight:700; letter-spacing:-.01em;}
+[data-view="community"] .section-head > .btn.primary{background:var(--brand-grad); border:none; color:#fff; padding:10px 18px; border-radius:12px; box-shadow:0 8px 20px -8px rgba(99,102,241,.55); transition:transform .15s ease, box-shadow .15s ease;}
+[data-view="community"] .section-head > .btn.primary:hover{transform:translateY(-1px); box-shadow:0 12px 26px -8px rgba(99,102,241,.65);}
+
+/* 탭: 알약 → 얇은 세그먼트 */
+.cm-tabs{gap:6px; padding:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:14px; display:inline-flex; max-width:100%; overflow-x:auto; scrollbar-width:none; margin-bottom:16px;}
+.cm-tabs::-webkit-scrollbar{display:none;}
+.cm-tabs button{border:none; background:transparent; padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap; letter-spacing:-.015em;}
+.cm-tabs button:hover{background:var(--surface); color:var(--text);}
+.cm-tabs button.active{background:var(--surface); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.18), 0 0 0 1px var(--border-strong); }
+.cm-toolbar{margin-bottom:16px; gap:8px;}
+.cm-toolbar input[type=search], .cm-toolbar select{height:38px; padding:0 14px; border-radius:12px; font-size:13px; background:var(--surface); transition:border-color .15s, box-shadow .15s;}
+.cm-toolbar input[type=search]{padding-left:36px; background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px center;}
+.cm-toolbar input:focus, .cm-toolbar select:focus{box-shadow:0 0 0 3px var(--accent-soft);}
+.cm-chip{height:38px; padding:0 14px; border-radius:12px; font-size:12.5px; font-weight:600;}
+
+/* 카드 */
+.cm-feed{gap:14px;}
+.cm-card{padding:18px 20px 14px; border-radius:18px; border-left-width:1px; gap:10px; position:relative; overflow:hidden; border:1px solid var(--border);}
+.cm-card::before{content:''; position:absolute; left:0; top:16px; bottom:16px; width:3px; border-radius:0 3px 3px 0; background:var(--cc, var(--border-strong)); opacity:.9;}
+.cm-card:hover{border-color:var(--border-strong); box-shadow:0 14px 34px -16px rgba(0,0,0,.45); transform:translateY(-2px);}
+.cm-card.pinned{background:linear-gradient(135deg, var(--accent-soft), var(--surface) 60%);}
+.cm-cat{font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:8px; color:var(--cc, #64748B); background:color-mix(in srgb, var(--cc, #64748B) 16%, transparent); letter-spacing:-.01em;}
+.cm-st{font-size:11.5px; border-radius:8px; padding:4px 9px; letter-spacing:-.01em;}
+.cm-title{font-size:16.5px; font-weight:700; letter-spacing:-.025em; line-height:1.45;}
+.cm-prev{font-size:13.5px; line-height:1.65; color:var(--text-muted); letter-spacing:-.012em;}
+.cm-role{border-radius:8px; font-weight:600; font-size:11.5px; padding:3px 10px;}
+.cm-proj{border-radius:8px; font-size:11.5px;}
+.cm-tags{gap:4px 10px;} .cm-tag{font-size:12px; font-weight:500; color:var(--text-faint); letter-spacing:-.01em;} .cm-tag:hover{color:var(--accent-ink);}
+.cm-foot{padding-top:10px; margin-top:2px; border-top:1px solid var(--border); font-size:12.5px;}
+.cm-av{width:24px; height:24px; font-size:11px; font-family:var(--font-brand);}
+.cm-counts{gap:14px; font-variant-numeric:tabular-nums; font-family:var(--font-brand); font-weight:600; font-size:12px;}
+.cm-badge, .cm-st, .new-badge{font-family:var(--font-body);}
+.cm-card .new-badge{font-family:var(--font-brand); font-size:9.5px; font-weight:800; letter-spacing:.06em; padding:3px 7px; border-radius:6px;}
+
+/* 사이드 */
+.cm-box{padding:16px 18px; border-radius:18px; gap:12px;}
+.cm-box h5, .cm-recruit-panel h5{margin:0;}
+.cm-box .cm-all{width:100%; justify-content:center; border-radius:10px; font-size:12.5px; font-weight:600; margin-top:2px;}
+.cm-box h5{font-size:13.5px; font-weight:800; letter-spacing:-.02em;}
+.cm-tagcloud button{border-radius:8px; font-size:12px; font-weight:500; padding:5px 10px; background:var(--surface-2);}
+.cm-mini b{font-size:13px; font-weight:600; letter-spacing:-.015em;}
+.cm-rules{font-size:12px; line-height:1.8;}
+
+/* 상세 시트 */
+.cm-sheet{border-radius:24px; padding:26px 28px 28px; border:1px solid var(--border);}
+.cm-d-title{font-size:24px; font-weight:800; letter-spacing:-.035em; line-height:1.38; text-wrap:balance;}
+.cm-d-author b{font-size:14px; font-weight:700;}
+.cm-body{font-size:15px; line-height:1.85; letter-spacing:-.012em;}
+.cm-body h5{font-size:15.5px; font-weight:700;}
+.cm-body pre{border-radius:12px; font-size:12.5px;}
+.cm-actions{padding:12px 0;}
+.cm-act{border-radius:10px; font-weight:600; padding:8px 14px; font-size:12.5px; letter-spacing:-.01em;}
+.cm-recruit-panel{border-radius:16px; padding:16px 18px;}
+.cm-recruit-panel h5{font-size:14px; font-weight:800;}
+.cm-ctitle{font-size:15px; font-weight:800; letter-spacing:-.02em;}
+.cm-comment{padding:14px 0;} .cm-comment .ch b{font-weight:700;} .cm-comment .ct{font-size:14px; line-height:1.7;}
+.cm-comment .ca{font-weight:500;} .cm-comment.is-accepted{border-radius:14px;}
+.cm-composer textarea, .cm-apply-form textarea, .cm-field input, .cm-field select, .cm-field textarea{border-radius:12px; transition:border-color .15s, box-shadow .15s;}
+.cm-composer textarea:focus, .cm-apply-form textarea:focus, .cm-field input:focus, .cm-field select:focus, .cm-field textarea:focus{box-shadow:0 0 0 3px var(--accent-soft); outline:none;}
+.cm-field label{font-weight:700; letter-spacing:-.015em;}
+.cm-ed-cat{border-radius:14px; font-weight:600; letter-spacing:-.015em;}
+.cm-badge{border-radius:6px; font-size:10.5px;}
+@media (max-width:640px){
+  .cm-sheet{padding:20px 18px 22px; border-radius:20px;} .cm-d-title{font-size:21px;}
+  .cm-tabs{display:flex; width:100%;} .cm-toolbar input[type=search]{max-width:none; flex:1 1 100%;}
+  .section-head h2{font-size:26px;}
+}
+
+.prompt-box textarea{font-size:15.5px; letter-spacing:-.015em;}
+.prompt-actions .left{flex-wrap:wrap;}
+.pill-btn{font-weight:600; letter-spacing:-.01em; transition:background .15s, border-color .15s, color .15s;}
+.pill-btn svg{opacity:.85;}
+.pill-btn.on{background:var(--accent-soft); color:var(--accent-ink); border-color:var(--accent);}
+.join-row{display:flex; gap:8px; padding-top:10px; margin-top:10px; border-top:1px solid var(--border);}
+.join-row[hidden]{display:none;}
+.join-row input{flex:1; min-width:0; height:38px; padding:0 12px; border:1px solid var(--border-strong); border-radius:10px; background:var(--surface); color:var(--text); font:inherit; font-size:13px; outline:none;}
+.join-row input:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+.join-row .btn{height:38px; padding:0 18px; border-radius:10px;}
+

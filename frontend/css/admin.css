@@ -1,0 +1,17 @@
+/* ================= ADMIN ================= */
+.workload-list{display:flex; flex-direction:column; gap:10px;}
+.workload-row{display:flex; align-items:center; gap:10px;}
+.wl-who{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:500; flex:0 0 62px;}
+.wl-who .mini{margin-left:0;}
+.wl-bar-wrap{flex:1; height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden;}
+.wl-bar{height:100%; border-radius:999px;}
+.wl-pct{font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); flex:0 0 34px; text-align:right;}
+
+.admin-member-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+.admin-member-card{padding:16px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; cursor:pointer;}
+.admin-member-card:hover{border-color:var(--border-strong);}
+.amc-info b{font-size:13.5px; display:block;}
+.amc-info span{font-size:11px; color:var(--text-faint);}
+.amc-stats{display:flex; gap:10px; font-size:11px; color:var(--text-muted); font-family:var(--font-mono);}
+.admin-member-card .btn{align-self:flex-end; margin-top:2px;}
+

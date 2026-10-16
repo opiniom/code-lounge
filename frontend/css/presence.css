@@ -1,0 +1,32 @@
+/* ================= 내 상태 (온라인 · 자리비움 · 방해금지) ================= */
+.pst-wrap{position:relative;}
+.pst-btn{display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 11px 0 10px; border-radius:999px; border:1px solid var(--border-strong); background:var(--surface-2); color:var(--text); font:inherit; font-size:12.5px; font-weight:600; letter-spacing:-.015em; cursor:pointer; transition:background .15s, border-color .15s;}
+.pst-btn:hover{background:var(--surface-3);}
+.pst-btn .pst-chev{opacity:.55; transition:transform .2s;} .pst-btn[aria-expanded="true"] .pst-chev{transform:rotate(180deg);}
+.pst-btn.bad{color:#EF4444; border-color:rgba(239,68,68,.4); background:rgba(239,68,68,.1);}
+.pst-ic{display:inline-flex; width:12px; height:12px; align-items:center; justify-content:center; flex:0 0 auto;}
+.pst-btn[data-s="online"] .pst-ic svg{filter:drop-shadow(0 0 4px rgba(34,197,94,.7));}
+.pst-menu{position:absolute; top:44px; right:0; width:318px; z-index:62; display:none; flex-direction:column; gap:2px; padding:8px; border-radius:20px; background:color-mix(in srgb, var(--bg-elevated) 94%, transparent); backdrop-filter:blur(22px) saturate(1.3); -webkit-backdrop-filter:blur(22px) saturate(1.3); border:1px solid var(--border-strong); box-shadow:0 30px 70px -22px rgba(0,0,0,.6); transform-origin:calc(100% - 40px) -8px;}
+.pst-menu.open{display:flex; animation:ntIn .24s cubic-bezier(.2,.9,.3,1) both;}
+.pst-head{font-family:var(--font-brand); font-weight:800; font-size:15px; letter-spacing:-.03em; padding:8px 10px 6px;}
+.pst-opt{display:flex; align-items:center; gap:12px; padding:10px; border:none; background:none; border-radius:13px; cursor:pointer; text-align:left; color:var(--text); font:inherit; transition:background .15s;}
+.pst-opt:hover{background:var(--surface-2);} .pst-opt.on{background:var(--accent-soft);}
+.pst-opt .pst-ic{width:34px; height:34px; border-radius:11px; background:var(--surface-2);} .pst-opt.on .pst-ic{background:var(--surface);}
+.pst-tx{display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;} .pst-tx b{font-size:13.5px; font-weight:700; letter-spacing:-.02em;} .pst-tx small{font-size:11.8px; color:var(--text-faint); line-height:1.45; letter-spacing:-.01em;}
+.pst-ck{width:18px; text-align:center; font-weight:800; color:var(--accent-ink); opacity:0;} .pst-opt.on .pst-ck{opacity:1;}
+.pst-note{font-size:11.8px; color:var(--text-faint); padding:8px 12px 4px; line-height:1.5;} .pst-note b{color:var(--text-muted);}
+.pst-srv{display:flex; align-items:center; gap:8px; margin:6px 4px 2px; padding:9px 10px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted);}
+.pst-sdot{width:7px; height:7px; border-radius:50%; background:#22C55E; box-shadow:0 0 6px rgba(34,197,94,.6);} .pst-srv.bad .pst-sdot{background:#EF4444; box-shadow:0 0 6px rgba(239,68,68,.6);} .pst-srv.bad{color:#EF4444;}
+.pst-srv button{margin-left:auto; border:none; background:none; color:var(--accent-ink); font:inherit; font-size:12px; font-weight:600; cursor:pointer; padding:2px 4px; border-radius:6px;} .pst-srv button:hover{text-decoration:underline;}
+/* 아바타 위 상태 점 */
+.avatar{position:relative;}
+.avatar::after, .avatar-stack .mini[data-pst]::after{content:''; position:absolute; right:-3px; bottom:-3px; width:11px; height:11px; border-radius:50%; border:2px solid var(--bg-elevated); background:#94A3B8; box-sizing:border-box;}
+.avatar[data-pst="online"]::after, .avatar-stack .mini[data-pst="online"]::after{background:#22C55E;}
+.avatar[data-pst="away"]::after, .avatar-stack .mini[data-pst="away"]::after{background:#F59E0B;}
+.avatar[data-pst="dnd"]::after, .avatar-stack .mini[data-pst="dnd"]::after{background:#EF4444;}
+.avatar[data-pst="offline"]::after, .avatar-stack .mini[data-pst="offline"]::after{background:#94A3B8;}
+.avatar-stack .mini{position:relative;} .avatar-stack .mini::after{right:-2px; bottom:-2px; width:9px; height:9px; border-width:1.5px;}
+.nt-dnd{margin:0 20px 6px; padding:8px 12px; border-radius:11px; font-size:12px; font-weight:600; color:#EF4444; background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.25);}
+.nt-dnd[hidden]{display:none;}
+@media (max-width:640px){ .pst-btn #pstLabel{display:none;} .pst-btn{padding:0 9px;} .pst-menu{position:fixed; top:64px; left:12px; right:12px; width:auto;} }
+

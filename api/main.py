@@ -81,7 +81,8 @@ app = FastAPI(
 )
 
 import os
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 # CORS 설정 (모든 로컬 개발 환경 및 Vercel, Cloudflare Tunnel 허용)
 app.add_middleware(
@@ -112,7 +113,7 @@ app.include_router(community_router)
 app.include_router(presence_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
-DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))
+DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
 UI_DIR = settings.FRONTEND_DIR if (settings.FRONTEND_DIR and os.path.exists(settings.FRONTEND_DIR)) else DEFAULT_UI_DIR
 INDEX_FILE = os.path.join(UI_DIR, "index.html")
 
@@ -132,22 +133,81 @@ async def share_url():
             pass
     return {"public_mode": settings.PUBLIC_MODE, "url": url}
 
+_UI_CACHE = {"stamp": None, "build": "none", "html": "", "css": "", "js": ""}
+
+def _ui_manifest():
+    """frontend/manifest.json 의 순서대로 css / js 파일 목록을 읽는다"""
+    import json
+    try:
+        with open(os.path.join(UI_DIR, "manifest.json"), "r", encoding="utf-8") as fh:
+            m = json.load(fh)
+        return list(m.get("css", [])), list(m.get("js", []))
+    except (OSError, ValueError):
+        return [], []
+
+def _ui_snapshot():
+    """화면 파일이 바뀌었는지 확인해서, 바뀌었을 때만 다시 묶는다 (index.html + css/ + js/ → 버전 해시, bundle.css, bundle.js)."""
+    import hashlib
+    css_files, js_files = _ui_manifest()
+    files = [INDEX_FILE, os.path.join(UI_DIR, "manifest.json")] + [os.path.join(UI_DIR, f) for f in css_files + js_files]
+    try:
+        stamp = tuple((f, os.path.getmtime(f), os.path.getsize(f)) for f in files if os.path.exists(f))
+    except OSError:
+        return _UI_CACHE
+    if stamp != _UI_CACHE["stamp"]:
+        def bundle(names, comment):
+            out = []
+            for n in names:
+                try:
+                    with open(os.path.join(UI_DIR, n), "r", encoding="utf-8") as fh:
+                        out.append("\n%s ===== %s ===== %s\n%s" % (comment[0], n, comment[1], fh.read()))
+                except OSError:
+                    pass
+            return "".join(out)
+        css = bundle(css_files, ("/*", "*/"))
+        js = bundle(js_files, ("/*", "*/"))
+        build = hashlib.sha1((css + js).encode("utf-8")).hexdigest()[:10]
+        try:
+            with open(INDEX_FILE, "r", encoding="utf-8") as fh:
+                raw = fh.read()
+            build = hashlib.sha1((build + raw).encode("utf-8")).hexdigest()[:10]
+            html = raw.replace("__BUILD__", build)
+        except OSError:
+            html = ""
+        _UI_CACHE.update(stamp=stamp, build=build, html=html, css=css, js=js)
+    return _UI_CACHE
+
 @app.get("/api/version", tags=["UI"])
 async def app_version():
-    """화면(index.html) 버전. 열어 둔 화면이 오래된 코드인지 확인하는 데 쓴다."""
-    import hashlib
-    try:
-        with open(INDEX_FILE, "rb") as f:
-            return {"build": hashlib.sha1(f.read()).hexdigest()[:10]}
-    except OSError:
-        return {"build": "none"}
+    """화면 버전. 열어 둔 화면이 오래된 코드인지 확인하는 데 쓴다."""
+    return {"build": _ui_snapshot()["build"]}
 
-@app.get("/", tags=["UI"])
-@app.get("/ui", tags=["UI"])
-@app.get("/app", tags=["UI"])
-async def serve_ui():
-    if os.path.exists(INDEX_FILE):
-        return FileResponse(INDEX_FILE, headers={"Cache-Control": "no-store"})
+# 화면 파일: 소스는 frontend/css/*.css, frontend/js/**/*.js 로 나뉘어 있고, 서버가 manifest.json 순서대로 묶어서
+# /static/bundle.css, /static/bundle.js 하나씩으로 내려준다. (한 파일이던 때와 똑같이 동작하고, 요청 수는 오히려 줄어든다)
+# 주소의 ?v= 값이 바뀌면 브라우저가 새로 받는다.
+@app.get("/static/bundle.css", include_in_schema=False)
+async def bundle_css():
+    return Response(_ui_snapshot()["css"], media_type="text/css; charset=utf-8", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+@app.get("/static/bundle.js", include_in_schema=False)
+async def bundle_js():
+    return Response(_ui_snapshot()["js"], media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+if os.path.isdir(UI_DIR):
+    app.mount("/static", StaticFiles(directory=UI_DIR), name="ui-static")
+
+# 화면 주소: /app, /app/login, /app/workspace, /app/community/12 … 모두 같은 index.html 이 열리고,
+# 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ 와 /ui 는 예전 주소)
+@app.get("/", tags=["UI"], include_in_schema=False)
+@app.get("/ui", tags=["UI"], include_in_schema=False)
+@app.get("/app", tags=["UI"], include_in_schema=False)
+@app.get("/app/{page:path}", tags=["UI"], include_in_schema=False)
+async def serve_ui(page: str = ""):
+    if "." in page.rsplit("/", 1)[-1]:      # /app/없는파일.js 같은 요청은 화면이 아니라 404
+        raise HTTPException(status_code=404, detail="Not found")
+    snap = _ui_snapshot()
+    if snap["html"]:
+        return HTMLResponse(snap["html"], headers={"Cache-Control": "no-store"})
     return {"error": "UI index.html 파일을 찾을 수 없습니다."}
 
 
