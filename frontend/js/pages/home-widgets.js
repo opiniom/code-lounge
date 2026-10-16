@@ -46,13 +46,20 @@ function wgRender(){
 function wgOpen(){ wgToggleEdit(false); var m = document.getElementById('wgModal'); if(!m) return; var s = document.getElementById('wgSearch'); if(s) s.value = ''; wgRender(); m.classList.add('open'); }
 function wgClose(){ var m = document.getElementById('wgModal'); if(m) m.classList.remove('open'); }
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ var m = document.getElementById('wgModal'); if(m && m.classList.contains('open')) wgClose(); else if(document.getElementById('widgetGrid') && document.getElementById('widgetGrid').classList.contains('editing')) wgToggleEdit(false); } });
+/* 보이는 위젯이 하나도 없으면(처음 실행 포함) 빈 상태 안내를 보여준다 */
+function wgSyncEmpty(){
+  var e = document.getElementById('wgEmpty'), g = document.getElementById('widgetGrid'); if(!e || !g) return;
+  var any = !!g.querySelector('.dyn-widget:not([hidden])');
+  e.hidden = any; g.hidden = !any;
+  var eb = document.getElementById('wgEditBtn'); if(eb) eb.hidden = !any;
+}
 function setWidget(id, show){
   var card = document.querySelector('.dyn-widget[data-widget="'+id+'"]');
   if(card){
     var was = card.hidden; card.hidden = !show;
     if(show && was){ card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop'); }
   }
-  saveWidgetPrefs();
+  saveWidgetPrefs(); wgSyncEmpty();
   if(show) wgRefreshLive();
   var m = document.getElementById('wgModal'); if(m && m.classList.contains('open')) wgRender();
 }
@@ -78,8 +85,8 @@ function loadWidgetPrefs(){
     if(!raw) return;
     var ids = JSON.parse(raw);
     document.querySelectorAll('.dyn-widget').forEach(function(w){ w.hidden = ids.indexOf(w.dataset.widget) < 0; });
-    if(!localStorage.getItem('root_widget_team_seen')){ localStorage.setItem('root_widget_team_seen', '1'); var tw = document.querySelector('.dyn-widget[data-widget="team"]'); if(tw) tw.hidden = false; }
   }catch(e){}
+  wgSyncEmpty();
 }
 /* 편집 모드: 흔들리는 카드 + 빼기(−) 배지 + 끌어서 순서 바꾸기 */
 function wgToggleEdit(force){
@@ -219,7 +226,7 @@ function wgLiveTeam(){
   var more = wgEl('button', 'tw-link', '팀원 화면 열기'); more.innerHTML += ' <span>→</span>'; more.onclick = function(){ goView('admin'); }; box.appendChild(more);
 }
 function wgRefreshLive(){ wgLiveToday(); wgLiveEvents(); wgLiveCommunity(); wgLiveNotes(); wgLiveTeam(); renderDureOrbit(); }
-loadWidgetPrefs();
+loadWidgetPrefs(); wgSyncEmpty();
 setTimeout(wgRefreshLive, 600); setInterval(function(){ if(!document.hidden) wgRefreshLive(); }, 30000);
 
 

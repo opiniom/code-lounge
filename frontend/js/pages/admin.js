@@ -37,10 +37,10 @@ async function renderMyPage(){
   if(fl && authToken && calApiMode){
     try {
       var f = await apiFetch('/api/follows/me'); fl.innerHTML = '';
-      var mk = function(label, n, tab){ var b = mpEl('button', 'mp-fbtn'); b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = n; b.querySelector('span').textContent = label; b.onclick = function(){ mpTab(tab); document.getElementById('mpPanel').scrollIntoView({ behavior:'smooth', block:'start' }); }; fl.appendChild(b); };
+      var mk = function(label, n, tab){ var b = mpEl('button', 'mp-fbtn'); b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = n; b.querySelector('span').textContent = label; b.onclick = function(){ openFollowModal(tab); }; fl.appendChild(b); };
       MP.follows = f;
       mk('팔로워', f.followers.length, 'followers'); mk('팔로잉', f.following.length, 'following');
-      var fb = mpEl('button', 'btn ghost', '＋ 사람 찾기'); fb.onclick = function(){ mpTab('following'); document.getElementById('mpPanel').scrollIntoView({ behavior:'smooth', block:'start' }); }; fl.appendChild(fb);
+      var fb = mpEl('button', 'btn ghost', '＋ 사람 찾기'); fb.onclick = function(){ openFollowModal('following'); }; fl.appendChild(fb);
     } catch(e){}
   } else if(fl){ fl.innerHTML = ''; }
 }
@@ -51,17 +51,12 @@ function mpMonthEvents(){
 function mpTab(tab){
   MP.tab = tab;
   document.querySelectorAll('.stat-tile[data-tab]').forEach(function(t){ t.classList.toggle('on', t.dataset.tab === tab); });
-  var title = { projects:'참여 프로젝트', events:'이번 달 일정', notes:'회의록', posts:'내가 쓴 커뮤니티 글', followers:'팔로워', following:'팔로잉' }[tab];
+  var title = { projects:'참여 프로젝트', events:'이번 달 일정', notes:'회의록', posts:'내가 쓴 커뮤니티 글' }[tab];
   var list = document.getElementById('mpList'); if(!list) return; list.innerHTML = '';
   var rows = [];
   var none = function(msg){ list.appendChild(mpEl('div', 'mp-none', msg)); document.getElementById('mpCount').textContent = '0'; document.getElementById('mpTitle').textContent = title; };
   if(!calApiMode){ none('로그인하면 내 활동을 볼 수 있어요.'); return; }
-  if(tab === 'followers' || tab === 'following'){
-    var f = MP.follows || { followers:[], following:[] }; rows = tab === 'followers' ? f.followers : f.following;
-    if(tab === 'following') pfEmailSearch(list);
-    rows.forEach(function(x){ list.appendChild(pfPerson(x)); });
-    if(!rows.length) list.appendChild(mpEl('div', 'mp-none', tab === 'followers' ? '아직 팔로워가 없어요. 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '아직 팔로우한 사람이 없어요. 위 이메일 검색이나 커뮤니티 글의 작성자 옆 버튼으로 팔로우해 보세요.'));
-  } else if(tab === 'projects'){
+  if(tab === 'projects'){
     rows = myProjects.slice();
     rows.forEach(function(p){
       var r = mpEl('div', 'mp-row'), main = mpEl('div', 'mp-main'); main.appendChild(mpEl('b', null, p.title));

@@ -75,7 +75,7 @@ function ntFollowGroup(list){
   var tm = document.createElement('span'); tm.className = 'ntime'; tm.textContent = ntRel(list[0].created_at); tx.appendChild(tm); body.appendChild(tx);
   it.appendChild(stack); it.appendChild(body);
   var dot = document.createElement('i'); dot.className = 'nt-dot'; it.appendChild(dot);
-  it.onclick = function(){ list.forEach(function(n){ ntMark(n.id); }); document.getElementById('notifPanel').classList.remove('open'); MP.tab = 'followers'; goView('mypage'); };
+  it.onclick = function(){ list.forEach(function(n){ ntMark(n.id); }); document.getElementById('notifPanel').classList.remove('open'); goView('mypage'); setTimeout(function(){ openFollowModal('followers'); }, 250); };
   it.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); it.click(); } };
   return it;
 }

@@ -361,7 +361,6 @@ function addProjectFromPrompt(name, row){
     var existing = myProjects.filter(function(x){ return x.id==='p'+row.id; })[0];
     if(existing){ if(existing.title!==row.title){ existing.title = row.title; renderProjRow(); } return; }
   }
-  setWidget('projects', true);
   var id = row ? 'p'+row.id : 'ws'+Date.now()+Math.random().toString(36).slice(2,5);
     var newProj = {
     id: id,

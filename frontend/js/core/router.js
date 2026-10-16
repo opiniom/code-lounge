@@ -57,8 +57,7 @@ function goView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===name));
   document.querySelectorAll('#tabnav button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
   document.querySelectorAll('#mnav button[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
-  var mm = document.getElementById('mnavMoreBtn'); if(mm) mm.classList.toggle('active', ['workspace','notes','events','mypage','profile'].indexOf(name) >= 0);
-  if(typeof mnavClose === 'function') mnavClose();
+  if(typeof mnavSync === 'function') mnavSync(name);
   document.querySelector('.app').classList.toggle('auth-mode', name==='auth');
   closeMenus();
   routerSync(name);

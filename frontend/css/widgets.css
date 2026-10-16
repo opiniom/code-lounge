@@ -96,3 +96,8 @@ html[data-motion="reduce"] .tw-bar i{transition:none;}
 .wgp-sbar{display:flex; gap:3px; height:6px; border-radius:99px; overflow:hidden;} .wgp-sbar i{display:block; border-radius:99px;}
 
 .wgp-t .wgp-l{height:6px; border-radius:3px;}
+
+/* 위젯이 하나도 없을 때(처음 실행) */
+.wg-empty{display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:40px 22px; border:1px dashed var(--border-strong); border-radius:22px; background:var(--surface);} .wg-empty[hidden]{display:none;}
+.wg-empty-ic{width:60px; height:60px; border-radius:20px; display:flex; align-items:center; justify-content:center; background:var(--accent-soft); color:var(--accent-ink); margin-bottom:4px;} .wg-empty b{font-size:16px; letter-spacing:-.025em;} .wg-empty span{font-size:13px; color:var(--text-muted); max-width:300px; line-height:1.6;} .wg-empty .btn{margin-top:10px;}
+.widget-dyn-grid[hidden]{display:none;}

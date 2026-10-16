@@ -3,7 +3,7 @@ var PF = { uid:null, data:null, follows:null, tab:'portfolio', editing:false, ed
 
 function openProfile(id, tab){
   if(!calApiMode){ pushToast('🔒', '로그인 후 프로필을 볼 수 있어요', '로그인하면 내 포트폴리오와 팔로우를 쓸 수 있어요'); openLogin(); return; }
-  if(!id || (currentUser && id === currentUser.id)){ MP.tab = tab === 'followers' || tab === 'following' ? tab : MP.tab; goView('mypage'); return; }   // 내 프로필은 마이페이지에서
+  if(!id || (currentUser && id === currentUser.id)){ goView('mypage'); if(tab === 'followers' || tab === 'following') setTimeout(function(){ openFollowModal(tab); }, 250); return; }   // 내 프로필은 마이페이지에서
   PF.uid = id;
   PF.tab = tab || 'portfolio'; PF.editing = false; PF.editProj = null; PF.data = null;
   goView('profile');
@@ -36,7 +36,7 @@ async function renderProfile(keepScroll){
 function pfLive(){
   var v = document.querySelector('.view.active');
   if(v && v.dataset.view === 'profile' && !PF.editing && !PF.editProj) renderProfile(true);
-  fwResync(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
+  fwResync(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon(); if(FM && FM.el) fmLoad();
 }
 
 function pfDraw(){
@@ -243,4 +243,46 @@ async function fwResync(){
   var els = Array.prototype.slice.call(document.querySelectorAll('.fw-btn[data-uid]')); if(!els.length) return;
   await fwLoad(els.map(function(b){ return parseInt(b.dataset.uid, 10); }));
   els.forEach(function(b){ fwDraw(b, b.dataset.uid); });
+}
+
+/* ---- 팔로워 · 팔로잉 팝업 (마이페이지 아래 칸에 끼우지 않고, 폰에서는 아래에서 올라오는 시트로) ---- */
+var FM = { tab:'followers', data:null, el:null };
+function openFollowModal(tab){
+  if(!calApiMode){ pushToast('🔒', '로그인 후 쓸 수 있어요', '로그인하면 팔로우를 할 수 있어요'); openLogin(); return; }
+  closeFollowModal();
+  FM.tab = tab === 'following' ? 'following' : 'followers'; PF.q = ''; PF.results = []; PF.sMsg = '';
+  var bd = pfEl('div', 'modal-backdrop open fm-bd'); bd.style.zIndex = 110;
+  var box = pfEl('div', 'share-modal fm-box'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  bd.appendChild(box); bd.addEventListener('click', function(e){ if(e.target === bd) closeFollowModal(); });
+  FM.onKey = function(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeFollowModal(); } }; document.addEventListener('keydown', FM.onKey, true);
+  document.body.appendChild(bd); FM.el = box; FM.bd = bd;
+  fmLoad();
+}
+function closeFollowModal(){
+  if(FM.bd){ FM.bd.remove(); FM.bd = null; FM.el = null; }
+  if(FM.onKey){ document.removeEventListener('keydown', FM.onKey, true); FM.onKey = null; }
+}
+async function fmLoad(){
+  if(!FM.el) return;
+  try { FM.data = await apiFetch('/api/follows/me'); } catch(e){ FM.data = { followers:[], following:[] }; }
+  fmDraw();
+}
+function fmDraw(){
+  var box = FM.el; if(!box) return; var d = FM.data || { followers:[], following:[] };
+  box.innerHTML = '';
+  var head = pfEl('div', 'fm-head'); head.appendChild(pfEl('b', null, '팔로우'));
+  var x = pfEl('button', 'icon-btn'); x.type = 'button'; x.setAttribute('aria-label', '닫기'); x.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'; x.onclick = closeFollowModal; head.appendChild(x); box.appendChild(head);
+  var tabs = pfEl('div', 'fm-tabs');
+  [['followers', '팔로워 ' + d.followers.length], ['following', '팔로잉 ' + d.following.length]].forEach(function(t){ var b = pfEl('button', FM.tab === t[0] ? 'on' : '', t[1]); b.type = 'button'; b.onclick = function(){ FM.tab = t[0]; fmDraw(); }; tabs.appendChild(b); });
+  box.appendChild(tabs);
+  var body = pfEl('div', 'fm-body'); box.appendChild(body);
+  if(FM.tab === 'following') pfEmailSearch(body);
+  var list = FM.tab === 'followers' ? d.followers : d.following;
+  if(!list.length){
+    var e = pfEl('div', 'pf-empty'); e.innerHTML = '<b></b><span></span>';
+    e.querySelector('b').textContent = FM.tab === 'followers' ? '아직 팔로워가 없어요' : '아직 팔로우한 사람이 없어요';
+    e.querySelector('span').textContent = FM.tab === 'followers' ? '프로필을 채우고 커뮤니티에 글을 써 보세요.' : '위에 상대방 이메일을 입력하거나, 커뮤니티 글의 작성자 옆 버튼으로 팔로우해 보세요.';
+    body.appendChild(e); return;
+  }
+  var ul = pfEl('div', 'pf-people'); list.forEach(function(x){ var p = pfPerson(x); var open = p.onclick; p.onclick = function(){ closeFollowModal(); openProfile(x.id); }; ul.appendChild(p); }); body.appendChild(ul);
 }

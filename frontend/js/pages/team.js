@@ -208,7 +208,7 @@ function loadCalProjects(){
     calProjectsLoaded = true;
     renderProjRow();
     syncCalProjects();
-    if(myProjects.length){ setWidget('projects', true); homeLandingActive = false; applyHomeLandingState(); }
+    if(myProjects.length){ homeLandingActive = false; applyHomeLandingState(); }
   });
 }
 

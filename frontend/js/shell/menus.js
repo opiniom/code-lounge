@@ -42,10 +42,28 @@ document.addEventListener('keydown', function(e){
   upd();
 })();
 
-/* ---- 폰 화면: 아래쪽 탭 바의 '더보기' ---- */
-function mnavMore(){ var m = document.getElementById('mmore'); if(m) m.classList.add('open'); }
-function mnavClose(){ var m = document.getElementById('mmore'); if(m) m.classList.remove('open'); }
-function mnavGo(v){ mnavClose(); goView(v); }
+/* ---- 폰 화면: 아래쪽 탭 바 (1쪽: 홈·워크스페이스·회의록·캘린더 / 2쪽: 이벤트·커뮤니티·팀원·마이) — 옆으로 밀거나 '더보기'로 넘긴다 ---- */
+var MNAV_PAGE2 = ['events', 'community', 'admin', 'mypage', 'profile'];
+function mnavScrollTo(page, smooth){
+  var tr = document.getElementById('mnavTrack'); if(!tr) return;
+  var x = page * tr.clientWidth;
+  if(Math.abs(tr.scrollLeft - x) < 2) return;
+  try { tr.scrollTo({ left:x, behavior: smooth === false ? 'auto' : 'smooth' }); } catch(e){ tr.scrollLeft = x; }
+}
+function mnavMore(){ mnavScrollTo(1); }
+function mnavBack(){ mnavScrollTo(0); }
+function mnavClose(){}
+function mnavGo(v){ goView(v); }
+function mnavSync(view){ mnavScrollTo(MNAV_PAGE2.indexOf(view) >= 0 ? 1 : 0); }     // 화면이 바뀌면 그 메뉴가 있는 쪽으로 부드럽게 넘어간다
+(function(){
+  var tr = document.getElementById('mnavTrack'); if(!tr) return;
+  var dots = document.querySelectorAll('#mnav .mnav-dots i'), t = null;
+  tr.addEventListener('scroll', function(){
+    var p = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth));
+    dots.forEach(function(d, i){ d.classList.toggle('on', i === p); });
+  }, { passive:true });
+  window.addEventListener('resize', function(){ clearTimeout(t); t = setTimeout(function(){ var a = document.querySelector('#mnav button.active'); mnavSync(a && a.dataset.view || 'home'); }, 150); });
+})();
 /* 화면 크기에 맞춰 html 에 표시 (CSS 가 알아서 바꾸지만, 코드에서도 폰인지 알 수 있게) */
 (function(){
   var mq = window.matchMedia ? window.matchMedia('(max-width: 820px)') : null;
