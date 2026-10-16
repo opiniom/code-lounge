@@ -157,6 +157,7 @@ function updateChatBadge(){
   var unread = chatMsgs.filter(function(m){ return m.id > seen && m.user_id !== mine; }).length;
   badge.hidden = !(calApiMode && unread > 0 && !chatPanelOpen());
   badge.textContent = unread > 9 ? '9+' : String(unread);
+  var mb = document.getElementById('mChatBadge'); if(mb){ var show = calApiMode && unread > 0 && !chatPanelOpen(); mb.style.display = show ? 'flex' : 'none'; mb.textContent = unread > 9 ? '9+' : String(unread); }
 }
 function loadChat(force){
   var sid = chatServerId();

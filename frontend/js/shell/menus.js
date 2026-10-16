@@ -41,3 +41,14 @@ document.addEventListener('keydown', function(e){
   window.addEventListener('scroll', upd, { passive:true });
   upd();
 })();
+
+/* ---- 폰 화면: 아래쪽 탭 바의 '더보기' ---- */
+function mnavMore(){ var m = document.getElementById('mmore'); if(m) m.classList.add('open'); }
+function mnavClose(){ var m = document.getElementById('mmore'); if(m) m.classList.remove('open'); }
+function mnavGo(v){ mnavClose(); goView(v); }
+/* 화면 크기에 맞춰 html 에 표시 (CSS 가 알아서 바꾸지만, 코드에서도 폰인지 알 수 있게) */
+(function(){
+  var mq = window.matchMedia ? window.matchMedia('(max-width: 820px)') : null;
+  function apply(){ document.documentElement.classList.toggle('is-mobile', !!(mq && mq.matches)); }
+  apply(); if(mq){ if(mq.addEventListener) mq.addEventListener('change', apply); else if(mq.addListener) mq.addListener(apply); }
+})();

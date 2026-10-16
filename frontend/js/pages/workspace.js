@@ -758,7 +758,10 @@ function selectWsProject(id){
   if (!calApiMode) { openWorkspace(id); return; }
   loadWorkspace(id);
 }
+var wsMobileInited = false;
 function enterWorkspaceView(){
+  /* 폰에서는 파일 목록을 처음엔 접어 둔다 (에디터가 화면을 다 쓰도록) */
+  if(!wsMobileInited && document.documentElement.classList.contains('is-mobile')){ wsMobileInited = true; var ft = document.getElementById('wsFileTree'); if(ft) ft.classList.add('collapsed'); }
   renderWsSelector();
   if (!calApiMode) { renderWsEmpty(); return; }
   var target = (calSelected !== 'all' && calProjectById(calSelected)) ? calSelected

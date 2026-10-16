@@ -66,6 +66,9 @@ function enterApiMode(){
     projPageIndex = 0;
     renderProjRow();
     if(myProjects.length){ setWidget('projects', true); homeLandingActive = false; applyHomeLandingState(); }
+    var av = document.querySelector('.view.active');          // 주소로 바로 들어온 화면(워크스페이스·팀원)도 프로젝트가 준비되면 채운다
+    if(av && av.dataset.view === 'workspace' && typeof enterWorkspaceView === 'function') enterWorkspaceView();
+    if(typeof tmRefresh === 'function') tmRefresh();
     return apiFetch('/api/calendar/events');
   }).then(function(rows){
     calendarEvents = rows.map(serverEventToLocal);

@@ -20,7 +20,8 @@
     "css/widgets.css",
     "css/presence.css",
     "css/guest.css",
-    "css/compat.css"
+    "css/compat.css",
+    "css/mobile.css"
   ],
   "js": [
     "js/core/theme.js",
