@@ -367,7 +367,8 @@ async def live_socket(websocket: WebSocket):
                     await live.relay_typing(user, d["project_id"], bool(d.get("on", True)))
                 elif d.get("t") == "ws" and isinstance(d.get("project_id"), int):
                     p_ = d.get("path")
-                    await live.relay_ws_presence(user, d["project_id"], p_ if isinstance(p_, str) else None, bool(d.get("editing")))
+                    await live.relay_ws_presence(user, d["project_id"], p_ if isinstance(p_, str) else None, bool(d.get("editing")),
+                                                 d.get("cur") if isinstance(d.get("cur"), dict) else None, bool(d.get("snap")))
     except WebSocketDisconnect:
         pass
     except Exception:

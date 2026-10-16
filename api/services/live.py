@@ -219,32 +219,48 @@ async def _audience(project_id: int) -> Set[int]:
     return hit[1]
 
 
-async def _ws_broadcast(user_id: int, name: str, project_id: int, path: Optional[str], editing: bool) -> None:
+def _pos(v) -> Optional[int]:
+    return v if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 1_000_000 else None
+
+
+async def _ws_broadcast(user_id: int, name: str, project_id: int, info: Optional[dict]) -> None:
     aud = await _audience(project_id)
-    await hub.send(aud - {user_id}, {"t": "wspres", "project_id": project_id, "user_id": user_id, "name": name, "path": path, "editing": editing})
+    msg = {"t": "wspres", "project_id": project_id, "user_id": user_id, "name": name, "path": None, "editing": False}
+    if info:
+        msg.update({"path": info["path"], "editing": info["editing"], "cur": info.get("cur")})
+    await hub.send(aud - {user_id}, msg)
 
 
-async def relay_ws_presence(user, project_id: int, path: Optional[str], editing: bool) -> None:
-    """클라이언트가 보낸 '지금 이 파일을 보고/수정하는 중' 신호를 프로젝트 팀원에게 전달한다.
-    path 가 None 이면 워크스페이스를 떠난 것. 보낸 사람에게는 현재 다른 팀원들의 상태(스냅샷)를 돌려준다."""
+async def relay_ws_presence(user, project_id: int, path: Optional[str], editing: bool, cur: Optional[dict] = None, snap: bool = False) -> None:
+    """클라이언트가 보낸 '지금 이 파일의 이 줄을 보고/수정하는 중' 신호를 프로젝트 팀원에게 전달한다.
+    path 가 None 이면 워크스페이스를 떠난 것. 처음 들어왔거나 파일이 바뀌면 보낸 사람에게 현재 팀원들의 상태(스냅샷)를 돌려준다."""
     aud = await _audience(project_id)
     if user.id not in aud:
         return
     path = (path or "")[:240] or None
-    prev = _ws_where.get(user.id)
-    if prev is not None and prev != project_id:                      # 다른 프로젝트로 옮겨 감 → 이전 프로젝트에서는 사라짐
-        _ws_state.get(prev, {}).pop(user.id, None)
-        await _ws_broadcast(user.id, user.username, prev, None, False)
+    prev_pid = _ws_where.get(user.id)
+    if prev_pid is not None and prev_pid != project_id:              # 다른 프로젝트로 옮겨 감 → 이전 프로젝트에서는 사라짐
+        _ws_state.get(prev_pid, {}).pop(user.id, None)
+        await _ws_broadcast(user.id, user.username, prev_pid, None)
+    before = _ws_state.get(project_id, {}).get(user.id)
+    info = None
     if path is None:
         _ws_state.get(project_id, {}).pop(user.id, None)
         _ws_where.pop(user.id, None)
     else:
-        _ws_state.setdefault(project_id, {})[user.id] = {"path": path, "editing": bool(editing), "name": user.username}
+        c = None
+        if isinstance(cur, dict) and _pos(cur.get("line")) and _pos(cur.get("col")):
+            c = {"line": cur["line"], "col": cur["col"]}
+            if all(_pos(cur.get(k)) for k in ("sl", "sc", "el", "ec")):
+                c.update({k: cur[k] for k in ("sl", "sc", "el", "ec")})
+        info = {"path": path, "editing": bool(editing), "name": user.username, "cur": c}
+        _ws_state.setdefault(project_id, {})[user.id] = info
         _ws_where[user.id] = project_id
-    await _ws_broadcast(user.id, user.username, project_id, path, bool(editing) and path is not None)
-    items = [{"user_id": uid, "name": v["name"], "path": v["path"], "editing": v["editing"]}
-             for uid, v in _ws_state.get(project_id, {}).items() if uid != user.id and uid in aud and hub.is_online(uid)]
-    await hub.send({user.id}, {"t": "wssnap", "project_id": project_id, "items": items})
+    await _ws_broadcast(user.id, user.username, project_id, info)
+    if snap or before is None or (info and before.get("path") != info["path"]) or prev_pid != project_id:
+        items = [{"user_id": uid, "name": v["name"], "path": v["path"], "editing": v["editing"], "cur": v.get("cur")}
+                 for uid, v in _ws_state.get(project_id, {}).items() if uid != user.id and uid in aud and hub.is_online(uid)]
+        await hub.send({user.id}, {"t": "wssnap", "project_id": project_id, "items": items})
 
 
 async def clear_ws_presence(user_id: int, name: str = "") -> None:
@@ -254,6 +270,6 @@ async def clear_ws_presence(user_id: int, name: str = "") -> None:
         return
     _ws_state.get(pid, {}).pop(user_id, None)
     try:
-        await _ws_broadcast(user_id, name, pid, None, False)
+        await _ws_broadcast(user_id, name, pid, None)
     except Exception:
         logger.exception("ws presence clear failed")

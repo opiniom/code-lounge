@@ -341,6 +341,7 @@ function initMonacoEditor() {
     });
 
     monacoLoaded = true;
+    if (typeof wsPresHookEditor === 'function') wsPresHookEditor();
 
     // 실시간 코드 변경 동기화
     monacoEditor.onDidChangeModelContent(function() {
@@ -495,6 +496,7 @@ function renderFileContent(key, keepCursor) {
   updateEditorStatusBar();
   wsUpdateSaveStatus();
   wsRenderConflict();
+  if (typeof wsPresCursors === 'function') wsPresCursors();   // 새 파일 내용이 들어온 뒤 팀원 커서 위치를 다시 맞춘다
 }
 
 /* ======================================================================
