@@ -1,0 +1,48 @@
+# main 에 push 하면 AWS(또는 아무 SSH 서버)에서 git pull + 재시작을 자동으로 실행한다.
+# 아래 Secrets 를 GitHub 저장소(Settings → Secrets and variables → Actions)에 넣기 전에는 아무것도 하지 않고 건너뛴다.
+#   DEPLOY_HOST     서버 주소 (예: 3.35.xx.xx 또는 duresync.cloud)
+#   DEPLOY_USER     SSH 사용자 (예: ubuntu, ec2-user)
+#   DEPLOY_KEY      SSH 개인키 전체 내용 (-----BEGIN ... 부터 END 까지)  ※ 이 저장소에는 절대 커밋하지 말 것
+#   DEPLOY_PATH     서버의 프로젝트 폴더 (예: /home/ubuntu/code-lounge)
+#   DEPLOY_RESTART  (선택) 재시작 명령. 비우면 'sudo systemctl restart duresync'
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_RESTART: ${{ secrets.DEPLOY_RESTART }}
+    steps:
+      - name: Check deploy settings
+        id: cfg
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_KEY" ] && [ -n "$DEPLOY_PATH" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::DEPLOY_* secrets 가 아직 없어서 자동 배포를 건너뜁니다. (docs/DEPLOY.md 참고)"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          RESTART="${DEPLOY_RESTART:-sudo systemctl restart duresync}"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "set -e; cd '$DEPLOY_PATH'; git fetch origin main; git reset --hard origin/main; .venv/bin/pip install -q -r api/requirements.txt || true; $RESTART"
+          rm -f ~/.ssh/deploy_key

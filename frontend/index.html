@@ -1852,10 +1852,20 @@ body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
 .nt-dnd{margin:0 20px 6px; padding:8px 12px; border-radius:11px; font-size:12px; font-weight:600; color:#EF4444; background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.25);}
 .nt-dnd[hidden]{display:none;}
 @media (max-width:640px){ .pst-btn #pstLabel{display:none;} .pst-btn{padding:0 9px;} .pst-menu{position:fixed; top:64px; left:12px; right:12px; width:auto;} }
+
+/* 게스트(로그인 전) 화면 */
+.top-login{display:none; height:34px; padding:0 16px; border:none; border-radius:999px; background:var(--brand-grad); color:#fff; font:inherit; font-size:13px; font-weight:700; letter-spacing:-.01em; cursor:pointer; box-shadow:0 8px 20px -10px rgba(99,102,241,.7); transition:transform .15s, filter .15s;}
+.top-login:hover{transform:translateY(-1px); filter:brightness(1.08);}
+.app.guest-mode .top-login{display:inline-flex; align-items:center;}
+.app.guest-mode .avatar-wrap, .app.guest-mode .pst-wrap{display:none;}
+.guest-banner{display:none; align-items:center; gap:12px; width:100%; max-width:520px; margin:0 auto 14px; padding:10px 12px 10px 14px; border-radius:16px; background:linear-gradient(135deg, var(--accent-soft), var(--accent-2-soft)); border:1px solid var(--border-strong); text-align:left;}
+.app.guest-mode .guest-banner{display:flex;}
+.gb-ic{font-size:20px;} .gb-tx{display:flex; flex-direction:column; flex:1; min-width:0;} .gb-tx b{font-size:13.5px; letter-spacing:-.02em;} .gb-tx small{font-size:12px; color:var(--text-muted);}
+.guest-banner button{border:none; background:var(--text); color:var(--bg-elevated); font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:999px; cursor:pointer; flex:0 0 auto;}
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app guest-mode">
   <!-- ============ TOP BAR ============ -->
   <div class="topbar">
     <button class="wordmark" onclick="goView('home')" aria-label="DureSync 홈"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="wm-text">DureSync</span></button>
@@ -1893,6 +1903,7 @@ body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
           <div class="pst-srv" id="pstSrv"><span class="pst-sdot"></span><span id="pstSrvText">서버 확인 중</span><button type="button" onclick="promptBackendUrl()">주소 설정</button></div>
         </div>
       </div>
+      <button type="button" class="top-login" id="topLogin" onclick="openLogin()">로그인</button>
       <span class="chip accent2" id="adminBadge" hidden>관리자</span>
       <div class="notif-wrap">
         <button class="icon-btn" id="bellBtn" title="알림" onclick="toggleNotif(event)">
@@ -1926,7 +1937,7 @@ body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
   </div>
 
   <!-- ============ AUTH ============ -->
-  <section class="view active" data-view="auth">
+  <section class="view" data-view="auth">
     <div class="auth-wrap">
       <div class="auth-card card">
         <span class="bm auth-mark" role="img" aria-label="DureSync"></span>
@@ -1954,13 +1965,13 @@ body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
         </div>
         <p class="auth-terms" id="authTerms">계속 진행하면 DureSync의 <a>이용약관</a> 및 <a>개인정보 처리방침</a>에 동의하게 됩니다.</p>
         <p class="auth-remote-note" id="authRemoteNote" hidden>이 주소에서는 구글/네이버 로그인을 쓸 수 없어요.<br>팀원에게 받은 <b>초대 링크</b>로 들어오거나, 서버를 켠 컴퓨터에서 로그인하세요.</p>
-        <button class="auth-skip" id="authSkip" onclick="mockLogin('게스트')">게스트로 둘러보기 →</button>
+        <button class="auth-skip" id="authSkip" onclick="enterGuestHome(true)">← 로그인 없이 둘러보기</button>
       </div>
     </div>
   </section>
 
   <!-- ============ HOME ============ -->
-  <section class="view" data-view="home">
+  <section class="view active" data-view="home">
     <div class="page-pad home-pad">
       <div class="home-hero">
         <div class="home-hero-left">
@@ -1980,6 +1991,7 @@ body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
             <span class="dure-chip c2" aria-hidden="true">📞 3명 통화 중</span>
             <span class="dure-chip c3" aria-hidden="true">📝 회의록 정리 완료</span>
           </div>
+          <div class="guest-banner" id="guestBanner"><span class="gb-ic">👋</span><span class="gb-tx"><b>게스트로 둘러보는 중이에요</b><small>로그인하면 내 프로젝트·팀 채팅·AI가 열려요</small></span><button type="button" onclick="openLogin()">로그인</button></div>
           <span class="hh-eyebrow">두레 · together, since forever</span>
           <h1 class="hh-brand" aria-label="DureSync"><span class="lt" style="--i:0">D</span><span class="lt" style="--i:1">u</span><span class="lt" style="--i:2">r</span><span class="lt" style="--i:3">e</span><span class="lt sy" style="--i:4">S</span><span class="lt sy" style="--i:5">y</span><span class="lt sy" style="--i:6">n</span><span class="lt sy" style="--i:7">c</span></h1>
           <p class="hh-tagline">Connect <i>·</i> Work <i>·</i> Grow</p>
@@ -3045,15 +3057,19 @@ async function handleSocialLogin(provider){
   }
 }
 
-function mockLogin(provider){
+/* 처음 들어오면 로그인 창 대신 게스트 화면(둘러보기)을 보여주고, 로그인하면 내 계정으로 바뀐다 */
+function enterGuestHome(quiet){
   enterDemoMode();
   isAdmin = false;
   document.getElementById('adminBadge').hidden = true;
   document.getElementById('teamManageMenuItem').hidden = true;
   restoreDemoState();
+  document.querySelector('.app').classList.add('guest-mode');
   goView('home');
-  pushToast('👋', '게스트 접속', '게스트 모드로 둘러봅니다.');
+  if(!quiet) pushToast('👋', '게스트 접속', '게스트 모드로 둘러봅니다.');
 }
+function mockLogin(provider){ enterGuestHome(false); }
+function openLogin(){ goView('auth'); applyAuthMode(); }
 function wsResetForSessionChange(){
   wsStopPolling(); wsProject = null; wsLoaded = false; wsLoading = false;
   files = {}; openedTabs = []; currentFileKey = null; wsRenaming = null; wsDeleting = null;
@@ -3081,7 +3097,7 @@ function mockLogout(reason){
   } catch(e){}
   document.getElementById('adminBadge').hidden = true;
   document.getElementById('teamManageMenuItem').hidden = true;
-  goView('auth');
+  enterGuestHome(true);
   if(reason === 'expired') pushToast('⏰', '로그인이 만료됐어요', '보안을 위해 로그인 유효기간이 지났어요. 다시 로그인하면 채팅·AI를 이어서 쓸 수 있어요.');
   else pushToast('👋', '로그아웃', '로그아웃되었습니다.');
 }
@@ -5541,7 +5557,7 @@ async function checkAutoLogin() {
     }
   } catch(e){}
 
-  if (!authToken) return;
+  if (!authToken) { setTimeout(function(){ enterGuestHome(true); }, 0); return; }
   try {
     var res = await fetch(API_BASE + '/api/auth/me', {
       headers: { 'Authorization': 'Bearer ' + authToken }
@@ -5565,10 +5581,11 @@ async function checkAutoLogin() {
     } else {
       authToken = null;
       try{ localStorage.removeItem('sync_auth_token'); localStorage.removeItem('sync_auth_user'); }catch(e){}
+      enterGuestHome(true);
       if (res.status === 401) pushToast('⏰', '로그인이 만료됐어요', '다시 로그인하면 이전 프로젝트와 채팅이 그대로 이어져요.');
       processPendingInvite();
     }
-  } catch(e){}
+  } catch(e){ if(!currentUser) enterGuestHome(true); }
 }
 checkAutoLogin();
 
@@ -6478,6 +6495,7 @@ function copyInviteLink(){
 /* 초대 링크: 링크의 ?invite= 값은 로그인(구글/네이버 이동)을 거쳐도 사라지지 않게 저장해 두었다가 처리한다 */
 var inviteBusy = false;
 function showInviteCard(token){
+  goView('auth');
   fetch(API_BASE + '/api/invitations/' + encodeURIComponent(token)).then(function(r){
     return r.ok ? r.json() : r.json().catch(function(){ return {}; }).then(function(b){ throw new Error(b.detail || '유효하지 않은 초대 링크입니다.'); });
   }).then(function(info){
@@ -7993,6 +8011,7 @@ function projFromServer(p){
   return pr;
 }
 function startRealSession(){
+  document.querySelector('.app').classList.remove('guest-mode');
   myAiName = (currentUser && currentUser.ai_name) || '';
   updateChatPlaceholder();
   calProjectsLoaded = false;
