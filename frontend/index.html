@@ -40,10 +40,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
-<!-- xterm 은 Monaco 로더(AMD define)보다 먼저 읽어야 한다: 로더가 먼저 있으면 xterm 이 전역 Terminal 대신 AMD 모듈로만 등록돼서 터미널이 비어 버린다 -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
 <link rel="stylesheet" href="/static/bundle.css?v=__BUILD__">
 </head>
@@ -435,9 +431,21 @@
             </div>
           </div>
 
-          <!-- 터미널 탭 본문 0: 실시간 xterm.js 대화형 터미널 -->
-          <div class="ws-term-body" id="termBodyInteractive" style="padding: 6px 10px; height: calc(100% - 34px); overflow: hidden; background: #0c1017;">
-            <div id="termXtermContainer" style="width: 100%; height: 100%;"></div>
+          <!-- 터미널 탭 본문 0: 실시간 대화형 콘솔 (Live Interactive Terminal) -->
+          <div class="ws-term-body" id="termBodyInteractive" style="display:flex; flex-direction:column; padding:0; height:calc(100% - 34px); background:#0c1017; font-family:'JetBrains Mono','D2Coding',Consolas,monospace;">
+            <!-- 실시간 출력 영역 -->
+            <div id="termLiveLog" onclick="focusLiveInput()" style="flex:1 1 auto; overflow-y:auto; padding:10px 14px; font-size:12.5px; line-height:1.6; color:#e6edf3; user-select:text; white-space:pre-wrap; word-break:break-all;">
+              <div style="color:#6e7681;">// [대화형 실행]을 누르면 실시간 콘솔이 시작되며, 아래 입력창을 통해 키보드로 직접 값을 입력할 수 있습니다.</div>
+            </div>
+            <!-- 실시간 키보드 입력 프롬프트 바 -->
+            <form id="termLiveInputForm" onsubmit="submitLiveInput(event)" style="display:flex; align-items:center; gap:8px; background:#161b22; border-top:1px solid #30363d; padding:6px 12px; flex:0 0 auto;">
+              <span style="color:#06b6d4; font-weight:700; font-size:12px; user-select:none; display:flex; align-items:center; gap:4px;">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                INPUT
+              </span>
+              <input id="termLiveInput" type="text" placeholder="입력할 값을 타이핑하고 Enter를 누르세요 (예: 1, 10, 20...)" autocomplete="off" spellcheck="false" style="flex:1; background:transparent; border:none; outline:none; color:#f0f6fc; font-family:inherit; font-size:12.5px;" />
+              <button type="submit" style="background:#238636; color:#fff; border:none; border-radius:4px; padding:3px 10px; font-size:11px; font-weight:600; cursor:pointer;">전송 (↵)</button>
+            </form>
           </div>
 
           <!-- 터미널 탭 본문 1: 출력 콘솔 -->

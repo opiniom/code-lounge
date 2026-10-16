@@ -71,3 +71,8 @@ img, video, canvas{max-width:100%;}
   .editor-head-bar .editor-actions::-webkit-scrollbar{display:none;}
   .editor-head-bar .editor-actions > *{flex:0 0 auto;}
 }
+
+/* 9) 대화형 콘솔 입력줄: 'INPUT' 라벨·전송 버튼이 글자 단위로 쪼개지지 않게. 아주 좁으면 라벨은 숨기고 입력칸을 넓힌다 */
+#termLiveInputForm > span, #termLiveInputForm button{white-space:nowrap; overflow-wrap:normal; flex:0 0 auto;}
+#termLiveInputForm input{min-width:0; flex:1 1 auto;}
+@media (max-width:420px){ #termLiveInputForm > span{display:none !important;} }   /* 라벨은 인라인 스타일(display:flex)이 있어서 !important */

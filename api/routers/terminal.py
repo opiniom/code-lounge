@@ -108,10 +108,10 @@ async def websocket_terminal(websocket: WebSocket):
 
     # ---- 문지기: 공유 모드에서는 꺼짐, 로그인한 사용자만
     if settings.PUBLIC_MODE:
-        await say("stderr", "공유 모드에서는 보안을 위해 코드 실행이 꺼져 있어요.\r\n"); await say("exit", "", code=1)
+        await say("stderr", "공유 모드에서는 보안을 위해 코드 실행이 꺼져 있어요.\n"); await say("exit", "", code=1)
         await websocket.close(code=4403); return
     if not await _login_user(websocket):
-        await say("stderr", "대화형 실행은 로그인한 뒤에 쓸 수 있어요. (로그인 없이는 '배치 실행'을 써 주세요)\r\n"); await say("exit", "", code=1)
+        await say("stderr", "대화형 실행은 로그인한 뒤에 쓸 수 있어요. (로그인 없이는 '배치 실행'을 써 주세요)\n"); await say("exit", "", code=1)
         await websocket.close(code=4401); return
 
     state: Dict[str, object] = {"proc": None, "tmp": None, "tasks": [], "sent": 0, "stopped": False}
@@ -141,10 +141,10 @@ async def websocket_terminal(websocket: WebSocket):
                     break
                 state["sent"] = int(state["sent"]) + len(chunk)
                 if int(state["sent"]) > OUT_CAP:
-                    await say("stderr", "\r\n\x1b[33m[출력이 너무 많아서 실행을 중단했어요]\x1b[0m\r\n")
+                    await say("stderr", "\n\x1b[33m[출력이 너무 많아서 실행을 중단했어요]\x1b[0m\n")
                     sb._kill(proc)
                     break
-                await say(kind, sb.decode_bytes(chunk).replace("\r\n", "\n").replace("\n", "\r\n"))
+                await say(kind, sb.decode_bytes(chunk).replace("\n", "\n"))
         except Exception:
             pass
 
@@ -166,13 +166,13 @@ async def websocket_terminal(websocket: WebSocket):
             return
         code = proc.returncode
         if timed_out:
-            text = f"\r\n\x1b[31m[실행 시간({limit}초)을 넘겨서 중단했어요]\x1b[0m\r\n"
+            text = f"\n\x1b[31m[실행 시간({limit}초)을 넘겨서 중단했어요]\x1b[0m\n"
         elif code == 0:
-            text = "\r\n\x1b[32m[프로그램 정상 종료]\x1b[0m\r\n"
+            text = "\n\x1b[32m[프로그램 정상 종료]\x1b[0m\n"
         elif code is not None and code < 0:
-            text = f"\r\n\x1b[31m[프로그램이 강제로 종료됐어요 (신호 {-code})]\x1b[0m\r\n"
+            text = f"\n\x1b[31m[프로그램이 강제로 종료됐어요 (신호 {-code})]\x1b[0m\n"
         else:
-            text = f"\r\n\x1b[31m[프로그램 종료 (코드: {code})]\x1b[0m\r\n"
+            text = f"\n\x1b[31m[프로그램 종료 (코드: {code})]\x1b[0m\n"
         await say("exit", text, code=code if not timed_out else -1)
 
     try:
@@ -187,27 +187,27 @@ async def websocket_terminal(websocket: WebSocket):
                 code = msg.get("source_code") or ""
                 if lang not in sb.LABELS or not sb.available().get(lang):
                     names = ", ".join(sb.LABELS[k] for k in sb.LocalSandboxRunner().get_supported_languages())
-                    await say("stderr", f"이 서버에서는 '{raw}' 를 실행할 수 없어요. 실행 가능: {names}\r\n"); await say("exit", "", code=1)
+                    await say("stderr", f"이 서버에서는 '{raw}' 를 실행할 수 없어요. 실행 가능: {names}\n"); await say("exit", "", code=1)
                     continue
                 if len(code) > 200_000:
-                    await say("stderr", "코드가 너무 길어요. (최대 20만 자)\r\n"); await say("exit", "", code=1)
+                    await say("stderr", "코드가 너무 길어요. (최대 20만 자)\n"); await say("exit", "", code=1)
                     continue
                 tmp = tempfile.mkdtemp(prefix="cl_term_"); state["tmp"] = tmp
                 env = sb._clean_env(tmp); env["PYTHONUNBUFFERED"] = "1"
                 comp, run = _prepare(lang, code, tmp)
                 if comp:
-                    await say("stdout", f"\x1b[36m[{sb.LABELS[lang]} 컴파일 중...]\x1b[0m\r\n")
+                    await say("stdout", f"\x1b[36m[{sb.LABELS[lang]} 컴파일 중...]\x1b[0m\n")
                     try:
                         kw = {} if sb.IS_WINDOWS else {"start_new_session": True}
                         cp = await asyncio.create_subprocess_exec(*comp, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=tmp, env=env, **kw)
                         c_out, c_err = await asyncio.wait_for(cp.communicate(), timeout=COMPILE_SECONDS)
                     except asyncio.TimeoutError:
                         sb._kill(cp)
-                        await say("stderr", "\x1b[31m[컴파일 시간이 너무 오래 걸려서 중단했어요]\x1b[0m\r\n"); await say("exit", "", code=1)
+                        await say("stderr", "\x1b[31m[컴파일 시간이 너무 오래 걸려서 중단했어요]\x1b[0m\n"); await say("exit", "", code=1)
                         continue
                     if cp.returncode != 0:
                         err = sb.decode_bytes(c_err) or sb.decode_bytes(c_out)
-                        await say("stderr", f"\x1b[31m[컴파일 에러]\r\n{err.replace(chr(10), chr(13) + chr(10))}\x1b[0m\r\n"); await say("exit", "", code=cp.returncode)
+                        await say("stderr", f"\x1b[31m[컴파일 에러]\n{err}\x1b[0m\n"); await say("exit", "", code=cp.returncode)
                         continue
                 try:
                     kw = {}
@@ -215,7 +215,7 @@ async def websocket_terminal(websocket: WebSocket):
                         kw = {"start_new_session": True, "preexec_fn": sb._limits(int(settings.TERMINAL_MAX_SECONDS) + 5)}
                     proc = await asyncio.create_subprocess_exec(*run, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=tmp, env=env, **kw)
                 except Exception as e:
-                    await say("stderr", f"\x1b[31m실행 실패: {e}\x1b[0m\r\n"); await say("exit", "", code=1)
+                    await say("stderr", f"\x1b[31m실행 실패: {e}\x1b[0m\n"); await say("exit", "", code=1)
                     continue
                 state["proc"] = proc
                 state["tasks"].append(asyncio.create_task(watch(proc)))
@@ -233,7 +233,7 @@ async def websocket_terminal(websocket: WebSocket):
             elif action == "stop":
                 state["stopped"] = True
                 kill_now()
-                await say("exit", "\r\n\x1b[33m[사용자에 의해 강제 중단됨]\x1b[0m\r\n", code=-1)
+                await say("exit", "\n\x1b[33m[사용자에 의해 강제 중단됨]\x1b[0m\n", code=-1)
 
     except WebSocketDisconnect:
         pass
