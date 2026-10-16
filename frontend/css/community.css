@@ -74,7 +74,8 @@
 .cm-suggest{display:flex; gap:6px; flex-wrap:wrap;} .cm-suggest button{border:1px dashed var(--border-strong); background:none; color:var(--text-muted); border-radius:999px; font-size:11.5px; padding:3px 10px; cursor:pointer; font-family:inherit;} .cm-suggest button:hover{border-color:var(--accent); color:var(--accent-ink);}
 .cm-ed-foot{display:flex; gap:8px; align-items:center; justify-content:flex-end;} .cm-ed-note{margin-right:auto; font-size:12px; color:#D64545;}
 @media (max-width:620px){ .cm-ed-cats{grid-template-columns:repeat(3,1fr);} .cm-row2{grid-template-columns:1fr;} .cm-sheet{padding:16px;} }
-@media (prefers-reduced-motion: reduce){ .cm-card{animation:none;} }
+html[data-motion="reduce"] .cm-card{animation:none;}
+
 .comm-tabs{display:flex; gap:8px; margin-bottom:16px;}
 .comm-tabs button{border:1px solid var(--border); background:var(--surface); padding:7px 14px; border-radius:999px; font-size:12.5px; color:var(--text-muted); cursor:pointer;}
 .comm-tabs button.active{background:var(--text); color:var(--bg-elevated); border-color:var(--text);}

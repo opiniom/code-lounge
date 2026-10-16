@@ -795,8 +795,29 @@ function renderFileContent_empty(){
   if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
   updateEditorStatusBar(); wsUpdateSaveStatus(); wsRenderConflict();
 }
-function wsStartPolling(){ wsStopPolling(); wsPollTimer = setInterval(wsPoll, 6000); }
+function wsStartPolling(){ wsStopPolling(); wsPollTimer = setInterval(function(){ wsPollTick = (wsPollTick || 0) + 1; if(!LIVE.ok || wsPollTick % 6 === 0) wsPoll(); }, 6000); }   // 실시간 연결이 있으면 가끔만 확인(변경은 푸시로 바로 옴)
+var wsPollTick = 0, wsPollSoonTimer = null;
+function wsPollSoon(){ clearTimeout(wsPollSoonTimer); wsPollSoonTimer = setTimeout(wsPoll, 350); }   // 팀원이 저장하면 거의 바로 반영 (연속 저장은 한 번으로 묶음)
 function wsStopPolling(){ if (wsPollTimer) { clearInterval(wsPollTimer); wsPollTimer = null; } }
+/* 팀원이 파일을 고칠 때의 알림: 저장할 때마다 팝업이 뜨면 방해되므로
+   · 상태 표시줄에 '○○님이 수정 중'을 잠깐 보여주고(팝업 아님)
+   · 팝업은 같은 사람·같은 종류를 3분에 한 번, 전체로는 20초에 한 번만 띄운다 */
+var wsNoticeAt = {}, wsNoticeLast = 0, wsLiveTimer = null;
+function wsRemoteActivity(names, changed, added, removed){
+  var who = names.join(', ') || '팀원', now = Date.now();
+  var bar = document.getElementById('sbLive');
+  if(bar){
+    var first = (changed[0] || added[0] || removed[0] || ''), what = changed.length ? '수정 중' : (added.length ? '파일 추가' : '파일 삭제');
+    bar.textContent = '✏️ ' + who + '님이 ' + what + (first ? ' · ' + first.split('/').pop() : ''); bar.hidden = false;
+    clearTimeout(wsLiveTimer); wsLiveTimer = setTimeout(function(){ bar.hidden = true; }, 9000);
+  }
+  var kind = changed.length ? 'c' : (added.length ? 'a' : 'r'), key = who + '|' + kind;
+  if(now - (wsNoticeAt[key] || 0) < 180000 || now - wsNoticeLast < 20000) return;
+  wsNoticeAt[key] = now; wsNoticeLast = now;
+  var list = changed.length ? changed : (added.length ? added : removed);
+  var title = changed.length ? who + '님이 파일을 수정했어요' : (added.length ? who + '님이 파일을 추가했어요' : who + '님이 파일을 삭제했어요');
+  pushToast(changed.length ? '✏️' : (added.length ? '📄' : '🗑️'), title, list.slice(0, 3).join(', ') + (list.length > 3 ? ' 외 ' + (list.length - 3) + '개' : ''), { duration:2800 });
+}
 function wsPoll(){
   if (document.hidden || !wsUseServer() || !document.querySelector('.view.active[data-view="workspace"]')) return;
   var id = wsProject;
@@ -826,10 +847,7 @@ function wsPoll(){
     });
     if (changed.length || added.length || removed.length) {
       renderWsEmpty(); renderFileTree(); renderTabs();
-      var names = Object.keys(who).join(', ');
-      if (changed.length) pushToast('✏️', (names || '팀원') + '님이 파일을 수정했어요', changed.slice(0, 3).join(', ') + (changed.length > 3 ? ' 외 ' + (changed.length - 3) + '개' : ''));
-      else if (added.length) pushToast('📄', (names || '팀원') + '님이 파일을 추가했어요', added.slice(0, 3).join(', '));
-      else if (removed.length) pushToast('🗑️', '팀원이 파일을 삭제했어요', removed.slice(0, 3).join(', '));
+      wsRemoteActivity(Object.keys(who), changed, added, removed);
     }
     wsUpdateSaveStatus();
   }).catch(function(){});

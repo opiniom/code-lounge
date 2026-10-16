@@ -1,5 +1,5 @@
 /* ---- settings: theme ---- */
-function openSettings(){ syncThemeButtons(); syncScaleButtons(); document.getElementById('settingsModal').classList.add('open'); }
+function openSettings(){ syncThemeButtons(); syncScaleButtons(); syncMotionButtons(); document.getElementById('settingsModal').classList.add('open'); }
 function closeSettings(){ var el = document.getElementById('settingsModal'); if(el) el.classList.remove('open'); }
 function isDarkMode(){
   var t = document.documentElement.getAttribute('data-theme');
@@ -25,6 +25,17 @@ function setTheme(mode){
   try{ localStorage.setItem('root_theme', mode); }catch(e){}
   syncThemeButtons();
   pushToast(mode==='dark'?'🌙':mode==='light'?'☀️':'🖥️','테마 변경됨', mode==='system' ? '시스템 설정을 따라가요' : (mode==='dark'?'다크 모드로 바꿨어요':'라이트 모드로 바꿨어요'));
+}
+/* ---- 움직임 (켜기 / 줄이기) ---- */
+function setMotion(m){
+  if(m === 'reduce') document.documentElement.setAttribute('data-motion', 'reduce'); else document.documentElement.removeAttribute('data-motion');
+  try { localStorage.setItem('sync_motion', m); } catch(e){}
+  syncMotionButtons();
+  pushToast(m === 'reduce' ? '🧘' : '✨', m === 'reduce' ? '움직임을 줄였어요' : '애니메이션을 켰어요', '', { duration:2200 });
+}
+function syncMotionButtons(){
+  var cur = document.documentElement.getAttribute('data-motion') === 'reduce' ? 'reduce' : 'full';
+  document.querySelectorAll('#motionOptions .scale-opt').forEach(function(b){ b.classList.toggle('active', b.dataset.motion === cur); });
 }
 /* ---- 화면 크기 (자동/수동) ---- */
 function currentUiScale(){ return window.__uiScale || 1; }

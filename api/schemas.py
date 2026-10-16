@@ -202,6 +202,9 @@ class MeetingDocResponse(BaseModel):
     attendees: List[str]
     raw: str
     status: str
+    author_id: Optional[int] = None
+    author: Optional[str] = None          # 작성자 이름
+    can_edit: bool = True                 # 작성자 본인이거나 프로젝트 소유자일 때만 수정·삭제 가능
 
 
 # ================================

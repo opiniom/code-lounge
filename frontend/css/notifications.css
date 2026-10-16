@@ -68,5 +68,6 @@
 @keyframes toastBar{from{transform:scaleX(1);} to{transform:scaleX(0);}}
 @keyframes toastBump{0%,100%{transform:none;} 40%{transform:scale(1.03);}}
 @media (max-width:640px){ .toast-stack{left:16px; right:16px; top:68px; align-items:stretch;} .toast{width:auto;} .notif-panel{position:fixed; top:64px; right:12px; left:12px; width:auto;} }
-@media (prefers-reduced-motion: reduce){ .toast, .notif-panel.open, .notif-count{animation:none;} .toast .tbar{animation-duration:1ms;} }
+html[data-motion="reduce"] .toast, html[data-motion="reduce"] .notif-panel.open, html[data-motion="reduce"] .notif-count{animation:none;}html[data-motion="reduce"] .toast .tbar{animation-duration:1ms;}
+
 

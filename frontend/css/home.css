@@ -148,10 +148,8 @@
 .app.chat-docked .dure-stage{--S:200px;}
 .app.chat-docked .dure-chip{display:none;}
 .app.chat-docked .hh-features{grid-template-columns:repeat(2, minmax(0,1fr));}
-@media (prefers-reduced-motion: reduce){
-  .dure-orbit, .dn span, .dure-ring::after, .dure-core, .dure-chip, .rot i, .hh-feat, .hh-brand .lt{animation:none !important;}
-  .rot i:first-child{opacity:1; transform:none;}
-}
+html[data-motion="reduce"] .dure-orbit, html[data-motion="reduce"] .dn span, html[data-motion="reduce"] .dure-ring::after, html[data-motion="reduce"] .dure-core, html[data-motion="reduce"] .dure-chip, html[data-motion="reduce"] .rot i, html[data-motion="reduce"] .hh-feat, html[data-motion="reduce"] .hh-brand .lt{animation:none !important;}html[data-motion="reduce"] .rot i:first-child{opacity:1; transform:none;}
+
 .hh-eyebrow{
   display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px;
   letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink); font-weight:600;

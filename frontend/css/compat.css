@@ -1,0 +1,50 @@
+/* ===== 플랫폼 호환: Windows · iOS Safari · 오래된 브라우저 ===== */
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+*{-webkit-tap-highlight-color:transparent;}
+button, [role="button"], a, .btn, .pill-btn, select{touch-action:manipulation;}
+
+/* 스크롤바: Windows 의 굵고 하얀 기본 스크롤바가 어두운 화면에서 튀지 않게 */
+*{scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent;}
+::-webkit-scrollbar{width:10px; height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:8px; border:2px solid transparent; background-clip:content-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-faint); background-clip:content-box;}
+
+/* 애니메이션을 GPU 레이어로 올려서, 화면이 CPU 로만 그려지는 Windows·저사양 PC 에서도 홈의 원형 궤도·문구 전환이 끊기지 않게 */
+.dure-stage{contain:layout style;}
+.dure-orbit, .dn span, .dure-ring::after, .dure-core-mark, .dure-chip{will-change:transform;}
+.rot i{will-change:transform, opacity;}
+.hh-brand .lt{will-change:transform, opacity;}
+
+/* iOS Safari: 주소창이 접히고 펴질 때 높이가 튀지 않게(dvh) + 노치·홈 바 안전 영역 */
+@supports (height:100dvh){
+  .app{min-height:calc(100dvh / var(--ui-zoom) - 16px);}
+  .view[data-view="workspace"].active{height:calc(100dvh / var(--ui-zoom) - 58px - 16px); max-height:calc(100dvh / var(--ui-zoom) - 58px - 16px);}
+}
+.topbar{padding-left:max(20px, env(safe-area-inset-left)); padding-right:max(20px, env(safe-area-inset-right));}
+.chat-input{padding-bottom:max(12px, env(safe-area-inset-bottom));}
+.toast-stack{right:max(20px, env(safe-area-inset-right));}
+.chat-panel{padding-bottom:env(safe-area-inset-bottom);}
+
+/* iOS: 입력칸 글자가 16px 보다 작으면 눌렀을 때 화면이 멋대로 확대된다 → 터치 기기에서만 16px */
+@media (hover:none) and (pointer:coarse){
+  input, textarea, select{font-size:16px !important;}
+  .btn, .pill-btn, .tabnav button, .cm-tabs button{min-height:36px;}
+}
+html.is-ios body{-webkit-touch-callout:none;}
+html.is-ios input, html.is-ios textarea{-webkit-touch-callout:default; -webkit-user-select:text; user-select:text;}
+
+/* 한글 글꼴: 외부 글꼴(Pretendard)을 못 불러와도 Windows 에서는 맑은 고딕이 받쳐 준다 (variables 쪽 스택 참고) */
+html.is-win body{font-synthesis-weight:none;}
+
+/* backdrop-filter(유리 효과) / color-mix 를 못 쓰는 오래된 브라우저에서는 단색으로 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .notif-panel, .pst-menu, .toast, .topbar.scrolled, #wgModal{background:var(--bg-elevated);}
+}
+@supports not (background:color-mix(in srgb, red, blue)){
+  .topbar.scrolled{background:var(--bg-elevated);}
+  .notif-item.unread{background:var(--accent-soft);}
+  .notif-item .nic, .toast .nic{background:var(--surface-2); color:var(--text);}
+  .cm-cat{background:var(--surface-2); color:var(--text);}
+  .wg-lic, .wg-prev{background:var(--surface-2);}
+}

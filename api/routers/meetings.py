@@ -2,17 +2,17 @@ import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from database import get_db
 from models import User, MeetingDoc, Project, CalendarEvent
 from schemas import MeetingDocCreate, MeetingDocUpdate, MeetingDocResponse, StructureRequest, StructureResponse
 from services.auth_service import get_current_user
-from services.access import get_member_project
+from services.access import get_member_project, member_project_ids
 from services.schedule_ai import structure_meeting
 
 router = APIRouter(prefix="/api/meetings", tags=["Meetings"])
 
-def _to_response(doc: MeetingDoc) -> MeetingDocResponse:
+def _to_response(doc: MeetingDoc, viewer: Optional[User] = None, names: Optional[dict] = None, owners: Optional[dict] = None) -> MeetingDocResponse:
     try:
         attendees = json.loads(doc.attendees or "[]")
     except ValueError:
@@ -28,15 +28,29 @@ def _to_response(doc: MeetingDoc) -> MeetingDocResponse:
     return MeetingDocResponse(
         id=doc.id, structure=structure, detections=detections, project_id=doc.project_id, title=doc.title, doc_date=doc.doc_date,
         attendees=[str(a) for a in attendees], raw=doc.raw or "", status=doc.status,
+        author_id=doc.user_id, author=(names or {}).get(doc.user_id),
+        can_edit=bool(viewer is None or doc.user_id == viewer.id or (doc.project_id and (owners or {}).get(doc.project_id) == viewer.id)),
     )
 
 async def _get_owned(db: AsyncSession, doc_id: int, user: User) -> MeetingDoc:
-    doc = (await db.execute(
-        select(MeetingDoc).where(MeetingDoc.id == doc_id, MeetingDoc.user_id == user.id)
-    )).scalar_one_or_none()
+    """수정·삭제할 수 있는 회의록: 내가 쓴 것, 또는 내가 소유한 프로젝트의 것"""
+    doc = (await db.execute(select(MeetingDoc).where(MeetingDoc.id == doc_id))).scalar_one_or_none()
+    if doc and doc.user_id != user.id:
+        owner = (await db.execute(select(Project.owner_id).where(Project.id == doc.project_id))).scalar_one_or_none() if doc.project_id else None
+        if owner != user.id:
+            doc = None
     if not doc:
         raise HTTPException(status_code=404, detail="회의록을 찾을 수 없습니다.")
     return doc
+
+
+async def _decorate(db: AsyncSession, docs, viewer: User):
+    """작성자 이름·프로젝트 소유자 정보를 한 번에 가져와 응답으로 만든다"""
+    uids = {d.user_id for d in docs}
+    pids = {d.project_id for d in docs if d.project_id}
+    names = {u.id: u.username for u in (await db.execute(select(User).where(User.id.in_(uids)))).scalars().all()} if uids else {}
+    owners = {p.id: p.owner_id for p in (await db.execute(select(Project).where(Project.id.in_(pids)))).scalars().all()} if pids else {}
+    return [_to_response(d, viewer, names, owners) for d in docs]
 
 async def _check_project(db: AsyncSession, project_id, user: User):
     if project_id is None:
@@ -60,13 +74,15 @@ async def list_meetings(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(MeetingDoc).where(MeetingDoc.user_id == current_user.id)
+    # 내가 쓴 회의록 + 내가 속한 프로젝트의 팀원들이 쓴 회의록
+    mine_ids = await member_project_ids(db, current_user)
+    query = select(MeetingDoc).where(or_(MeetingDoc.user_id == current_user.id, MeetingDoc.project_id.in_(mine_ids or [-1])))
     if project_id is not None:
         query = query.where(MeetingDoc.project_id == project_id)
     rows = (await db.execute(
         query.order_by(MeetingDoc.doc_date.desc(), MeetingDoc.id.desc())
     )).scalars().all()
-    return [_to_response(r) for r in rows]
+    return await _decorate(db, rows, current_user)
 
 @router.post("", response_model=MeetingDocResponse, status_code=status.HTTP_201_CREATED)
 async def create_meeting(
@@ -83,7 +99,7 @@ async def create_meeting(
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-    return _to_response(doc)
+    return (await _decorate(db, [doc], current_user))[0]
 
 @router.patch("/{doc_id}", response_model=MeetingDocResponse)
 async def update_meeting(
@@ -113,7 +129,7 @@ async def update_meeting(
         doc.status = data.status
     await db.commit()
     await db.refresh(doc)
-    return _to_response(doc)
+    return (await _decorate(db, [doc], current_user))[0]
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_meeting(
@@ -126,7 +142,6 @@ async def delete_meeting(
     await db.execute(
         delete(CalendarEvent).where(
             CalendarEvent.meeting_doc_id == doc_id,
-            CalendarEvent.user_id == current_user.id,
             CalendarEvent.kind == "ai",
         )
     )
@@ -146,7 +161,6 @@ async def delete_doc_events(
     result = await db.execute(
         delete(CalendarEvent).where(
             CalendarEvent.meeting_doc_id == doc_id,
-            CalendarEvent.user_id == current_user.id,
             CalendarEvent.kind == "ai",
         )
     )

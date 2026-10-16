@@ -48,7 +48,8 @@
 .widget-dyn-grid.editing .dyn-widget *{pointer-events:none;} .widget-dyn-grid.editing .dyn-widget .dyn-close{pointer-events:auto;}
 .widget-dyn-grid.editing .dyn-close{opacity:1; top:-9px; left:-9px; right:auto; width:26px; height:26px; background:#EF4444; color:#fff; box-shadow:0 3px 10px rgba(239,68,68,.5); z-index:2;}
 .widget-dyn-grid.editing .dyn-close svg{display:none;} .widget-dyn-grid.editing .dyn-close::before{content:''; width:11px; height:2.6px; border-radius:2px; background:#fff;}
-@media (prefers-reduced-motion:reduce){ .widget-dyn-grid.editing .dyn-widget{animation:none;} }
+html[data-motion="reduce"] .widget-dyn-grid.editing .dyn-widget{animation:none;}
+
 
 /* 실제 데이터 위젯 */
 .wl-body{display:flex; flex-direction:column; gap:2px;}

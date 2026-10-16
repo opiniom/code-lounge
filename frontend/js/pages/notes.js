@@ -175,6 +175,7 @@ function renderMeetingDocs(){
     titleBtn.onclick = function(e){ if(noteSelecting){ e.stopPropagation(); toggleNoteSel(doc.id); return; } openMdocDrawer(doc.id); };
     if(noteSelecting && noteSel[doc.id]) row.classList.add('sel');
     row.onclick = function(){ if(noteSelecting) toggleNoteSel(doc.id); };
+    if(doc.author && doc.authorId !== (currentUser && currentUser.id)){ var by = document.createElement('span'); by.className = 'mdr-by'; by.textContent = doc.author + ' 작성'; titleBtn.appendChild(by); }
     row.querySelector('.mdr-attendees').innerHTML = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
     var statusBtn = row.querySelector('.mdr-status-btn');
     var c = getStatusColor(doc.status);
@@ -463,6 +464,7 @@ function docFromServer(row){
   d.serverId = row.id; d.status = row.status; d.raw = row.raw;
   d.project = row.project_id ? 'p'+row.project_id : null;
   d.detections = row.detections || [];
+  d.authorId = row.author_id; d.author = row.author; d.canEdit = row.can_edit !== false;
   return d;
 }
 function syncDocToCalendar(doc){

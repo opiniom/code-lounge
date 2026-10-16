@@ -24,7 +24,7 @@
   --radius-m:14px;
   --radius-l:20px;
   --font-display:'Plus Jakarta Sans','Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;
-  --font-body:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  --font-body:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR','Segoe UI',sans-serif;
   --font-mono:'Plus Jakarta Sans','Pretendard Variable',Pretendard,-apple-system,sans-serif;  /* 라벨·숫자용(코드 아님) */
   --font-code:'JetBrains Mono','D2Coding',ui-monospace,'SFMono-Regular',Menlo,monospace;
 
@@ -94,12 +94,8 @@
 
 ::view-transition-old(root), ::view-transition-new(root){ animation-duration:.45s; animation-timing-function:ease; }
 .theme-fading, .theme-fading *{ transition:background-color .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease !important; }
-@media (prefers-reduced-motion: reduce){
-  ::view-transition-old(root), ::view-transition-new(root){ animation:none; }
-  .theme-fading, .theme-fading *{ transition:none !important; }
-  .app.home-landing-mode .home-pad::before{ animation:none; }
-  .home-hero.home-intro .home-hero-left > *{ animation:none; }
-}
+html[data-motion="reduce"]::view-transition-old(root), html[data-motion="reduce"]::view-transition-new(root){ animation:none; }html[data-motion="reduce"] .theme-fading, html[data-motion="reduce"] .theme-fading *{ transition:none !important; }html[data-motion="reduce"] .app.home-landing-mode .home-pad::before{ animation:none; }html[data-motion="reduce"] .home-hero.home-intro .home-hero-left > *{ animation:none; }
+
 *{box-sizing:border-box;}
 body{
   background:var(--bg);

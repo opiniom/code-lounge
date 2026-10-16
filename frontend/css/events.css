@@ -66,7 +66,8 @@
 .pc-actions .btn{flex:1; justify-content:center; font-size:11.5px; padding:6px 8px; white-space:nowrap;}
 .pc-src{font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono); margin-top:4px;}
 @media (max-width:520px){ .evt-grid{grid-template-columns:1fr 1fr;} .poster-fb .pf-title{font-size:15px;} }
-@media (prefers-reduced-motion: reduce){ .evt-card, .pcard, .evt-skel, .cb-dot.run{animation:none;} .pcard:hover .poster img{transform:none;} }
+html[data-motion="reduce"] .evt-card, html[data-motion="reduce"] .pcard, html[data-motion="reduce"] .evt-skel, html[data-motion="reduce"] .cb-dot.run{animation:none;}html[data-motion="reduce"] .pcard:hover .poster img{transform:none;}
+
 .crawl-bar b{color:var(--text);}
 .crawl-bar .refresh-btn.spinning svg{animation:spinOnce .7s linear;}
 @keyframes spinOnce{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}

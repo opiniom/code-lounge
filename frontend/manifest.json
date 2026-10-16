@@ -18,7 +18,8 @@
     "css/shell.css",
     "css/widgets.css",
     "css/presence.css",
-    "css/guest.css"
+    "css/guest.css",
+    "css/compat.css"
   ],
   "js": [
     "js/core/theme.js",

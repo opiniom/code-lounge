@@ -116,7 +116,7 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import CalendarEvent, ChatMessage, MeetingDoc, Notification, Project, ProjectMember
+    from models import CalendarEvent, ChatMessage, MeetingDoc, Notification, Project, ProjectFile, ProjectMember
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
@@ -125,6 +125,8 @@ def _collect(session: Session, flush_context=None) -> None:
             bag.add(("chat", None, obj.project_id, obj.user_id))
         elif isinstance(obj, CalendarEvent):
             bag.add(("calendar", None, obj.project_id, None))
+        elif isinstance(obj, ProjectFile):
+            bag.add(("files", None, obj.project_id, None))
         elif isinstance(obj, MeetingDoc):
             if obj.project_id:
                 bag.add(("notes", None, obj.project_id, None))

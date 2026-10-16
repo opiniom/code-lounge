@@ -38,7 +38,22 @@ function liveDisconnect(){
 /* 연결(또는 재연결) 직후: 그 사이 놓친 변경을 한 번 맞춰 둔다 */
 function liveResync(){
   loadNotifications(true); pstLoadTeam();
+  apiFetch('/api/meetings').then(function(rows){ liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; }); }).catch(function(){});
   if(chatServerId()) loadChat(false);
+}
+/* 팀원이 회의록을 만들면 목록에 바로 올리고, 새 글이면 한 번만 조용히 알려준다 */
+var liveSeenDocs = null;
+function liveNotes(m){
+  if(!calApiMode) return;
+  apiFetch('/api/meetings').then(function(rows){
+    var fresh = [];
+    if(liveSeenDocs){ rows.forEach(function(r){ if(!liveSeenDocs[r.id] && r.author_id !== (currentUser && currentUser.id)) fresh.push(r); }); }
+    liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; });
+    meetingDocs = rows.map(docFromServer);
+    meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });
+    renderMeetingDocs(); if(typeof wgLiveNotes === 'function') wgLiveNotes();
+    if(fresh.length){ var r = fresh[0]; pushToast('📝', (r.author || '팀원') + '님이 회의록을 올렸어요', r.title + (fresh.length > 1 ? ' 외 ' + (fresh.length - 1) + '개' : ''), { duration:3500, onclick:function(){ goView('notes'); } }); }
+  }).catch(function(){});
 }
 /* 팀원 화면이 열려 있을 때만 다시 그린다 */
 function tmRefresh(){ var v = document.querySelector('.view.active'); if(v && v.dataset.view === 'admin') renderTeamPage(); }
@@ -57,7 +72,8 @@ function liveHandle(m){
       break;
     case 'typing': chatTypingEvent(m); break;
     case 'calendar': refreshTeamEvents(); break;
-    case 'notes': refreshMeetingDocs(); break;
+    case 'notes': liveNotes(m); break;
+    case 'files': wsPollSoon(); break;
     case 'projects':
       if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); tmRefresh(); }).catch(function(){});
       break;

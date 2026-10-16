@@ -38,7 +38,8 @@
 @keyframes typingIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
 .chat-jump{position:absolute; left:50%; bottom:76px; transform:translateX(-50%); z-index:5; border:none; padding:7px 14px; border-radius:999px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px -8px rgba(59,130,246,.7); animation:typingIn .2s ease both;}
 .chat-jump[hidden]{display:none;}
-@media (prefers-reduced-motion:reduce){ .typing-row .typing-dots span{animation:none; opacity:.8;} }
+html[data-motion="reduce"] .typing-row .typing-dots span{animation:none; opacity:.8;}
+
 
 /* ---- 화면 안 확인 창 ---- */
 .cf-box{max-width:360px; text-align:center; align-items:center; gap:10px; animation:wgIn .22s cubic-bezier(.2,.9,.3,1) both;}
