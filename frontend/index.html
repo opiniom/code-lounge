@@ -5283,11 +5283,17 @@ function escapeHtml(str) {
    파일로 열었거나 다른 곳(Vercel 등)에 올린 화면이면 예전처럼 localhost:8000 (또는 직접 지정한 주소) */
 function defaultApiBase(){
   try{
-    if(/^https?:$/.test(location.protocol) && /^\/(app|ui)\/?$/.test(location.pathname)) return location.origin;
+    if(/^https?:$/.test(location.protocol)) return location.origin;
   }catch(e){}
   return 'http://localhost:8000';
 }
-var API_BASE = localStorage.getItem('sync_api_base') || defaultApiBase();
+var API_BASE = (function(){
+  var stored = localStorage.getItem('sync_api_base');
+  if(/^https?:$/.test(location.protocol)){
+    if(!stored || stored.indexOf('localhost') !== -1 || stored.indexOf('127.0.0.1') !== -1) return location.origin;
+  }
+  return stored || defaultApiBase();
+})();
 var authToken = localStorage.getItem('sync_auth_token') || null;
 var pendingInviteMem = '';
 function getPendingInvite(){ try{ return pendingInviteMem || localStorage.getItem('sync_pending_invite') || ''; }catch(e){ return pendingInviteMem; } }
