@@ -1119,7 +1119,7 @@ function clearTerminal() {
   var out = document.getElementById('termOutputText');
   if (out) out.innerHTML = '';
   if (xtermInstance) {
-    xtermInstance.clear();
+    termLine = ''; xtermInstance.clear(); try { xtermInstance.reset(); } catch(e){}
   }
   var statusChip = document.getElementById('termStatusChip');
   if (statusChip) statusChip.style.display = 'none';
@@ -1159,6 +1159,7 @@ function escapeHtml(str) {
    ========================================================= */
 var activeTermSocket = null;
 var xtermInstance = null;
+var termLine = '';          // 터미널에서 아직 Enter 를 누르지 않은, 입력 중인 줄
 var xtermFitAddon = null;
 
 function initXtermIfNeeded() {
@@ -1195,11 +1196,27 @@ function initXtermIfNeeded() {
     setTimeout(function(){ try { xtermFitAddon.fit(); } catch(e){} }, 60);
   }
 
-  // 브라우저에서 키 입력 시 WebSocket을 통해 파이썬 stdin으로 실시간 전송
+  // 입력 처리 (줄 단위): xterm 은 글자를 화면에 보여 주지 않고 Enter 를 '\r' 로만 보내서, 그대로 stdin 에 넘기면
+  // 프로그램이 줄 끝(\n)을 받지 못해 input() 이 영원히 기다린다. 그래서 여기서 입력한 글자를 화면에 보여 주고(에코),
+  // Backspace 로 고칠 수 있게 하고, Enter 를 누르면 한 줄을 '\n' 과 함께 보낸다. (Ctrl+C = 중지)
+  function termWide(ch) { var c = ch.codePointAt(0); return (c >= 0x1100 && c <= 0x115F) || (c >= 0x2E80 && c <= 0xA4CF) || (c >= 0xAC00 && c <= 0xD7A3) || (c >= 0xF900 && c <= 0xFAFF) || (c >= 0xFE30 && c <= 0xFE6F) || (c >= 0xFF00 && c <= 0xFF60) || (c >= 0xFFE0 && c <= 0xFFE6) || (c >= 0x1F300 && c <= 0x1FAFF); }
   xtermInstance.onData(function(data) {
-    if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
-      activeTermSocket.send(JSON.stringify({ action: 'input', data: data }));
-    }
+    if (!(activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN)) return;
+    if (data.charAt(0) === '\x1b') return;                      // 방향키 같은 이스케이프 열은 무시
+    Array.from(data).forEach(function(ch) {
+      if (ch === '\r' || ch === '\n') {
+        xtermInstance.write('\r\n');
+        activeTermSocket.send(JSON.stringify({ action: 'input', data: termLine + '\n' }));
+        termLine = '';
+      } else if (ch === '\x7f' || ch === '\b') {
+        var chars = Array.from(termLine);
+        if (chars.length) { var last = chars.pop(); termLine = chars.join(''); xtermInstance.write(termWide(last) ? '\b\b  \b\b' : '\b \b'); }
+      } else if (ch === '\x03') {
+        termLine = ''; xtermInstance.write('^C\r\n'); stopInteractiveCode();
+      } else if (ch >= ' ') {
+        termLine += ch; xtermInstance.write(ch);
+      }
+    });
   });
 }
 
@@ -1228,12 +1245,19 @@ async function runInteractiveCode() {
     return;
   }
 
-  var lang = getFileLanguage(currentFileKey);
-  var validLangs = ['python', 'java', 'csharp', 'cpp', 'c'];
-  if (!validLangs.includes(lang)) {
-    lang = 'python';
+  // 파일 확장자로 실행 언어를 정한다. 코드가 아닌 파일(.md .txt …)이나 이 서버에 없는 언어는 '배치 실행' 쪽이 이유를 알려 준다 (몰래 Python 으로 돌리지 않는다).
+  // 대화형 실행은 로그인한 사용자만 쓸 수 있어서(서버가 확인), 로그인 전에는 배치 실행으로 돌린다.
+  var lang = wsRunLang(currentFileKey);
+  var supportedLangs = await wsRunSupported();
+  if (!authToken || !lang || (supportedLangs && supportedLangs.indexOf(lang) < 0)) {
+    if (!authToken && lang) pushToast('ℹ️', '로그인하면 대화형 실행을 쓸 수 있어요', '지금은 배치 실행으로 실행해요.');
+    return runCurrentCode();
   }
 
+  if (!window.Terminal) {      // 터미널 화면 라이브러리(xterm)를 못 불러온 경우: 화면이 멈추지 않게 배치 실행으로
+    pushToast('ℹ️', '대화형 터미널을 불러오지 못했어요', '배치 실행으로 실행해요. 새로고침하면 다시 시도해요.');
+    return runCurrentCode();
+  }
   // 터미널 패널 열기 및 대화형 탭 활성화
   var termPanel = document.getElementById('wsTerminalPanel');
   if (termPanel) termPanel.classList.remove('collapsed');
@@ -1271,7 +1295,7 @@ async function runInteractiveCode() {
   }
 
   var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  var wsUrl = proto + '//' + location.host + '/ws/terminal';
+  var wsUrl = proto + '//' + location.host + '/ws/terminal?token=' + encodeURIComponent(authToken || '');
 
   var ws = new WebSocket(wsUrl);
   activeTermSocket = ws;
@@ -1307,7 +1331,9 @@ async function runInteractiveCode() {
     finishRun(0);
   };
 
+  var finished = false;
   function finishRun(code) {
+    if (finished) return; finished = true;          // 종료 메시지 뒤에 연결이 닫혀도 결과 표시를 덮어쓰지 않는다
     if (runInteractiveBtn) runInteractiveBtn.disabled = false;
     if (runBtn) runBtn.disabled = false;
     if (stopBtn) stopBtn.style.display = 'none';

@@ -187,6 +187,13 @@ def _java_names(code: str) -> Tuple[str, Optional[str]]:
     return (main_cls or (pub.group(1) if pub else None) or "Main"), (pkg.group(1) if pkg else None)
 
 
+def java_layout(code: str) -> Tuple[str, str]:
+    """(소스 파일 이름, 실행할 클래스 전체 이름). public 클래스는 파일 이름과 같아야 하므로 Main 으로 고정하면 안 된다."""
+    main_cls, pkg = _java_names(code)
+    pub = re.search(r"\bpublic\s+(?:final\s+|abstract\s+|strictfp\s+)*(?:class|interface|enum|record)\s+(\w+)", re.sub(r"//.*|/\*.*?\*/", "", code, flags=re.S))
+    return (pub.group(1) if pub else main_cls) + ".java", (f"{pkg}.{main_cls}" if pkg else main_cls)
+
+
 class LocalSandboxRunner:
     def is_available(self) -> bool:
         return os.path.exists(PYTHON_EXEC)
@@ -282,12 +289,9 @@ class LocalSandboxRunner:
         return await self._compiled(tmp, "C++", [GPP, "-O2", "-std=c++17", "-o", exe, "main.cpp"], [exe], stdin, timeout)
 
     async def _run_java(self, code, stdin, timeout, mem, tmp):
-        main_cls, pkg = _java_names(code)
-        pub = re.search(r"\bpublic\s+(?:final\s+|abstract\s+|strictfp\s+)*(?:class|interface|enum|record)\s+(\w+)", re.sub(r"//.*|/\*.*?\*/", "", code, flags=re.S))
-        file_name = (pub.group(1) if pub else main_cls) + ".java"       # public 클래스는 파일 이름과 같아야 한다 (Main 으로 고정하면 다른 이름은 컴파일 에러)
+        file_name, full = java_layout(code)
         with open(os.path.join(tmp, file_name), "w", encoding="utf-8") as f:
             f.write(code)
-        full = f"{pkg}.{main_cls}" if pkg else main_cls
         heap = max(64, min(int(mem / 1024), 512))
         return await self._compiled(tmp, "Java", [JAVAC, "-encoding", "UTF-8", "-d", ".", file_name],
                                     [JAVA, f"-Xmx{heap}m", "-XX:+UseSerialGC", "-Xshare:auto", "-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8", "-cp", ".", full],
