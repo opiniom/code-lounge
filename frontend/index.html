@@ -3005,12 +3005,18 @@ function restoreDemoState(){
 var oauthHere = true;
 function applyAuthMode(){
   return fetch(API_BASE + '/api/auth/config').then(function(r){ return r.ok ? r.json() : {}; }).then(function(conf){
-    try{ oauthHere = !conf.public_base_url || new URL(conf.public_base_url, location.href).origin === location.origin; }catch(e){ oauthHere = true; }
+    try{
+      var pubHost = conf.public_base_url ? new URL(conf.public_base_url, location.href).hostname.replace(/^www\./, '').toLowerCase() : '';
+      var curHost = location.hostname.replace(/^www\./, '').toLowerCase();
+      oauthHere = !pubHost || pubHost === curHost || curHost === 'localhost' || curHost === '127.0.0.1' || curHost === 'duresync.cloud';
+    }catch(e){ oauthHere = true; }
     var card = document.getElementById('inviteCard');
     var cardShown = !!(card && !card.hidden);
     ['authButtons','authTerms','authSkip'].forEach(function(id){ var el = document.getElementById(id); if(el) el.hidden = !oauthHere; });
     var or = document.getElementById('inviteCardOr'); if(or) or.hidden = !oauthHere;
     var note = document.getElementById('authRemoteNote'); if(note) note.hidden = oauthHere || cardShown;
+    // 게스트 둘러보기는 언제나 접근 가능하도록 유지
+    var skip = document.getElementById('authSkip'); if(skip) skip.hidden = false;
   }).catch(function(){});
 }
 async function handleSocialLogin(provider){
