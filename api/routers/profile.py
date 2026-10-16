@@ -8,7 +8,7 @@
 """
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -49,6 +49,7 @@ def _clean_list(items, max_items: int, max_len: int) -> List[str]:
 
 
 class ProfileIn(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=20)      # 표시 이름 (팀원·커뮤니티에 보이는 이름)
     headline: str = Field(default="", max_length=120)
     bio: str = Field(default="", max_length=2000)
     skills: List[str] = Field(default_factory=list)
@@ -164,6 +165,11 @@ async def save_profile(data: ProfileIn, current_user: User = Depends(get_current
     if row is None:
         row = UserProfile(user_id=current_user.id)
         db.add(row)
+    if data.name is not None:
+        nm = re.sub(r"\s+", " ", data.name).strip()
+        if len(nm) < 1:
+            raise HTTPException(status_code=400, detail="이름을 입력해 주세요.")
+        current_user.username = nm[:20]
     row.headline = data.headline.strip()[:120]
     row.bio = data.bio.strip()[:2000]
     row.skills = json.dumps(_clean_list(data.skills, 20, 30), ensure_ascii=False)
@@ -249,10 +255,12 @@ async def follow(user_id: int, current_user: User = Depends(get_current_user), d
         if n >= MAX_FOLLOWING:
             raise HTTPException(status_code=400, detail=f"팔로우는 최대 {MAX_FOLLOWING}명까지 할 수 있어요.")
         db.add(Follow(follower_id=current_user.id, followee_id=user_id))
+        since = datetime.utcnow() - timedelta(hours=24)
         recent = (await db.execute(select(Notification.id).where(Notification.user_id == user_id, Notification.category == "follow",
-                                                                  Notification.link == f"profile:{current_user.id}", Notification.is_read == False))).scalar_one_or_none()  # noqa: E712
-        if recent is None:
-            db.add(Notification(user_id=user_id, title="새 팔로워", message=f"{current_user.username}님이 회원님을 팔로우했어요.", category="follow", link=f"profile:{current_user.id}"))
+                                                                  Notification.link == f"profile:{current_user.id}", Notification.created_at >= since))).first()
+        if recent is None:    # 같은 사람이 24시간 안에 팔로우/취소를 반복해도 알림은 한 번만
+            db.add(Notification(user_id=user_id, title=f"{current_user.username}님이 회원님을 팔로우하기 시작했습니다.", message="프로필을 보고 맞팔로우해 보세요.",
+                                category="follow", link=f"profile:{current_user.id}"))
         await db.commit()
     followers, _ = await _counts(db, user_id)
     i_follow, follows_me = await _relation(db, current_user.id, user_id)

@@ -292,7 +292,7 @@ function buildMsgRow(m){
   } else {
     av.style.background = mine ? '#06B6D4' : chatColor(m.author);
     av.textContent = (mine ? '나' : m.author).slice(0, 1);
-    if(m.user_id != null){ av.dataset.uid = m.user_id; av.dataset.pst = pstOf(m.user_id); }
+    if(m.user_id != null){ av.dataset.uid = m.user_id; av.dataset.pst = pstOf(m.user_id); if(!mine){ av.style.cursor = 'pointer'; av.title = m.author + '님 프로필 보기'; av.onclick = function(){ toggleChat && chatPanelOpen() && toggleChat(); openProfile(m.user_id); }; } }
   }
   var col = document.createElement('div'); col.className = 'msg-col';
   var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = isAi ? ((m.meta && m.meta.ai_name) || 'Dure AI') : (mine ? '나' : m.author);

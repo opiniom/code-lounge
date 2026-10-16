@@ -84,12 +84,22 @@ function aiRequestRe(){
   return new RegExp('^\\s*(@(' + alts + ')(\\s|$)|(' + alts + ')\\s*(야|아|,)\\s*)', 'i');
 }
 function isAiRequest(text){ return aiRequestRe().test(text || ''); }
-function openProfileModal(){
+var pfmFields = null;     // 상세 프로필 입력칸 (로그인했을 때만)
+async function openProfileModal(){
   document.getElementById('profileAiNameInput').value = myAiName || '';
-  document.getElementById('profileNameInput').value = myProfile.name;
+  document.getElementById('profileNameInput').value = (currentUser && currentUser.username) || myProfile.name;
   document.getElementById('profileRoleInput').value = myProfile.role;
   syncAvatarSwatchButtons();
+  var ex = document.getElementById('pfModalExtra'); ex.innerHTML = ''; pfmFields = null;
   document.getElementById('profileModal').classList.add('open');
+  if(calApiMode){
+    try {
+      var me = await apiFetch('/api/profile/me');
+      pfmFields = pfDetailFields(me.profile); ex.appendChild(pfmFields);
+    } catch(e){ ex.textContent = '상세 프로필을 불러오지 못했어요.'; }
+  } else {
+    var tip = document.createElement('p'); tip.className = 'pf-modal-tip'; tip.textContent = '로그인하면 한 줄 소개·기술 스택·링크까지 자세히 적을 수 있어요.'; ex.appendChild(tip);
+  }
 }
 function closeProfileModal(){ var el = document.getElementById('profileModal'); if(el) el.classList.remove('open'); }
 function pickAvatarSwatch(i){ myProfile.swatch = i; syncAvatarSwatchButtons(); }
@@ -103,9 +113,18 @@ function saveProfile(){
   function done(){
     applyProfileToUI();
     closeProfileModal();
+    if(document.querySelector('.view.active') && document.querySelector('.view.active').dataset.view === 'mypage') renderMyPage();
     updateChatPlaceholder();
     pushToast('✅','프로필 저장됨', '내 프로필이 업데이트됐어요' + (aiName ? ' · AI는 "'+aiName+'야"로 불러요' : ''));
   }
+  if(calApiMode && pfmFields){
+    var vals = pfmFields.getValues(); vals.name = document.getElementById('profileNameInput').value.trim();
+    apiFetch('/api/profile/me', { method:'PUT', body:JSON.stringify(vals) }).then(function(){ if(currentUser && vals.name){ currentUser.username = vals.name.slice(0, 20); try { localStorage.setItem('sync_auth_user', JSON.stringify(currentUser)); } catch(e){} } proceed(); }).catch(function(e){ pushToast('⚠️', '프로필을 저장하지 못했어요', e.message); });
+    return;
+  }
+  proceed();
+  function proceed(){ continueSave(); }
+  function continueSave(){
   if(calApiMode && aiName !== (myAiName || '')){
     apiFetch('/api/auth/me/ai-name', {method:'PUT', body:JSON.stringify({ai_name: aiName})}).then(function(u){
       myAiName = u.ai_name || ''; if(currentUser) currentUser.ai_name = myAiName;
@@ -115,6 +134,7 @@ function saveProfile(){
   }
   if(!calApiMode) myAiName = aiName;   // 로그인 전(게스트)에는 이 화면에서만
   done();
+  }
 }
 function updateChatPlaceholder(){
   if(typeof renderAiGuide === 'function') renderAiGuide();

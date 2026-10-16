@@ -3,7 +3,8 @@ var PF = { uid:null, data:null, follows:null, tab:'portfolio', editing:false, ed
 
 function openProfile(id, tab){
   if(!calApiMode){ pushToast('🔒', '로그인 후 프로필을 볼 수 있어요', '로그인하면 내 포트폴리오와 팔로우를 쓸 수 있어요'); openLogin(); return; }
-  PF.uid = (id && !(currentUser && id === currentUser.id)) ? id : null;
+  if(!id || (currentUser && id === currentUser.id)){ MP.tab = tab === 'followers' || tab === 'following' ? tab : MP.tab; goView('mypage'); return; }   // 내 프로필은 마이페이지에서
+  PF.uid = id;
   PF.tab = tab || 'portfolio'; PF.editing = false; PF.editProj = null; PF.data = null;
   goView('profile');
   routerSetUrl(routePath('profile', PF.uid), true);
@@ -19,6 +20,7 @@ async function renderProfile(keepScroll){
     root.innerHTML = ''; var e = pfEl('div', 'pf-empty'); e.innerHTML = '<b>로그인하면 프로필과 포트폴리오를 볼 수 있어요</b><span>참여한 프로젝트와 내가 한 일이 자동으로 정리돼요.</span>';
     var b = pfEl('button', 'btn primary', '로그인'); b.onclick = openLogin; e.appendChild(b); root.appendChild(e); return;
   }
+  if(!PF.uid){ goView('mypage'); return; }
   var y = window.scrollY;
   try {
     var d = await apiFetch(PF.uid ? '/api/profile/' + PF.uid : '/api/profile/me');
@@ -59,20 +61,16 @@ function pfDraw(){
   cnt.appendChild(c1); cnt.appendChild(c2); cnt.appendChild(c3); cnt.appendChild(c4); info.appendChild(cnt);
   head.appendChild(info);
   var act = pfEl('div', 'pf-actions');
-  if(self){ var eb = pfEl('button', 'btn primary', PF.editing ? '편집 취소' : '프로필 편집'); eb.onclick = function(){ PF.editing = !PF.editing; pfDraw(); }; act.appendChild(eb); }
+  if(self){ var eb = pfEl('button', 'btn primary', '프로필 편집'); eb.onclick = openProfileModal; act.appendChild(eb); }
   else { act.appendChild(pfFollowBtn(u.id, d.i_follow)); }
   head.appendChild(act); root.appendChild(head);
 
-  if(PF.editing && self){ root.appendChild(pfEditForm(p)); }
-  else if(p.bio || (p.skills && p.skills.length) || (p.links && p.links.length)){
+  if(p.bio || (p.skills && p.skills.length) || (p.links && p.links.length)){
     var about = pfEl('div', 'pf-about card');
     if(p.bio) about.appendChild(pfEl('p', 'pf-bio', p.bio));
     if(p.skills.length){ var sk = pfEl('div', 'pf-chips'); p.skills.forEach(function(s){ sk.appendChild(pfEl('span', 'pf-chip', s)); }); about.appendChild(sk); }
     if(p.links.length){ var lk = pfEl('div', 'pf-links'); p.links.forEach(function(l){ var a = pfEl('a', 'pf-link', '↗ ' + l.label); a.href = pfSafeUrl(l.url); a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; lk.appendChild(a); }); about.appendChild(lk); }
     root.appendChild(about);
-  } else if(self && !PF.editing){
-    var tip = pfEl('div', 'pf-tip card'); tip.innerHTML = '<b>프로필을 채워 보세요</b><span>한 줄 소개, 기술 스택, 링크(GitHub·블로그)를 적으면 팀원과 포트폴리오에서 보여요.</span>';
-    var tb = pfEl('button', 'btn primary', '프로필 편집'); tb.onclick = function(){ PF.editing = true; pfDraw(); }; tip.appendChild(tb); root.appendChild(tip);
   }
   // ----- 탭
   var tabs = pfEl('div', 'pf-tabs');
@@ -125,7 +123,7 @@ function pfProjectCard(p, self){
   if(p.summary) c.appendChild(pfEl('p', 'pf-sum', p.summary));
   if(p.tech && p.tech.length){ var tc = pfEl('div', 'pf-chips'); p.tech.forEach(function(x){ tc.appendChild(pfEl('span', 'pf-chip', x)); }); c.appendChild(tc); }
   if(self){
-    var row = pfEl('div', 'pf-prow'); var eb = pfEl('button', 'btn ghost', p.summary ? '내가 한 일 수정' : '＋ 내가 한 일 쓰기'); eb.onclick = function(){ PF.editProj = p.project_id; pfDraw(); }; row.appendChild(eb);
+    var row = pfEl('div', 'pf-prow'); var eb = pfEl('button', 'btn ghost', p.summary ? '내가 한 일 수정' : '＋ 내가 한 일 쓰기'); eb.onclick = function(){ PF.editProj = p.project_id; pfRefresh(); }; row.appendChild(eb);
     var ob = pfEl('button', 'btn ghost', '프로젝트 열기'); ob.onclick = function(){ openWorkspace('p' + p.project_id); }; row.appendChild(ob); c.appendChild(row);
   }
   return c;
@@ -143,26 +141,37 @@ function pfEntryForm(p){
   f.appendChild(pfEl('label', null, '내가 한 일')); f.appendChild(ta);
   f.appendChild(pfEl('label', null, '사용 기술 (Enter로 추가)')); var ci = pfChipInput(p.tech, 12, '예: Python, FastAPI'); f.appendChild(ci);
   var row = pfEl('div', 'pf-prow'); var ok = pfEl('button', 'btn primary', '저장'); var no = pfEl('button', 'btn ghost', '취소');
-  ok.onclick = async function(){ ok.disabled = true; try { await apiFetch('/api/profile/me/projects/' + p.project_id, { method:'PUT', body:JSON.stringify({ summary:ta.value, tech:ci.getValues() }) }); PF.editProj = null; pushToast('✅', '포트폴리오에 저장했어요', p.title, { duration:2200 }); renderProfile(true); } catch(e){ ok.disabled = false; pushToast('⚠️', '저장하지 못했어요', e.message); } };
-  no.onclick = function(){ PF.editProj = null; pfDraw(); }; row.appendChild(ok); row.appendChild(no); f.appendChild(row); return f;
+  ok.onclick = async function(){ ok.disabled = true; try { await apiFetch('/api/profile/me/projects/' + p.project_id, { method:'PUT', body:JSON.stringify({ summary:ta.value, tech:ci.getValues() }) }); PF.editProj = null; pushToast('✅', '포트폴리오에 저장했어요', p.title, { duration:2200 }); pfRefresh(); } catch(e){ ok.disabled = false; pushToast('⚠️', '저장하지 못했어요', e.message); } };
+  no.onclick = function(){ PF.editProj = null; pfRefresh(); }; row.appendChild(ok); row.appendChild(no); f.appendChild(row); return f;
 }
-function pfEditForm(p){
-  var f = pfEl('div', 'pf-form card');
+function pfLinksEditor(links){
+  var wrap = pfEl('div'), rows = [], lw = pfEl('div', 'pf-lrows');
+  function addRow(l){
+    if(rows.length >= 6) return;
+    var r = pfEl('div', 'pf-lrow'), a = pfEl('input'), b = pfEl('input'); a.type = 'text'; a.placeholder = '이름'; a.maxLength = 30; a.value = (l && l.label) || ''; b.type = 'url'; b.placeholder = 'https://…'; b.maxLength = 300; b.value = (l && l.url) || '';
+    var o = { a:a, b:b }, x = pfEl('button', 'btn ghost', '삭제'); x.type = 'button'; x.onclick = function(){ r.remove(); rows.splice(rows.indexOf(o), 1); };
+    rows.push(o); r.appendChild(a); r.appendChild(b); r.appendChild(x); lw.appendChild(r);
+  }
+  (links || []).forEach(addRow); if(!rows.length) addRow(); wrap.appendChild(lw);
+  var add = pfEl('button', 'btn ghost', '＋ 링크 추가'); add.type = 'button'; add.onclick = function(){ addRow(); }; wrap.appendChild(add);
+  wrap.getValues = function(){ return rows.map(function(o){ return { label:o.a.value, url:o.b.value.trim() }; }).filter(function(l){ return l.url; }); };
+  return wrap;
+}
+/* 상세 프로필 입력칸(한 줄 소개·자기소개·기술 스택·링크). 프로필 편집 창에서 쓴다. */
+function pfDetailFields(p){
+  var f = pfEl('div', 'pf-detail');
+  f.appendChild(pfEl('div', 'pf-sec', '자기소개'));
   f.appendChild(pfEl('label', null, '한 줄 소개')); var hl = pfEl('input'); hl.type = 'text'; hl.maxLength = 120; hl.value = p.headline || ''; hl.placeholder = '나를 한 줄로 소개해 보세요'; f.appendChild(hl);
   f.appendChild(pfEl('label', null, '자기소개')); var bio = pfEl('textarea'); bio.rows = 4; bio.maxLength = 2000; bio.value = p.bio || ''; bio.placeholder = '관심 분야, 강점, 목표 등을 자유롭게 적어 주세요'; f.appendChild(bio);
+  f.appendChild(pfEl('div', 'pf-sec', '기술 · 링크'));
   f.appendChild(pfEl('label', null, '기술 스택 (Enter로 추가, 최대 20개)')); var sk = pfChipInput(p.skills, 20, '예: React, Python'); f.appendChild(sk);
-  f.appendChild(pfEl('label', null, '링크 (GitHub·블로그 등, 최대 6개)'));
-  var rows = []; var lw = pfEl('div', 'pf-lrows');
-  function addRow(l){ if(rows.length >= 6) return; var r = pfEl('div', 'pf-lrow'), a = pfEl('input'), b = pfEl('input'); a.type = 'text'; a.placeholder = '이름'; a.maxLength = 30; a.value = (l && l.label) || ''; b.type = 'url'; b.placeholder = 'https://…'; b.maxLength = 300; b.value = (l && l.url) || ''; var x = pfEl('button', 'btn ghost', '삭제'); x.type = 'button'; x.onclick = function(){ r.remove(); rows.splice(rows.indexOf(o), 1); }; var o = { a:a, b:b }; rows.push(o); r.appendChild(a); r.appendChild(b); r.appendChild(x); lw.appendChild(r); }
-  (p.links || []).forEach(addRow); if(!rows.length) addRow(); f.appendChild(lw);
-  var add = pfEl('button', 'btn ghost', '＋ 링크 추가'); add.type = 'button'; add.onclick = function(){ addRow(); }; f.appendChild(add);
-  var row = pfEl('div', 'pf-prow'); var ok = pfEl('button', 'btn primary', '저장'); var no = pfEl('button', 'btn ghost', '취소');
-  ok.onclick = async function(){
-    ok.disabled = true;
-    try { await apiFetch('/api/profile/me', { method:'PUT', body:JSON.stringify({ headline:hl.value, bio:bio.value, skills:sk.getValues(), links:rows.map(function(o){ return { label:o.a.value, url:o.b.value.trim() }; }).filter(function(l){ return l.url; }) }) }); PF.editing = false; pushToast('✅', '프로필을 저장했어요', '', { duration:2200 }); renderProfile(true); }
-    catch(e){ ok.disabled = false; pushToast('⚠️', '저장하지 못했어요', e.message); }
-  };
-  no.onclick = function(){ PF.editing = false; pfDraw(); }; row.appendChild(ok); row.appendChild(no); f.appendChild(row); return f;
+  f.appendChild(pfEl('label', null, '링크 (GitHub·블로그 등, 최대 6개)')); var lk = pfLinksEditor(p.links); f.appendChild(lk);
+  f.getValues = function(){ return { headline:hl.value, bio:bio.value, skills:sk.getValues(), links:lk.getValues() }; };
+  return f;
+}
+function pfRefresh(){
+  var v = document.querySelector('.view.active');
+  if(v && v.dataset.view === 'mypage') renderMyPage(); else renderProfile(true);
 }
 function pfPerson(x){
   var r = pfEl('div', 'pf-person'); var av = pfEl('div', 'pf-pav', String(x.name || '?').slice(0, 1)); av.style.background = chatColor(x.name); if(x.mutual && x.status){ av.dataset.pst = x.status; av.title = PST_META[x.status].label; } r.appendChild(av);

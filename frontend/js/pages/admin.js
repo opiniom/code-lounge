@@ -30,14 +30,17 @@ async function renderMyPage(){
   if(authToken && calApiMode){
     try { var r = await cmFetch('/api/community/posts?mine=true&limit=50'); MP.posts = r.items || []; set('mpPosts', r.total != null ? r.total : MP.posts.length); } catch(e){}
   } else { MP.posts = []; set('mpPosts', 0); }
+  if(authToken && calApiMode){ try { MP.me = await apiFetch('/api/profile/me'); } catch(e){ MP.me = null; } } else MP.me = null;
+  mpRenderAbout(); mpRenderPortfolio();
   mpTab(MP.tab);
   var fl = document.getElementById('mpFollow');
   if(fl && authToken && calApiMode){
     try {
       var f = await apiFetch('/api/follows/me'); fl.innerHTML = '';
-      var mk = function(label, n, tab){ var b = mpEl('button', 'mp-fbtn'); b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = n; b.querySelector('span').textContent = label; b.onclick = function(){ openProfile(null, tab); }; fl.appendChild(b); };
+      var mk = function(label, n, tab){ var b = mpEl('button', 'mp-fbtn'); b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = n; b.querySelector('span').textContent = label; b.onclick = function(){ mpTab(tab); document.getElementById('mpPanel').scrollIntoView({ behavior:'smooth', block:'start' }); }; fl.appendChild(b); };
+      MP.follows = f;
       mk('팔로워', f.followers.length, 'followers'); mk('팔로잉', f.following.length, 'following');
-      var fb = mpEl('button', 'btn ghost', '＋ 사람 찾기'); fb.onclick = function(){ openProfile(null, 'following'); }; fl.appendChild(fb);
+      var fb = mpEl('button', 'btn ghost', '＋ 사람 찾기'); fb.onclick = function(){ mpTab('following'); document.getElementById('mpPanel').scrollIntoView({ behavior:'smooth', block:'start' }); }; fl.appendChild(fb);
     } catch(e){}
   } else if(fl){ fl.innerHTML = ''; }
 }
@@ -48,12 +51,23 @@ function mpMonthEvents(){
 function mpTab(tab){
   MP.tab = tab;
   document.querySelectorAll('.stat-tile[data-tab]').forEach(function(t){ t.classList.toggle('on', t.dataset.tab === tab); });
-  var title = { projects:'참여 프로젝트', events:'이번 달 일정', notes:'회의록', posts:'내가 쓴 커뮤니티 글' }[tab];
+  var title = { projects:'참여 프로젝트', events:'이번 달 일정', notes:'회의록', posts:'내가 쓴 커뮤니티 글', followers:'팔로워', following:'팔로잉' }[tab];
   var list = document.getElementById('mpList'); if(!list) return; list.innerHTML = '';
   var rows = [];
   var none = function(msg){ list.appendChild(mpEl('div', 'mp-none', msg)); document.getElementById('mpCount').textContent = '0'; document.getElementById('mpTitle').textContent = title; };
   if(!calApiMode){ none('로그인하면 내 활동을 볼 수 있어요.'); return; }
-  if(tab === 'projects'){
+  if(tab === 'followers' || tab === 'following'){
+    var f = MP.follows || { followers:[], following:[] }; rows = tab === 'followers' ? f.followers : f.following;
+    if(tab === 'following'){
+      var sb = mpEl('div', 'pf-search'), inp = mpEl('input'); inp.type = 'search'; inp.placeholder = '이름으로 사람 찾기 (2글자 이상)'; inp.value = PF.q || ''; sb.appendChild(inp); list.appendChild(sb);
+      var res = mpEl('div', 'pf-results'); list.appendChild(res); var tmr = null;
+      var showRes = function(){ res.innerHTML = ''; (PF.results || []).forEach(function(x){ res.appendChild(pfPerson({ id:x.id, name:x.name, headline:x.headline, i_follow:x.i_follow })); }); if(PF.q && PF.q.length >= 2 && !(PF.results || []).length) res.appendChild(mpEl('div', 'mp-none', '검색 결과가 없어요')); };
+      inp.oninput = function(){ clearTimeout(tmr); PF.q = inp.value.trim(); tmr = setTimeout(async function(){ if(PF.q.length < 2){ PF.results = []; showRes(); return; } try { PF.results = await apiFetch('/api/profile/search?q=' + encodeURIComponent(PF.q)); } catch(e){ PF.results = []; } showRes(); }, 300); };
+      showRes();
+    }
+    rows.forEach(function(x){ list.appendChild(pfPerson(x)); });
+    if(!rows.length) list.appendChild(mpEl('div', 'mp-none', tab === 'followers' ? '아직 팔로워가 없어요. 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '아직 팔로우한 사람이 없어요. 위 검색창이나 커뮤니티 글의 작성자 옆 버튼으로 팔로우해 보세요.'));
+  } else if(tab === 'projects'){
     rows = myProjects.slice();
     rows.forEach(function(p){
       var r = mpEl('div', 'mp-row'), main = mpEl('div', 'mp-main'); main.appendChild(mpEl('b', null, p.title));
@@ -111,4 +125,29 @@ async function mpDeleteNote(d){
   var yes = await appConfirm({ icon:'🗑️', title:'이 회의록을 삭제할까요?', text:'"' + d.title + '"과 이 회의록에서 AI가 만든 일정이 함께 사라져요.', ok:'삭제', danger:true });
   if(!yes) return;
   try { await apiFetch('/api/meetings/' + d.serverId, { method:'DELETE' }); meetingDocs = meetingDocs.filter(function(x){ return x.serverId !== d.serverId; }); renderMeetingDocs(); refreshTeamEvents(); pushToast('🗑️', '회의록을 삭제했어요', d.title, { duration:2200 }); renderMyPage(); } catch(e){ pushToast('⚠️', '삭제하지 못했어요', e.message); }
+}
+
+/* ---- 마이페이지: 내 프로필 요약 + 포트폴리오 ---- */
+function mpRenderAbout(){
+  var box = document.getElementById('mpAbout'); if(!box) return; box.innerHTML = '';
+  var me = MP.me; if(!me) return;
+  var p = me.profile, has = p.headline || p.bio || p.skills.length || p.links.length;
+  var c = mpEl('div', 'card mp-about');
+  if(!has){
+    c.appendChild(mpEl('b', null, '프로필을 채워 보세요')); c.appendChild(mpEl('span', 'mp-about-tip', '한 줄 소개, 기술 스택, 링크를 적으면 팀원이 내 프로필에서 볼 수 있어요.'));
+    var b = mpEl('button', 'btn primary', '프로필 편집'); b.onclick = openProfileModal; c.appendChild(b);
+  } else {
+    if(p.headline) c.appendChild(mpEl('div', 'mp-headline', p.headline));
+    if(p.bio) c.appendChild(mpEl('p', 'pf-bio', p.bio));
+    if(p.skills.length){ var sk = mpEl('div', 'pf-chips'); p.skills.forEach(function(x){ sk.appendChild(mpEl('span', 'pf-chip', x)); }); c.appendChild(sk); }
+    if(p.links.length){ var lk = mpEl('div', 'pf-links'); p.links.forEach(function(l){ var a = mpEl('a', 'pf-link', '↗ ' + l.label); a.href = pfSafeUrl(l.url); a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; lk.appendChild(a); }); c.appendChild(lk); }
+  }
+  box.appendChild(c);
+}
+function mpRenderPortfolio(){
+  var box = document.getElementById('mpPortfolio'); if(!box) return; box.innerHTML = '';
+  var me = MP.me; if(!me) return;
+  var h = mpEl('div', 'mp-port-head'); h.appendChild(mpEl('b', null, '내 포트폴리오')); h.appendChild(mpEl('span', null, '참여한 프로젝트와 내가 한 일이 자동으로 모여요. "내가 한 일"은 직접 적을 수 있어요.')); box.appendChild(h);
+  if(!me.projects.length){ box.appendChild(mpEl('div', 'mp-none', '아직 참여한 프로젝트가 없어요.')); return; }
+  me.projects.forEach(function(p){ box.appendChild(pfProjectCard(p, true)); });
 }

@@ -71,3 +71,11 @@
 html[data-motion="reduce"] .toast, html[data-motion="reduce"] .notif-panel.open, html[data-motion="reduce"] .notif-count{animation:none;}html[data-motion="reduce"] .toast .tbar{animation-duration:1ms;}
 
 
+
+/* 인스타그램 스타일 팔로우 알림 */
+.notif-item.nt-follow{align-items:center;}
+.nt-fav{width:40px; height:40px; border-radius:50%; color:#fff; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; font-family:var(--font-brand);} .nt-fav.sm{width:28px; height:28px; font-size:11.5px; border:2px solid var(--bg-elevated); margin-left:-10px;} .nt-fav.sm:first-child{margin-left:0;}
+.nt-fstack{display:inline-flex; width:60px; flex:0 0 auto; align-items:center;}
+.nt-ftext{font-size:13px; line-height:1.5; letter-spacing:-.015em; color:var(--text-muted);} .nt-ftext b{color:var(--text); font-weight:700;} .nt-follow.unread .nt-ftext{color:var(--text);} .nt-ftext .ntime{margin-left:4px; color:var(--text-faint);}
+.nt-follow .fw-btn{flex:0 0 auto; margin-left:6px;} .nt-follow .nt-dot{bottom:auto; top:12px;}
+.notif-item.nt-follow:hover .ntime{opacity:1;}

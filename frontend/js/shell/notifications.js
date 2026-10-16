@@ -45,6 +45,40 @@ function ntSetTab(tab){
   document.querySelectorAll('.nt-tabs button').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === tab); });
   ntRender();
 }
+/* ---- 인스타그램 스타일 팔로우 알림 ---- */
+function ntFollowName(n){ var i = (n.title || '').indexOf('님이'); return i > 0 ? n.title.slice(0, i) : (n.title || '누군가'); }
+function ntFollowUid(n){ var m = /^profile:(\d+)$/.exec(n.link || ''); return m ? parseInt(m[1], 10) : null; }
+function ntFollowRow(n){
+  var uid = ntFollowUid(n), name = ntFollowName(n);
+  var it = document.createElement('div'); it.className = 'notif-item nt-follow' + (n.is_read ? '' : ' unread'); it.dataset.id = n.id; it.tabIndex = 0; it.setAttribute('role', 'button');
+  var av = document.createElement('span'); av.className = 'nt-fav'; av.textContent = String(name).slice(0, 1); av.style.background = chatColor(name);
+  var body = document.createElement('div'); body.className = 'notif-body';
+  var tx = document.createElement('div'); tx.className = 'nt-ftext'; var b = document.createElement('b'); b.textContent = name; tx.appendChild(b); tx.append('님이 회원님을 팔로우하기 시작했습니다. '); var tm = document.createElement('span'); tm.className = 'ntime'; tm.textContent = ntRel(n.created_at); tx.appendChild(tm);
+  body.appendChild(tx);
+  it.appendChild(av); it.appendChild(body);
+  if(uid){ it.appendChild(fwButton(uid, 'sm')); }
+  var dot = document.createElement('i'); dot.className = 'nt-dot'; it.appendChild(dot);
+  var del = document.createElement('button'); del.type = 'button'; del.className = 'notif-del'; del.title = '삭제'; del.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'; del.onclick = function(e){ e.stopPropagation(); ntDelete(n.id); }; it.appendChild(del);
+  it.onclick = function(){ ntMark(n.id); openNotifLink(n.link || ''); };
+  it.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); it.click(); } };
+  return it;
+}
+function ntFollowGroup(list){
+  var it = document.createElement('div'); it.className = 'notif-item nt-follow' + (list.some(function(n){ return !n.is_read; }) ? ' unread' : ''); it.tabIndex = 0; it.setAttribute('role', 'button');
+  var stack = document.createElement('span'); stack.className = 'nt-fstack';
+  list.slice(0, 3).forEach(function(n){ var nm = ntFollowName(n), a = document.createElement('span'); a.className = 'nt-fav sm'; a.textContent = String(nm).slice(0, 1); a.style.background = chatColor(nm); stack.appendChild(a); });
+  var body = document.createElement('div'); body.className = 'notif-body';
+  var names = list.slice(0, 2).map(ntFollowName), rest = list.length - names.length;
+  var tx = document.createElement('div'); tx.className = 'nt-ftext';
+  names.forEach(function(nm, i){ var b = document.createElement('b'); b.textContent = nm; tx.appendChild(b); tx.append(i < names.length - 1 ? '님, ' : '님'); });
+  tx.append(rest > 0 ? ' 외 ' + rest + '명이 회원님을 팔로우하기 시작했습니다. ' : '이 회원님을 팔로우하기 시작했습니다. ');
+  var tm = document.createElement('span'); tm.className = 'ntime'; tm.textContent = ntRel(list[0].created_at); tx.appendChild(tm); body.appendChild(tx);
+  it.appendChild(stack); it.appendChild(body);
+  var dot = document.createElement('i'); dot.className = 'nt-dot'; it.appendChild(dot);
+  it.onclick = function(){ list.forEach(function(n){ ntMark(n.id); }); document.getElementById('notifPanel').classList.remove('open'); MP.tab = 'followers'; goView('mypage'); };
+  it.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); it.click(); } };
+  return it;
+}
 function ntRender(){
   var box = document.getElementById('notifList'); if(!box) return;
   var unread = NT.items.filter(function(n){ return !n.is_read; }).length;
@@ -61,10 +95,20 @@ function ntRender(){
     e.querySelector('span').textContent = loggedIn ? '일정, 팀 초대, 커뮤니티 소식이 여기에 모여요.' : '로그인하면 팀 소식을 이곳에서 받아볼 수 있어요.';
     box.appendChild(e); return;
   }
-  var last = null;
+  var last = null, hasFollow = false;
+  // 같은 날 팔로우 알림이 3개 이상이면 인스타그램처럼 "A님, B님 외 N명이 팔로우하기 시작했습니다"로 묶는다
+  var fgroups = {};
+  items.forEach(function(n){ if(n.category === 'follow'){ var g = ntGroup(n.created_at); (fgroups[g] = fgroups[g] || []).push(n); } });
+  var folded = {};
   items.forEach(function(n){
     var g = ntGroup(n.created_at);
     if(g !== last){ var h = document.createElement('div'); h.className = 'nt-group'; h.textContent = g; box.appendChild(h); last = g; }
+    if(n.category === 'follow'){
+      hasFollow = true;
+      var grp = fgroups[g];
+      if(grp.length >= 3){ if(folded[g]) return; folded[g] = true; box.appendChild(ntFollowGroup(grp)); return; }
+      box.appendChild(ntFollowRow(n)); return;
+    }
     var k = ntKind(n.category);
     var it = document.createElement('div'); it.className = 'notif-item' + (n.is_read ? '' : ' unread'); it.dataset.id = n.id; it.style.setProperty('--nc', k.c);
     it.tabIndex = 0; it.setAttribute('role', 'button');
@@ -75,6 +119,7 @@ function ntRender(){
     it.querySelector('.notif-del').onclick = function(e){ e.stopPropagation(); ntDelete(n.id); };
     box.appendChild(it);
   });
+  if(hasFollow && typeof fwResync === 'function') fwResync();
 }
 function ntApply(list, announce){
   list = list.slice().sort(function(a, b){ return (ntDate(b.created_at) || 0) - (ntDate(a.created_at) || 0) || b.id - a.id; });

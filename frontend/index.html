@@ -108,9 +108,8 @@
       <div class="avatar-wrap">
         <button class="avatar" id="avatarBtn" onclick="toggleAvatarMenu(event)" title="계정">나</button>
         <div class="avatar-menu" id="avatarMenu">
-          <button onclick="openProfile()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="4" width="17" height="16" rx="3"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 16.5c.5-1.6 1.7-2.4 3.2-2.4s2.7.8 3.2 2.4M14.5 9.5h3.5M14.5 13h3.5"/></svg>프로필 · 포트폴리오</button>
           <button onclick="goView('mypage')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1-3.8 3.6-5.7 7-5.7s6 1.9 7 5.7"/></svg>마이페이지</button>
-          <button onclick="goView('admin')" id="teamManageMenuItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9.5" r="2.4"/><path d="M2.5 19c.5-3.2 2.6-4.9 6-4.9s5.5 1.7 6 4.9M14.5 19c.3-2.3 1.7-3.7 3.9-3.7s3.5 1.4 3.9 3.7"/></svg>팀 관리</button>
+          <button onclick="goView('admin')" id="teamManageMenuItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9.5" r="2.4"/><path d="M2.5 19c.5-3.2 2.6-4.9 6-4.9s5.5 1.7 6 4.9M14.5 19c.3-2.3 1.7-3.7 3.9-3.7s3.5 1.4 3.9 3.7"/></svg>팀원</button>
           <button onclick="openSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.04Z"/></svg>설정</button>
           <hr>
           <button onclick="mockLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>로그아웃</button>
@@ -737,11 +736,12 @@
           <div class="role" id="mypageRole"></div>
           <div class="mp-follow" id="mpFollow"></div>
         </div>
-        <button class="btn primary" style="margin-left:auto;" onclick="openProfile()">프로필 · 포트폴리오</button>
-        <button class="btn ghost" onclick="openProfileModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>프로필 수정
+        <button class="btn primary" style="margin-left:auto;" onclick="openProfileModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>프로필 편집
         </button>
       </div>
+
+      <div id="mpAbout"></div>
 
       <div class="stat-grid">
         <div class="stat-tile card" role="button" tabindex="0" data-tab="projects" onclick="mpTab('projects')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mpTab('projects');}">
@@ -766,6 +766,8 @@
         <div class="mp-head"><b id="mpTitle">참여 프로젝트</b><span id="mpCount"></span><span class="mp-hint">위의 숫자 카드를 눌러 자세히 보고 관리하세요</span></div>
         <div class="mp-list" id="mpList"></div>
       </div>
+
+      <div class="mp-port" id="mpPortfolio"></div>
     </div>
   </section>
 
@@ -990,10 +992,11 @@
   </div>
 
   <div class="modal-backdrop" id="profileModal" onclick="if(event.target===this)closeProfileModal()">
-    <div class="share-modal">
-      <div class="mh"><h3>프로필 설정</h3><button class="icon-btn" onclick="closeProfileModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="share-modal pf-modal">
+      <div class="mh"><h3>프로필 편집</h3><button class="icon-btn" onclick="closeProfileModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <div class="form-row"><label>이름</label><input type="text" id="profileNameInput" placeholder="이름"></div>
       <div class="form-row"><label>역할 / 소개</label><input type="text" id="profileRoleInput" placeholder="역할 / 소개"></div>
+      <div id="pfModalExtra"></div>
       <div class="form-row">
         <label>AI 이름 (부를 때 쓰는 이름)</label>
         <input type="text" id="profileAiNameInput" maxlength="12" placeholder="AI를 부를 이름">
