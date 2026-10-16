@@ -32,3 +32,8 @@ Thumbs.db
 .venv/
 .claude/
 *.pyc
+
+# 비공개 키·인증서는 절대 올리지 않기
+*.pem
+*.key
+*.p12
