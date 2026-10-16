@@ -62,7 +62,7 @@ async def list_messages(
     )).scalars().all()
     rows.reverse()
     names = await _author_names(db, rows)
-    return [_to_response(m, names.get(m.user_id, "AI" if m.kind == "ai_detect" else "알 수 없음")) for m in rows]
+    return [_to_response(m, names.get(m.user_id, "AI" if str(m.kind).startswith("ai") else "탈퇴한 사용자")) for m in rows]
 
 
 async def analyze_message(project_id: int, message_id: int):

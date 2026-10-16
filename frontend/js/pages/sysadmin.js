@@ -5,6 +5,7 @@ var SA = { tab:'dash', inited:false, timers:{}, state:{ users:{ q:'', state:'all
 var SA_TABS = [
   { k:'dash', t:'대시보드', i:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>' },
   { k:'users', t:'사용자', i:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/>' },
+  { k:'withdrawals', t:'탈퇴 기록', i:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>' },
   { k:'reports', t:'신고', i:'<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>' },
   { k:'posts', t:'커뮤니티', i:'<path d="M20 12a7.5 7.5 0 0 1-10.9 6.7L4 20l1.4-4.3A7.5 7.5 0 1 1 20 12Z"/>' },
   { k:'projects', t:'프로젝트', i:'<path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h3.3l2 2.2H18A2.5 2.5 0 0 1 20.5 9.7v7.8A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5Z"/>' },
@@ -13,7 +14,7 @@ var SA_TABS = [
   { k:'audit', t:'감사 로그', i:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>' },
   { k:'system', t:'시스템', i:'<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>' }
 ];
-var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
+var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'user.delete':'계정 삭제(탈퇴 처리)', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
   'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
 var SA_CATS = { question:'질문', recruit:'팀원 모집', showcase:'프로젝트 자랑', share:'정보 공유', free:'자유', comment:'댓글' };
 
@@ -205,7 +206,7 @@ function saShow(k){
   saLeave(); SA.tab = k;
   document.querySelectorAll('#saNav button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-k') === k); });
   var main = document.getElementById('saMain'); saLoading(main);
-  var fn = { dash:saDash, users:saUsers, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, announce:saAnnounce, audit:saAudit, system:saSystem }[k];
+  var fn = { dash:saDash, users:saUsers, withdrawals:saWithdrawals, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, announce:saAnnounce, audit:saAudit, system:saSystem }[k];
   saCloseDrawer();
   fn(main);
   window.scrollTo(0, 0);
@@ -237,7 +238,8 @@ function saDash(main){
       saStat('전체 사용자', o.users.total, '이번 주 +' + saN(o.users.new_7d), 'blue', function(){ saShow('users'); }),
       saStat('오늘 가입', o.users.new_today, '', ''),
       saStat('지금 접속 중', o.users.online, '실시간 연결 기준', 'green'),
-      saStat('정지된 계정', o.users.suspended, '', o.users.suspended ? 'red' : '', function(){ SA.state.users.state = 'suspended'; saShow('users'); })
+      saStat('정지된 계정', o.users.suspended, '', o.users.suspended ? 'red' : '', function(){ SA.state.users.state = 'suspended'; saShow('users'); }),
+      saStat('최근 7일 탈퇴', o.users.withdrawn_7d, '탈퇴 기록은 7일 뒤 자동 삭제', '', function(){ saShow('withdrawals'); })
     ]));
     main.appendChild(saH('div', { class:'sa-todo' }, [
       saH('div', { class:'sa-todo-i' + (o.todo.reports ? ' warn' : ''), onclick:function(){ saShow('reports'); } }, [saH('b', { text:saN(o.todo.reports) }), saH('span', { text:'처리할 신고' })]),
@@ -307,8 +309,40 @@ function saOpenUser(id){
       var on = u.role === 'admin';
       act.appendChild(saH('button', { class:'btn', type:'button', text:on ? '운영자 해제' : '운영자로 지정', onclick:function(){ saConfirm({ title:u.username + (on ? ' 님의 운영자 권한을 해제할까요?' : ' 님을 운영자로 지정할까요?'), msg:on ? '관리자 페이지에 더 이상 들어갈 수 없어요.' : '신고·콘텐츠·크롤러·공지를 관리하고 일반 사용자를 정지할 수 있어요.', ok:on ? '해제' : '지정' }, function(){ saPost('/users/' + u.id + '/role', { is_admin:!on }).then(function(){ pushToast('🛡️', on ? '운영자를 해제했어요' : '운영자로 지정했어요', u.username); saOpenUser(u.id); saUsersLoad(); }).catch(saErr); }); } }));
     }
+    if(!locked){
+      act.appendChild(saH('button', { class:'btn sa-danger sa-del', type:'button', text:'계정 삭제', title:'쓰지 않는 유령 계정을 정리할 때', onclick:function(){
+        saConfirm({ title:u.username + ' 계정을 삭제할까요?', msg:'본인이 탈퇴한 것과 똑같이 처리돼요: 계정 정보와 개인 데이터가 삭제되고, 혼자 쓰던 프로젝트는 통째로 삭제되며, 팀원이 있는 프로젝트는 팀장이 넘어가요. 되돌릴 수 없어요. 처리 기록은 탈퇴 기록에 7일간 남아요.', input:{ placeholder:'삭제 사유 (예: 사용하지 않는 게스트 계정)', required:true }, ok:'삭제하기', danger:true }, function(reason){
+          saPost('/users/' + u.id + '/delete', { reason:reason }).then(function(){ pushToast('🗑️', '계정을 삭제했어요', u.username); saCloseDrawer(); saUsersLoad(); }).catch(saErr);
+        });
+      } }));
+    }
     card.appendChild(act);
   }).catch(function(e){ card.innerHTML = ''; card.appendChild(saEmpty(e.message)); });
+}
+
+/* ----- 탈퇴 기록 (최근 7일) ----- */
+function saWithdrawals(main){
+  main.innerHTML = '';
+  saApi('/withdrawals').then(function(r){
+    main.appendChild(saH('div', { class:'sa-note info' }, [saH('b', { text:'탈퇴 기록은 ' + r.keep_days + '일 동안만 보관돼요' }), saH('span', { text:'문의 대응과 부정 이용 확인을 위해서예요. 이메일은 일부만 보이고, ' + r.keep_days + '일이 지나면 이 목록에서도 자동으로 사라져요. 탈퇴한 계정은 복구할 수 없어요.' })]));
+    var list = saH('div', { class:'sa-wds' });
+    r.items.forEach(function(w){
+      var s = w.summary || {}, parts = [];
+      if(s.projects_deleted) parts.push('프로젝트 ' + s.projects_deleted + '개 삭제');
+      if(s.projects_transferred) parts.push('팀장 ' + s.projects_transferred + '곳 이전');
+      if(s.left_projects) parts.push('참여 ' + s.left_projects + '곳에서 나감');
+      if(s.posts || s.comments) parts.push('글 ' + (s.posts || 0) + '개 · 댓글 ' + (s.comments || 0) + '개 삭제');
+      if(s.runs) parts.push('실행 기록 ' + s.runs + '개 삭제');
+      var left = w.days_left <= 1 ? (w.hours_left < 1 ? '곧 삭제' : w.hours_left + '시간 남음') : w.days_left + '일 남음';
+      var dl = function(k, v){ return saH('div', {}, [saH('dt', { text:k }), saH('dd', { text:v })]); };
+      list.appendChild(saH('article', { class:'sa-wd' }, [
+        saH('div', { class:'sa-wd-top' }, [saAvatar(w.username || '?', 34), saH('div', { class:'sa-wd-who' }, [saH('b', { text:w.username || '(이름 없음)' }), saH('span', { text:w.email + (w.provider ? ' · ' + w.provider : '') })]),
+          saH('div', { class:'sa-wd-tags' }, [w.by === 'admin' ? saChip('관리자 삭제' + (w.by_admin ? ' · ' + w.by_admin : ''), 'warn') : saChip('본인 탈퇴', ''), saChip(left, w.days_left <= 1 ? 'bad' : 'warn')])]),
+        saH('dl', { class:'sa-wd-dl' }, [dl('가입', saWhen(w.joined_at)), dl('탈퇴', saWhen(w.withdrawn_at)), dl('사유', (w.reason || (w.by === 'admin' ? '관리자 삭제' : '사유 없음')) + (w.reason_text ? ' · ' + w.reason_text : '')), dl('처리 내용', parts.length ? parts.join(' · ') : '정리할 데이터 없음')])
+      ]));
+    });
+    main.appendChild(saPanel('최근 ' + r.keep_days + '일 탈퇴 ' + r.total + '명', '', [r.items.length ? list : saEmpty('최근 ' + r.keep_days + '일 안에 탈퇴한 계정이 없어요.')]));
+  }).catch(function(e){ main.innerHTML = ''; main.appendChild(saEmpty(e.message || '불러오지 못했어요.')); });
 }
 
 /* ----- 신고 ----- */

@@ -32,6 +32,7 @@ from routers.community import router as community_router, seed_community
 from routers.presence import router as presence_router
 from routers.profile import router as profile_router, follow_router
 from routers.admin import router as admin_router
+from routers.account import router as account_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -64,6 +65,8 @@ async def lifespan(app: FastAPI):
     from database import async_session_maker
     await seed_community(async_session_maker)          # 커뮤니티가 비어 있으면 이용 안내 글 하나
     # 공모전·해커톤 정보를 서버가 켜져 있는 동안 주기적으로 자동 수집 (EVENT_CRAWL_ENABLED=false 로 끌 수 있음)
+    from services.account_service import purge_loop
+    purger = asyncio.create_task(purge_loop())          # 탈퇴 기록은 7일 뒤 자동 삭제
     scheduler = None
     if settings.EVENT_CRAWL_ENABLED:
         from services.event_crawler import scheduler_loop
@@ -71,6 +74,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        purger.cancel()
         if scheduler:
             scheduler.cancel()
 
@@ -119,6 +123,7 @@ app.include_router(presence_router)
 app.include_router(profile_router)
 app.include_router(follow_router)
 app.include_router(admin_router)
+app.include_router(account_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))

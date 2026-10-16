@@ -19,6 +19,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False, nullable=False, server_default="0")   # 운영자 (최고관리자는 ADMIN_EMAILS 로 따로 지정)
     ban_reason = Column(String(200), nullable=True)   # 정지 사유 (is_active=False 일 때)
     banned_at = Column(DateTime, nullable=True)
+    withdrawn_at = Column(DateTime, nullable=True)    # 탈퇴한 시각. 값이 있으면 개인정보를 모두 지운 '번호 보존용' 빈 계정이다 (번호가 다시 쓰이면 옛 로그인 토큰이 남의 계정으로 통할 수 있어서 행 자체는 남긴다)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # 1:N 관계 (사용자의 코드 실행 히스토리)
@@ -324,6 +325,26 @@ class SiteSetting(Base):
     value = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_by = Column(Integer, nullable=True)
+
+
+class WithdrawalLog(Base):
+    """탈퇴 기록 — 운영진이 문의 대응·부정 이용 확인을 할 수 있도록 7일만 보관하고 자동 삭제한다.
+    이메일은 일부만 가려서 보관한다 (예: b***2@naver.com)."""
+    __tablename__ = "withdrawal_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False, index=True)             # 탈퇴한 계정 번호 (외래키 아님: 계정 행과 따로 지워진다)
+    email_masked = Column(String(255), nullable=False)
+    username = Column(String(100), nullable=True)
+    provider = Column(String(50), nullable=True)
+    joined_at = Column(DateTime, nullable=True)
+    withdrawn_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)         # 이 시각이 지나면 기록도 자동으로 지워진다
+    reason = Column(String(20), nullable=True)
+    reason_text = Column(String(200), nullable=True)
+    by = Column(String(10), default="self", nullable=False)           # self(본인) | admin(관리자가 삭제)
+    by_admin = Column(String(100), nullable=True)
+    summary = Column(Text, nullable=True)                              # JSON: 프로젝트 삭제/이전, 글·댓글 삭제 수 등
 
 
 class Announcement(Base):

@@ -21,6 +21,7 @@
     "css/presence.css",
     "css/guest.css",
     "css/sysadmin.css",
+    "css/account.css",
     "css/compat.css",
     "css/mobile.css"
   ],
@@ -48,6 +49,7 @@
     "js/pages/community.js",
     "js/pages/profile.js",
     "js/pages/admin.js",
-    "js/pages/sysadmin.js"
+    "js/pages/sysadmin.js",
+    "js/pages/account.js"
   ]
 }

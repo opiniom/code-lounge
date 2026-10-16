@@ -24,6 +24,7 @@ async function renderMyPage(){
   var mpName = document.getElementById('mypageName'); if(mpName) mpName.textContent = nm;
   var mpAv = document.getElementById('mypageAvatar'); if(mpAv){ mpAv.textContent = nm.slice(0, 1); mpAv.style.background = avatarSwatches[myProfile.swatch] || ''; }
   var mpRole = document.getElementById('mypageRole'); if(mpRole) mpRole.textContent = myProfile.role || (currentUser ? currentUser.email : '로그인하면 내 활동이 여기에 모여요');
+  var acct = document.getElementById('mpAccount'); if(acct) acct.hidden = !(authToken && calApiMode);    // 탈퇴는 로그인한 계정만
   set('mpProjects', myProjects.length);
   set('mpEvents', mpMonthEvents().length);
   set('mpNotes', (meetingDocs || []).length);

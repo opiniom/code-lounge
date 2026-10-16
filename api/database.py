@@ -71,7 +71,7 @@ def _add_missing_columns(sync_conn):
         sync_conn.execute(text("ALTER TABLE users ADD COLUMN presence_pref VARCHAR(10) NOT NULL DEFAULT 'auto'"))
     if user_cols and "last_seen_at" not in user_cols:
         sync_conn.execute(text("ALTER TABLE users ADD COLUMN last_seen_at DATETIME"))
-    for name, ddl in (("is_admin", "BOOLEAN NOT NULL DEFAULT 0"), ("ban_reason", "VARCHAR(200)"), ("banned_at", "DATETIME")):
+    for name, ddl in (("is_admin", "BOOLEAN NOT NULL DEFAULT 0"), ("ban_reason", "VARCHAR(200)"), ("banned_at", "DATETIME"), ("withdrawn_at", "DATETIME")):
         if user_cols and name not in user_cols:
             sync_conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
     rp_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(community_reports)"))}

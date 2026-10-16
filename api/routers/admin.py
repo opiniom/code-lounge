@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import engine, get_db
-from models import (Announcement, AuditLog, CalendarEvent, ChatMessage, CommunityComment, CommunityPost, CommunityReport,
+from models import (WithdrawalLog, Announcement, AuditLog, CalendarEvent, ChatMessage, CommunityComment, CommunityPost, CommunityReport,
                     CrawledEvent, EventCrawlRun, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, User)
 from services import event_crawler as ec
 from services import live
+from services import account_service as acct
 from services import admin_gate as gate
 from services.admin_gate import require_admin, require_super
 from services.auth_service import is_admin_user, is_super_admin, require_admin_role, require_super_role
@@ -141,11 +142,12 @@ async def overview(admin: User = Depends(require_admin), db: AsyncSession = Depe
     now = datetime.utcnow(); today0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
     open_reports = (await db.execute(select(CommunityReport.target_type, CommunityReport.target_id).where(CommunityReport.status == "open").distinct())).all()
     return {
-        "users": {"total": await _n(db, select(func.count()).select_from(User)),
-                  "suspended": await _n(db, select(func.count()).select_from(User).where(User.is_active == False)),  # noqa: E712
-                  "new_today": await _n(db, select(func.count()).select_from(User).where(User.created_at >= today0)),
-                  "new_7d": await _n(db, select(func.count()).select_from(User).where(User.created_at >= now - timedelta(days=7))),
-                  "online": len(live.hub.conns)},
+        "users": {"total": await _n(db, select(func.count()).select_from(User).where(User.withdrawn_at.is_(None))),
+                  "suspended": await _n(db, select(func.count()).select_from(User).where(User.is_active == False, User.withdrawn_at.is_(None))),  # noqa: E712
+                  "new_today": await _n(db, select(func.count()).select_from(User).where(User.created_at >= today0, User.withdrawn_at.is_(None))),
+                  "new_7d": await _n(db, select(func.count()).select_from(User).where(User.created_at >= now - timedelta(days=7), User.withdrawn_at.is_(None))),
+                  "online": len(live.hub.conns),
+                  "withdrawn_7d": await _n(db, select(func.count()).select_from(WithdrawalLog))},
         "content": {"projects": await _n(db, select(func.count()).select_from(Project)),
                     "posts": await _n(db, select(func.count()).select_from(CommunityPost).where(CommunityPost.is_deleted == False)),  # noqa: E712
                     "comments": await _n(db, select(func.count()).select_from(CommunityComment).where(CommunityComment.is_deleted == False)),  # noqa: E712
@@ -157,7 +159,7 @@ async def overview(admin: User = Depends(require_admin), db: AsyncSession = Depe
                  "crawl_failed": await _n(db, select(func.count()).select_from(EventCrawlRun).where(EventCrawlRun.ok == False, EventCrawlRun.started_at >= now - timedelta(days=1)))},  # noqa: E712
         "series": {"users": await _series(db, User.created_at, 14), "posts": await _series(db, CommunityPost.created_at, 14),
                    "chat": await _series(db, ChatMessage.created_at, 14)},
-        "recent_users": [_user_row(u) for u in (await db.execute(select(User).order_by(User.id.desc()).limit(6))).scalars().all()],
+        "recent_users": [_user_row(u) for u in (await db.execute(select(User).where(User.withdrawn_at.is_(None)).order_by(User.id.desc()).limit(6))).scalars().all()],
         "recent_audit": [_audit_row(a) for a in (await db.execute(select(AuditLog).order_by(AuditLog.id.desc()).limit(6))).scalars().all()],
     }
 
@@ -167,7 +169,7 @@ async def overview(admin: User = Depends(require_admin), db: AsyncSession = Depe
 async def list_users(q: str = "", state: str = "all", page: int = 1, size: int = 20,
                      admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     page, size, off = _page(page, size)
-    conds = []
+    conds = [User.withdrawn_at.is_(None)]          # 탈퇴한 빈 계정은 목록에 보이지 않는다 (탈퇴 기록 화면에서 7일간 확인)
     q = (q or "").strip()
     if q:
         like = f"%{q.lower()}%"
@@ -193,7 +195,7 @@ async def list_users(q: str = "", state: str = "all", page: int = 1, size: int =
 
 @router.get("/users/{user_id}")
 async def user_detail(user_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    u = (await db.execute(select(User).where(User.id == user_id, User.withdrawn_at.is_(None)))).scalar_one_or_none()
     if not u:
         raise HTTPException(404, "사용자를 찾을 수 없어요.")
     owned = (await db.execute(select(Project).where(Project.owner_id == u.id).order_by(Project.id.desc()))).scalars().all()
@@ -223,7 +225,7 @@ def _guard_target(admin: User, target: User) -> None:
 
 @router.post("/users/{user_id}/suspend")
 async def suspend_user(user_id: int, data: SuspendIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    u = (await db.execute(select(User).where(User.id == user_id, User.withdrawn_at.is_(None)))).scalar_one_or_none()
     if not u:
         raise HTTPException(404, "사용자를 찾을 수 없어요.")
     _guard_target(admin, u)
@@ -236,7 +238,7 @@ async def suspend_user(user_id: int, data: SuspendIn, admin: User = Depends(requ
 
 @router.post("/users/{user_id}/unsuspend")
 async def unsuspend_user(user_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    u = (await db.execute(select(User).where(User.id == user_id, User.withdrawn_at.is_(None)))).scalar_one_or_none()
     if not u:
         raise HTTPException(404, "사용자를 찾을 수 없어요.")
     u.is_active = True; u.ban_reason = None; u.banned_at = None
@@ -252,7 +254,7 @@ class RoleIn(BaseModel):
 @router.post("/users/{user_id}/role")
 async def set_role(user_id: int, data: RoleIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
     """운영자 지정/해제 (최고관리자만)"""
-    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    u = (await db.execute(select(User).where(User.id == user_id, User.withdrawn_at.is_(None)))).scalar_one_or_none()
     if not u:
         raise HTTPException(404, "사용자를 찾을 수 없어요.")
     if u.id == admin.id or is_super_admin(u):
@@ -263,6 +265,47 @@ async def set_role(user_id: int, data: RoleIn, admin: User = Depends(require_sup
     _audit(db, admin, "user.admin_on" if u.is_admin else "user.admin_off", "user", u.id, u.email)
     await db.commit()
     return _user_row(u)
+
+
+# ---------------------------------------------------------------- 탈퇴 기록 · 계정 삭제
+@router.get("/withdrawals")
+async def list_withdrawals(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """최근 7일 안에 탈퇴한 계정 기록. 7일이 지난 기록은 여기서도 자동으로 지운다."""
+    await acct.purge_withdrawal_logs(db)
+    now = datetime.utcnow()
+    rows = (await db.execute(select(WithdrawalLog).order_by(WithdrawalLog.id.desc()))).scalars().all()
+    import json as _json
+    out = []
+    for r in rows:
+        try:
+            summ = _json.loads(r.summary or "{}")
+        except ValueError:
+            summ = {}
+        left = max(0, (r.expires_at - now).total_seconds())
+        out.append({"id": r.id, "user_id": r.user_id, "email": r.email_masked, "username": r.username, "provider": r.provider, "joined_at": _iso(r.joined_at),
+                    "withdrawn_at": _iso(r.withdrawn_at), "expires_at": _iso(r.expires_at), "hours_left": int(left // 3600), "days_left": int((left + 86399) // 86400),
+                    "reason": acct.REASONS.get(r.reason or "", None), "reason_text": r.reason_text, "by": r.by, "by_admin": r.by_admin, "summary": summ})
+    return {"items": out, "total": len(out), "keep_days": acct.KEEP_DAYS}
+
+
+class DeleteAccountIn(BaseModel):
+    reason: str = Field(default="", max_length=200)
+
+
+@router.post("/users/{user_id}/delete")
+async def delete_account(user_id: int, data: DeleteAccountIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """계정 삭제(탈퇴 처리). 쓰지 않는 '유령 계정'을 정리할 때 쓴다. 본인 탈퇴와 똑같이 처리되고 탈퇴 기록에도 남는다."""
+    u = (await db.execute(select(User).where(User.id == user_id, User.withdrawn_at.is_(None)))).scalar_one_or_none()
+    if not u:
+        raise HTTPException(404, "사용자를 찾을 수 없어요.")
+    _guard_target(admin, u)
+    label = u.email
+    summary = await acct.withdraw_user(db, u, "etc", (data.reason or "").strip() or "관리자가 삭제", by="admin", by_admin=admin.username or admin.email)
+    _audit(db, admin, "user.delete", "user", user_id, f"{acct.mask_email(label)} · {(data.reason or '').strip() or '사유 없음'}")
+    await db.commit()
+    from routers.account import after_withdraw
+    await after_withdraw(user_id, summary.pop("_notify", []))
+    return {"ok": True, "summary": summary}
 
 
 # ---------------------------------------------------------------- 신고 · 콘텐츠
