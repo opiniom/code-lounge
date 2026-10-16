@@ -17,7 +17,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import (CalendarEvent, ChatMessage, CommunityPost, Follow, MeetingDoc, Notification, PortfolioEntry,
+from models import (CalendarEvent, CommunityPost, Follow, MeetingDoc, Notification, PortfolioEntry,
                     Project, ProjectFile, ProjectMember, User, UserProfile)
 from services.access import member_project_ids
 from services.auth_service import get_current_user
@@ -92,14 +92,13 @@ async def _payload(db: AsyncSession, viewer: User, target: User) -> dict:
         files = (await db.execute(select(func.count()).select_from(ProjectFile).where(ProjectFile.project_id == pid, ProjectFile.updated_by == target.id))).scalar_one()
         notes = (await db.execute(select(func.count()).select_from(MeetingDoc).where(MeetingDoc.project_id == pid, MeetingDoc.user_id == target.id))).scalar_one()
         events = (await db.execute(select(func.count()).select_from(CalendarEvent).where(CalendarEvent.project_id == pid, CalendarEvent.user_id == target.id))).scalar_one()
-        msgs = (await db.execute(select(func.count()).select_from(ChatMessage).where(ChatMessage.project_id == pid, ChatMessage.user_id == target.id, ChatMessage.kind == "user"))).scalar_one()
         posts = (await db.execute(select(func.count()).select_from(CommunityPost).where(CommunityPost.project_id == pid, CommunityPost.user_id == target.id, CommunityPost.is_deleted == False))).scalar_one()  # noqa: E712
         n_members = (await db.execute(select(func.count()).select_from(ProjectMember).where(ProjectMember.project_id == pid))).scalar_one() + 1
         e = entries.get(pid)
         return {
             "project_id": pid, "title": p.title, "role": role, "joined_at": joined.isoformat() if joined else None,
             "created_at": p.created_at.isoformat() if p.created_at else None, "member_count": n_members,
-            "stats": {"files": files, "notes": notes, "events": events, "messages": msgs, "posts": posts},
+            "stats": {"files": files, "notes": notes, "events": events, "posts": posts},
             "summary": (e.summary or "") if e else "", "tech": _jl(e.tech) if e else [],
         }
 
@@ -213,6 +212,21 @@ async def _brief(db: AsyncSession, viewer_id: int, ids: List[int]):
         out.append({"id": i, "name": u.username, "headline": (profs[i].headline if i in profs else "") or "", "i_follow": i in mine, "follows_me": i in theirs,
                     "mutual": mutual, "status": effective_status(u.presence_pref, now if live.hub.is_online(i) else u.last_seen_at, now) if mutual else None})
     return out
+
+
+@follow_router.get("/state")
+async def follow_state(ids: str = Query("", max_length=400), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """여러 사람에 대한 내 팔로우 상태를 한 번에 (팔로우 버튼을 그릴 때 쓴다). ids=1,2,3"""
+    want = []
+    for x in ids.split(","):
+        x = x.strip()
+        if x.isdigit() and int(x) != current_user.id and len(want) < 60:
+            want.append(int(x))
+    if not want:
+        return {}
+    mine = set((await db.execute(select(Follow.followee_id).where(Follow.follower_id == current_user.id, Follow.followee_id.in_(want)))).scalars().all())
+    theirs = set((await db.execute(select(Follow.follower_id).where(Follow.followee_id == current_user.id, Follow.follower_id.in_(want)))).scalars().all())
+    return {str(i): {"i_follow": i in mine, "follows_me": i in theirs} for i in want}
 
 
 @follow_router.get("/me")

@@ -224,8 +224,10 @@ function tmSelect(id){ TM.pid = id; TM.filter = 'all'; renderTeamPage(); }
 function tmFilter(f){ TM.filter = f; renderTeamPage(); }
 function tmInvite(){ var cur = tmProject(); if(!cur){ openInviteModal(); return; } openInviteModal(cur.id); }
 function tmStatusOf(m){ return pstOf(m.id); }
+var tmFwBusy = false;
 function renderTeamPage(){
   var grid = document.getElementById('tmGrid'); if(!grid) return;
+  if(!tmFwBusy && calApiMode){ var c0 = tmProject(); var ids = c0 ? (c0.members || []).map(function(m){ return m.id; }) : []; var need = ids.filter(function(i){ return !FW.map[String(i)] && !(currentUser && i === currentUser.id); }); if(need.length){ tmFwBusy = true; fwLoad(need).then(function(){ tmFwBusy = false; renderTeamPage(); }); } }
   var box = document.getElementById('tmProjects'), sum = document.getElementById('tmSummary'), fl = document.getElementById('tmFilters'), inv = document.getElementById('tmInviteBtn');
   var cur = tmProject();
   grid.innerHTML = ''; box.innerHTML = ''; sum.innerHTML = '';
@@ -284,6 +286,7 @@ function tmCard(r, role, cur, sid, myId){
   card.querySelector('.tm-st').textContent = { online:'접속 중', away:'자리비움', dnd:'방해금지', offline:'오프라인' }[st]; card.querySelector('.tm-st').dataset.pst = st;
   var act = card.querySelector('.tm-act');
   var pb = document.createElement('button'); pb.className = 'btn ghost tm-prof'; pb.textContent = '프로필'; pb.onclick = function(){ openProfile(m.id); }; act.appendChild(pb);
+  if(!isSelf) act.appendChild(fwButton(m.id, 'sm'));
   if(cur.isOwner && !isSelf){
     var sel = document.createElement('select'); sel.className = 'tm-sel';
     [['member', '팀원'], ['leader', '부팀장']].forEach(function(o){ var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if(m.role === o[0]) op.selected = true; sel.appendChild(op); });

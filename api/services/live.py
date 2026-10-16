@@ -87,7 +87,7 @@ hub = LiveHub()
 # ---------- 대상(누구에게 보낼지) ----------
 async def teammate_ids(db, user_id: int) -> Set[int]:
     """같은 프로젝트에 있는 사람들(나 포함)"""
-    from models import Project, ProjectMember
+    from models import Follow, Project, ProjectMember
     mine = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
     owned = select(Project.id).where(Project.owner_id == user_id)
     pids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))).scalar_subquery()

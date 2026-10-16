@@ -29,6 +29,7 @@ function pstRender(){
   ntRender();
   if(typeof chatRenderPresence === 'function') chatRenderPresence();
   if(typeof tmRefresh === 'function') tmRefresh();
+  if(typeof wgLiveTeam === 'function') wgLiveTeam();
 }
 function pstToggle(e){
   if(e) e.stopPropagation();

@@ -31,6 +31,15 @@ async function renderMyPage(){
     try { var r = await cmFetch('/api/community/posts?mine=true&limit=50'); MP.posts = r.items || []; set('mpPosts', r.total != null ? r.total : MP.posts.length); } catch(e){}
   } else { MP.posts = []; set('mpPosts', 0); }
   mpTab(MP.tab);
+  var fl = document.getElementById('mpFollow');
+  if(fl && authToken && calApiMode){
+    try {
+      var f = await apiFetch('/api/follows/me'); fl.innerHTML = '';
+      var mk = function(label, n, tab){ var b = mpEl('button', 'mp-fbtn'); b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = n; b.querySelector('span').textContent = label; b.onclick = function(){ openProfile(null, tab); }; fl.appendChild(b); };
+      mk('팔로워', f.followers.length, 'followers'); mk('팔로잉', f.following.length, 'following');
+      var fb = mpEl('button', 'btn ghost', '＋ 사람 찾기'); fb.onclick = function(){ openProfile(null, 'following'); }; fl.appendChild(fb);
+    } catch(e){}
+  } else if(fl){ fl.innerHTML = ''; }
 }
 function mpMonthEvents(){
   var ym = CAL_TODAY.y + '-' + pad2(CAL_TODAY.m);

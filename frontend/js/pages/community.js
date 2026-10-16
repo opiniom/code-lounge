@@ -239,6 +239,7 @@ function cmRenderPost(d){
   h += '</div><div class="cm-composer"><textarea id="cmNewComment" maxlength="2000" placeholder="' + (calApiMode ? (d.category === 'question' ? '답변을 입력하세요' : '댓글을 입력하세요') : '로그인하면 댓글을 쓸 수 있어요') + '"' + (calApiMode ? '' : ' disabled') + '></textarea><div class="row"><button class="btn primary" onclick="cmSubmitComment(null)">' + (d.category === 'question' ? '답변 등록' : '댓글 등록') + '</button></div></div>';
   sheet.innerHTML = h;
   cmRenderBody(document.getElementById('cmBodyEl'), d.body);
+  if(d.author.id && calApiMode && !(currentUser && d.author.id === currentUser.id)){ var au = sheet.querySelector('.cm-d-author span'); if(au){ var slot = document.createElement('span'); au.parentNode.appendChild(slot); fwLoad([d.author.id]).then(function(){ if(cm.post && cm.post.id === d.id) slot.replaceWith(fwButton(d.author.id, 'sm')); }); } }
   d.comments.forEach(function(c){ var el = c.deleted ? null : sheet.querySelector('[data-cb="' + c.id + '"]'); if(el) cmRenderBody(el, c.body); });
 }
 function cmRecruitPanel(d){

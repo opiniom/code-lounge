@@ -63,7 +63,7 @@ function liveHandle(m){
     case 'presence':
       PST.team[String(m.user_id)] = m.status;
       if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader();
-      renderDureOrbit(); chatRenderPresence(); tmRefresh();
+      renderDureOrbit(); chatRenderPresence(); tmRefresh(); if(typeof wgLiveTeam === 'function') wgLiveTeam();
       break;
     case 'notification': loadNotifications(true); break;
     case 'chat':

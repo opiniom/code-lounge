@@ -1,10 +1,10 @@
 /* ---- 프로필 · 포트폴리오 · 팔로우 (/app/profile, /app/profile/사용자번호) ---- */
 var PF = { uid:null, data:null, follows:null, tab:'portfolio', editing:false, editProj:null, busy:false, q:'', results:[] };
 
-function openProfile(id){
+function openProfile(id, tab){
   if(!calApiMode){ pushToast('🔒', '로그인 후 프로필을 볼 수 있어요', '로그인하면 내 포트폴리오와 팔로우를 쓸 수 있어요'); openLogin(); return; }
   PF.uid = (id && !(currentUser && id === currentUser.id)) ? id : null;
-  PF.tab = 'portfolio'; PF.editing = false; PF.editProj = null; PF.data = null;
+  PF.tab = tab || 'portfolio'; PF.editing = false; PF.editProj = null; PF.data = null;
   goView('profile');
   routerSetUrl(routePath('profile', PF.uid), true);
 }
@@ -31,7 +31,11 @@ async function renderProfile(keepScroll){
   pfDraw();
   if(keepScroll) window.scrollTo(0, y);
 }
-function pfLive(){ var v = document.querySelector('.view.active'); if(v && v.dataset.view === 'profile' && !PF.editing && !PF.editProj) renderProfile(true); }
+function pfLive(){
+  var v = document.querySelector('.view.active');
+  if(v && v.dataset.view === 'profile' && !PF.editing && !PF.editProj) renderProfile(true);
+  fwResync(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
+}
 
 function pfDraw(){
   var d = PF.data, root = document.getElementById('pfRoot'); root.innerHTML = '';
@@ -97,9 +101,9 @@ async function pfToggleFollow(uid, on, btn){
 function pfStat(label, n){ var e = pfEl('div', 'pf-stat'); e.innerHTML = '<b></b><span></span>'; e.querySelector('b').textContent = n; e.querySelector('span').textContent = label; return e; }
 function pfPortfolio(root){
   var d = PF.data, self = d.is_self;
-  var tot = { notes:0, files:0, events:0, messages:0 };
-  d.projects.forEach(function(p){ tot.notes += p.stats.notes; tot.files += p.stats.files; tot.events += p.stats.events; tot.messages += p.stats.messages; });
-  var strip = pfEl('div', 'pf-strip'); strip.appendChild(pfStat('참여 프로젝트', d.projects.length)); strip.appendChild(pfStat('수정한 파일', tot.files)); strip.appendChild(pfStat('작성한 회의록', tot.notes)); strip.appendChild(pfStat('만든 일정', tot.events)); strip.appendChild(pfStat('보낸 채팅', tot.messages));
+  var tot = { notes:0, files:0, events:0 };
+  d.projects.forEach(function(p){ tot.notes += p.stats.notes; tot.files += p.stats.files; tot.events += p.stats.events; });
+  var strip = pfEl('div', 'pf-strip'); strip.appendChild(pfStat('참여 프로젝트', d.projects.length)); strip.appendChild(pfStat('수정한 파일', tot.files)); strip.appendChild(pfStat('작성한 회의록', tot.notes)); strip.appendChild(pfStat('만든 일정', tot.events));
   root.appendChild(strip);
   if(!d.projects.length){
     var e = pfEl('div', 'pf-empty'); e.innerHTML = '<b></b><span></span>';
@@ -115,7 +119,7 @@ function pfProjectCard(p, self){
   var top = pfEl('div', 'pf-ptop'); var t = pfEl('div', 'pf-ptitle'); t.appendChild(pfEl('b', null, p.title)); t.appendChild(pfEl('span', 'pf-role' + (p.role !== 'member' ? ' lead' : ''), pfRole(p.role))); top.appendChild(t);
   top.appendChild(pfEl('span', 'pf-meta', pfDate(p.joined_at) + ' 참여 · 팀 ' + p.member_count + '명')); c.appendChild(top);
   var s = p.stats, chips = pfEl('div', 'pf-sc');
-  [['📄', '파일 ' + s.files], ['📝', '회의록 ' + s.notes], ['📅', '일정 ' + s.events], ['💬', '채팅 ' + s.messages], ['🗣️', '글 ' + s.posts]].forEach(function(x){ if(x[1].split(' ')[1] !== '0') chips.appendChild(pfEl('span', 'pf-sc-i', x[0] + ' ' + x[1])); });
+  [['📄', '파일 ' + s.files], ['📝', '회의록 ' + s.notes], ['📅', '일정 ' + s.events], ['🗣️', '글 ' + s.posts]].forEach(function(x){ if(x[1].split(' ')[1] !== '0') chips.appendChild(pfEl('span', 'pf-sc-i', x[0] + ' ' + x[1])); });
   if(chips.children.length) c.appendChild(chips); else c.appendChild(pfEl('div', 'pf-sc muted', '아직 기록된 활동이 없어요'));
   if(self && PF.editProj === p.project_id){ c.appendChild(pfEntryForm(p)); return c; }
   if(p.summary) c.appendChild(pfEl('p', 'pf-sum', p.summary));
@@ -178,4 +182,41 @@ function pfFollowLists(root){
   }
   if(!list.length){ var e = pfEl('div', 'pf-empty'); e.innerHTML = '<b></b><span></span>'; e.querySelector('b').textContent = PF.tab === 'followers' ? '아직 팔로워가 없어요' : '아직 팔로우한 사람이 없어요'; e.querySelector('span').textContent = PF.tab === 'followers' ? '내 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '위 검색창이나 커뮤니티 글의 작성자 이름을 눌러 팔로우해 보세요.'; root.appendChild(e); return; }
   var box = pfEl('div', 'pf-people'); list.forEach(function(x){ box.appendChild(pfPerson(x)); }); root.appendChild(box);
+}
+
+/* ---- 어디서나 쓰는 팔로우 버튼 (팀원 카드 · 커뮤니티 글 · 프로필) ---- */
+var FW = { map:{}, busy:{} };
+async function fwLoad(ids){
+  ids = (ids || []).filter(function(i){ return i && !(currentUser && i === currentUser.id); });
+  if(!ids.length || !calApiMode) return;
+  try { var r = await apiFetch('/api/follows/state?ids=' + ids.join(',')); Object.keys(r).forEach(function(k){ FW.map[k] = r[k]; }); } catch(e){}
+}
+function fwDraw(btn, uid){
+  var st = FW.map[String(uid)] || { i_follow:false, follows_me:false }, on = !!st.i_follow;
+  btn.className = 'btn fw-btn ' + (on ? 'ghost on' : 'primary') + (btn.dataset.size === 'sm' ? ' sm' : '');
+  btn.textContent = on ? '팔로잉' : (st.follows_me ? '맞팔로우' : '＋ 팔로우');
+  btn.title = on ? '눌러서 팔로우 취소' : '팔로우하면 상대에게 알림이 가요';
+}
+function fwButton(uid, size){
+  var b = document.createElement('button'); b.type = 'button'; b.dataset.size = size || ''; b.dataset.uid = uid; fwDraw(b, uid);
+  b.onclick = async function(e){
+    e.stopPropagation();
+    if(!calApiMode){ openProfile(uid); return; }
+    if(FW.busy[uid]) return; FW.busy[uid] = true; b.disabled = true;
+    var on = !!(FW.map[String(uid)] && FW.map[String(uid)].i_follow);
+    try {
+      var r = await apiFetch('/api/follows/' + uid, { method: on ? 'DELETE' : 'POST' });
+      FW.map[String(uid)] = { i_follow:r.i_follow, follows_me:r.follows_me };
+      if(!on) pushToast('✅', '팔로우했어요', '상대에게 바로 알려드렸어요.', { duration:2000 });
+      document.querySelectorAll('.fw-btn[data-uid="' + uid + '"]').forEach(function(x){ fwDraw(x, uid); });
+    } catch(err){ pushToast('⚠️', on ? '팔로우를 취소하지 못했어요' : '팔로우하지 못했어요', err.message); }
+    FW.busy[uid] = false; b.disabled = false;
+  };
+  return b;
+}
+/* 실시간으로 팔로우 관계가 바뀌면(상대가 나를 팔로우 등) 화면 속 버튼 문구를 맞춘다 */
+async function fwResync(){
+  var els = Array.prototype.slice.call(document.querySelectorAll('.fw-btn[data-uid]')); if(!els.length) return;
+  await fwLoad(els.map(function(b){ return parseInt(b.dataset.uid, 10); }));
+  els.forEach(function(b){ fwDraw(b, b.dataset.uid); });
 }

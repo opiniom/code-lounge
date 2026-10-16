@@ -251,6 +251,12 @@
             <button class="dyn-close" onclick="removeWidget('community')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
 
+          <div class="dyn-widget card" data-widget="team">
+            <h4 id="wlTeamTitle">🟢 팀원 접속 현황</h4>
+            <div class="wl-body" id="wlTeam"></div>
+            <button class="dyn-close" onclick="removeWidget('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </div>
+
           <div class="dyn-widget card" data-widget="notes" hidden>
             <h4>📝 최근 회의록</h4>
             <div class="wl-body" id="wlNotes"></div>
@@ -729,6 +735,7 @@
         <div>
           <h2 id="mypageName">나</h2>
           <div class="role" id="mypageRole"></div>
+          <div class="mp-follow" id="mpFollow"></div>
         </div>
         <button class="btn primary" style="margin-left:auto;" onclick="openProfile()">프로필 · 포트폴리오</button>
         <button class="btn ghost" onclick="openProfileModal()">
