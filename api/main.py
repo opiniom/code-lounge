@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -354,6 +355,13 @@ async def live_socket(websocket: WebSocket):
             msg = await websocket.receive_text()
             if msg == "ping":
                 await websocket.send_text("pong")
+            elif msg.startswith("{") and len(msg) < 200:
+                try:
+                    d = json.loads(msg)
+                except ValueError:
+                    continue
+                if d.get("t") == "typing" and isinstance(d.get("project_id"), int):
+                    await live.relay_typing(user, d["project_id"], bool(d.get("on", True)))
     except WebSocketDisconnect:
         pass
     except Exception:

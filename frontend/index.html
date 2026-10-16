@@ -849,9 +849,10 @@
         </button>
         <div class="ai-guide-body" id="aiGuideBody"></div>
       </div>
-      <div class="chat-scroll" id="chatScroll"></div>
+      <div class="chat-scroll" id="chatScroll" onscroll="chatUpdateJump()"></div>
+      <button type="button" class="chat-jump" id="chatJump" onclick="chatScrollBottom(true)" hidden>↓ 새 메시지</button>
       <div class="chat-input">
-        <input type="text" id="chatMsgInput" placeholder="팀원에게 메시지 · '두레야 …'로 부르면 AI가 알아서 처리해요" onkeydown="if(isEnter(event))sendChatMsg()">
+        <input type="text" id="chatMsgInput" oninput="chatMyTyping()" onblur="chatStopTyping()" placeholder="팀원에게 메시지 · '두레야 …'로 부르면 AI가 알아서 처리해요" onkeydown="if(isEnter(event))sendChatMsg()">
         <button onclick="sendChatMsg()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m4 20 17-8L4 4l2 7-2 9Z"/></svg></button>
       </div>
     </div>

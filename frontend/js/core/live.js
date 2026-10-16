@@ -40,6 +40,7 @@ function liveResync(){
   loadNotifications(true); pstLoadTeam();
   if(chatServerId()) loadChat(false);
 }
+function liveSend(obj){ if(LIVE.ok && LIVE.ws && LIVE.ws.readyState === 1){ try { LIVE.ws.send(JSON.stringify(obj)); return true; } catch(e){} } return false; }
 function liveHandle(m){
   switch(m.t){
     case 'presence':
@@ -48,7 +49,11 @@ function liveHandle(m){
       renderDureOrbit(); chatRenderPresence();
       break;
     case 'notification': loadNotifications(true); break;
-    case 'chat': if(m.project_id && chatServerId() === m.project_id) loadChat(false); else if(chatServerId()) loadChat(false); break;
+    case 'chat':
+      if(m.from) chatTypingClear(m.from);                       // 방금 메시지를 보낸 사람은 '입력 중'이 끝난 것
+      if(chatServerId()) loadChat(false);
+      break;
+    case 'typing': chatTypingEvent(m); break;
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': refreshMeetingDocs(); break;
     case 'projects':

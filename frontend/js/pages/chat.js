@@ -36,7 +36,7 @@ window.addEventListener('resize', function(){ if(chatPanelOpen()) syncChatDock()
 function toggleChat(){
   document.getElementById('chatPanel').classList.toggle('open');
   syncChatDock();
-  if(chatPanelOpen()){ renderChatHeader(); renderAiGuide(); loadChat(true); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
+  if(chatPanelOpen()){ chatForceBottom = true; renderChatHeader(); renderAiGuide(); chatScrollBottom(false); loadChat(true).then(function(){ chatScrollBottom(false); }); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
 }
 /* ---- AI 사용법 (채팅 옆 패널에 정리) ---- */
 function aiGuideCollapsed(){
@@ -146,7 +146,7 @@ function chatRenderPresence(){
   document.querySelectorAll('#chatPanel .mavatar[data-uid]').forEach(function(av){ av.dataset.pst = pstOf(av.dataset.uid); });
 }
 function switchChatProject(id){
-  chatProject = id; chatMsgs = []; chatSig = '';
+  chatProject = id; chatMsgs = []; chatSig = ''; CHAT_TYPING = {}; chatForceBottom = true;
   renderChatHeader(); renderChat(); loadChat(true);
 }
 function updateChatBadge(){
@@ -359,7 +359,65 @@ function renderChat(){
       }
     }
   }
-  if(nearBottom || chatMsgs.length<=1) scroll.scrollTop = scroll.scrollHeight;
+  chatRenderTyping(true);
+  if(nearBottom || chatForceBottom || chatMsgs.length<=1) chatScrollBottom(chatForceBottom);
+  if(chatMsgs.length || chatLocal.length) chatForceBottom = false;     // 글이 실제로 그려질 때까지는 '맨 아래로' 요청을 유지
+  chatUpdateJump();
+}
+/* ---- 맨 아래로 내려가기 ---- */
+var chatForceBottom = false;
+var chatAiWait = null;       // AI 답변을 기다리는 중이면 {after, since} (선언이 없어 renderChat 이 중간에 오류로 멈추고 스크롤이 안 내려가던 원인)
+function chatScrollBottom(smooth){
+  var sc = document.getElementById('chatScroll'); if(!sc) return;
+  var go = function(){ sc.scrollTop = sc.scrollHeight; };      // 바로 내려간다 (부드러운 스크롤은 중간에 멈추는 경우가 있어 쓰지 않음)
+  go(); requestAnimationFrame(go); setTimeout(go, 60); setTimeout(go, 320);          // 글이 그려진 뒤에도 한 번 더 (높이가 늦게 정해지는 경우)
+}
+function chatUpdateJump(){
+  var sc = document.getElementById('chatScroll'), btn = document.getElementById('chatJump'); if(!sc || !btn) return;
+  btn.hidden = (sc.scrollHeight - sc.scrollTop - sc.clientHeight) < 120;
+}
+/* ---- 상대방이 입력 중일 때 말풍선 점 세 개 ---- */
+var CHAT_TYPING = {};            // 사용자 id → { name, until }
+var chatTypingTimer = null;
+function chatTypingEvent(m){
+  if(!m || m.project_id !== chatServerId() || (currentUser && m.user_id === currentUser.id)) return;
+  if(m.on) CHAT_TYPING[m.user_id] = { name:m.name || '팀원', until:Date.now() + 5500 }; else delete CHAT_TYPING[m.user_id];
+  chatRenderTyping(false);
+}
+function chatTypingClear(uid){ if(CHAT_TYPING[uid]){ delete CHAT_TYPING[uid]; chatRenderTyping(false); } }
+function chatRenderTyping(fromRender){
+  var sc = document.getElementById('chatScroll'); if(!sc) return;
+  var now = Date.now(), ids = Object.keys(CHAT_TYPING).filter(function(id){ if(CHAT_TYPING[id].until <= now){ delete CHAT_TYPING[id]; return false; } return true; });
+  var near = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 90;
+  var shown = ids.slice(0, 3), have = Array.prototype.map.call(sc.querySelectorAll('.typing-row'), function(e){ return e.dataset.uid; });
+  var same = have.length === shown.length && have.every(function(u, i){ return u === String(shown[i]); });
+  if(!same){ sc.querySelectorAll('.typing-row').forEach(function(e){ e.remove(); }); }   // 같은 사람이면 다시 그리지 않는다 (애니메이션이 매번 처음부터 도는 것 방지)
+  if(!same) shown.forEach(function(id){
+    var t = CHAT_TYPING[id], row = document.createElement('div'); row.className = 'msg-row typing-row'; row.dataset.uid = id;
+    var av = document.createElement('div'); av.className = 'mavatar'; av.style.background = chatColor(t.name); av.textContent = String(t.name).slice(0, 1);
+    var col = document.createElement('div'); col.className = 'msg-col';
+    var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = t.name + '님이 입력 중';
+    var dots = document.createElement('div'); dots.className = 'typing-dots'; dots.innerHTML = '<span></span><span></span><span></span>';
+    col.appendChild(nm); col.appendChild(dots); row.appendChild(av); row.appendChild(col); sc.appendChild(row);
+  });
+  if(!same && ids.length && near && !fromRender) chatScrollBottom(true);
+  clearTimeout(chatTypingTimer);
+  if(ids.length) chatTypingTimer = setTimeout(function(){ chatRenderTyping(false); }, 1000);   // 5초 동안 신호가 없으면 사라진다
+  chatUpdateJump();
+}
+/* 내가 입력하는 동안 팀원 화면에 '입력 중' 신호 (2.5초에 한 번만) */
+var chatTypingSentAt = 0, chatTypingOn = false;
+function chatMyTyping(){
+  var sid = chatServerId(), input = document.getElementById('chatMsgInput');
+  if(!sid || !input) return;
+  if(!input.value.trim()){ chatStopTyping(); return; }
+  var now = Date.now();
+  if(now - chatTypingSentAt > 2500 && liveSend({ t:'typing', project_id:sid, on:true })){ chatTypingSentAt = now; chatTypingOn = true; }
+}
+function chatStopTyping(){
+  if(!chatTypingOn) return;
+  chatTypingOn = false; chatTypingSentAt = 0;
+  var sid = chatServerId(); if(sid) liveSend({ t:'typing', project_id:sid, on:false });
 }
 function applyChatDetection(m){
   var sid = chatServerId();
@@ -379,7 +437,7 @@ function appendMyMessage(val, tagLabel){
   // 게스트(서버 없음)일 때의 임시 표시
   var el = buildMsgRow({user_id: currentUser ? currentUser.id : -1, author:'나', text:val, created_at:new Date().toISOString()});
   if(tagLabel){ var tag = document.createElement('span'); tag.className='chip accent2'; tag.style.marginTop='2px'; tag.textContent = tagLabel; el.querySelector('.msg-col').appendChild(tag); }
-  chatLocal.push(el); renderChat();
+  chatLocal.push(el); chatForceBottom = true; renderChat();
   return el;
 }
 function appendTypingBubble(){
@@ -410,6 +468,8 @@ function sendChatMsg(){
   var val = input.value.trim();
   if(!val) return;
   input.value='';
+  chatStopTyping();
+  chatForceBottom = true;        // 내가 보내면 항상 맨 아래로
 
   var sid = chatServerId();
   if(calApiMode && sid){
@@ -418,7 +478,7 @@ function sendChatMsg(){
       chatMsgs.push(msg); chatSig += (chatSig ? ',' : '')+msg.id;
       var waitAi = isAiRequest(val);
       if(waitAi) chatAiWait = {after: msg.id, since: Date.now()};
-      renderChat(); chatMarkSeen();
+      chatForceBottom = true; renderChat(); chatMarkSeen();
       // AI 가 대화를 분석/답변하는 동안(백그라운드) 몇 번 더 확인해서 일정 카드·답변이 바로 뜨게 한다
       (waitAi ? [1500, 3000, 5000, 8000, 12000, 18000, 28000] : [1500, 3500, 7000]).forEach(function(t){ setTimeout(function(){ loadChat(true); }, t); });
       }catch(uiErr){ console.error(uiErr); }   // 화면 갱신 오류는 '전송 실패'가 아님 (메시지는 이미 저장됨)

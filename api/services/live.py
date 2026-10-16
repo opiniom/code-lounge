@@ -120,18 +120,18 @@ def _collect(session: Session, flush_context=None) -> None:
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
-            bag.add(("notification", obj.user_id, None))
+            bag.add(("notification", obj.user_id, None, None))
         elif isinstance(obj, ChatMessage):
-            bag.add(("chat", None, obj.project_id))
+            bag.add(("chat", None, obj.project_id, obj.user_id))
         elif isinstance(obj, CalendarEvent):
-            bag.add(("calendar", None, obj.project_id))
+            bag.add(("calendar", None, obj.project_id, None))
         elif isinstance(obj, MeetingDoc):
             if obj.project_id:
-                bag.add(("notes", None, obj.project_id))
+                bag.add(("notes", None, obj.project_id, None))
         elif isinstance(obj, ProjectMember):
-            bag.add(("projects", obj.user_id, obj.project_id))
+            bag.add(("projects", obj.user_id, obj.project_id, None))
         elif isinstance(obj, Project):
-            bag.add(("projects", None, obj.id))
+            bag.add(("projects", None, obj.id, None))
 
 
 def _publish(session: Session) -> None:
@@ -153,7 +153,7 @@ async def _deliver(bag: set) -> None:
     from database import async_session_maker
     try:
         async with async_session_maker() as db:
-            for kind, user_id, project_id in bag:
+            for kind, user_id, project_id, sender in bag:
                 targets: Set[int] = set()
                 if user_id:
                     targets.add(user_id)
@@ -162,6 +162,8 @@ async def _deliver(bag: set) -> None:
                 payload = {"t": kind}
                 if project_id:
                     payload["project_id"] = project_id
+                if sender:
+                    payload["from"] = sender
                 await hub.send(targets, payload)
     except Exception:
         logger.exception("live deliver failed")
@@ -171,3 +173,21 @@ def install() -> None:
     event.listen(Session, "after_flush", _collect)
     event.listen(Session, "after_commit", _publish)
     event.listen(Session, "after_rollback", _clear)
+
+
+# ---------- "입력 중…" 표시: 프로젝트 팀원에게만 전달 (저장하지 않는 순간 신호) ----------
+_aud_cache: Dict[int, tuple] = {}
+
+async def relay_typing(user, project_id: int, on: bool) -> None:
+    import time
+    from database import async_session_maker
+    hit = _aud_cache.get(project_id)
+    if not hit or time.time() - hit[0] > 60:
+        async with async_session_maker() as db:
+            aud = await project_audience(db, project_id)
+        _aud_cache[project_id] = (time.time(), aud)
+    else:
+        aud = hit[1]
+    if user.id not in aud:
+        return
+    await hub.send(aud - {user.id}, {"t": "typing", "project_id": project_id, "user_id": user.id, "name": user.username, "on": bool(on)})
