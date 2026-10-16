@@ -14,7 +14,7 @@ var SA_TABS = [
   { k:'system', t:'시스템', i:'<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>' }
 ];
 var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
-  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송' };
+  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
 var SA_CATS = { question:'질문', recruit:'팀원 모집', showcase:'프로젝트 자랑', share:'정보 공유', free:'자유', comment:'댓글' };
 
 /* ----- 작은 도구들 ----- */
@@ -34,7 +34,18 @@ function saAgo(iso){ return iso ? ntRel(iso) : '—'; }
 function saBytes(n){ if(n == null) return '—'; var u = ['B', 'KB', 'MB', 'GB'], i = 0; while(n >= 1024 && i < 3){ n /= 1024; i++; } return (i ? n.toFixed(1) : n) + ' ' + u[i]; }
 function saDur(sec){ var d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60); return (d ? d + '일 ' : '') + (h ? h + '시간 ' : '') + m + '분'; }
 function saErr(e){ pushToast('⚠️', '처리하지 못했어요', (e && e.message) || '다시 시도해 주세요.'); }
-function saApi(path, opts){ return apiFetch('/api/admin' + path, opts); }
+/* 확인 토큰은 메모리에만 둔다: 새로고침하거나 주소를 다시 입력해 들어오면 항상 코드를 다시 묻는다 (저장소에 남지 않음) */
+var SA_TOKEN = '';
+function saToken(){ return SA_TOKEN; }
+function saSetToken(t){ SA_TOKEN = t || ''; }
+function saApi(path, opts){
+  opts = opts || {}; var t = saToken();
+  if(t) opts.headers = Object.assign({}, opts.headers || {}, { 'X-Admin-Token':t });
+  return apiFetch('/api/admin' + path, opts).catch(function(e){
+    if(e && e.status === 403 && /^관리자 코드/.test(e.message || '') && path.indexOf('/gate/') !== 0){ saSetToken(''); SA.inited = false; saGate(); }   // 확인 시간이 지났거나 코드가 바뀜 → 다시 코드 입력
+    throw e;
+  });
+}
 function saPost(path, body){ return saApi(path, { method:'POST', body:JSON.stringify(body || {}) }); }
 function saChip(text, kind){ return saH('span', { class:'sa-chip ' + (kind || ''), text:text }); }
 function saAvatar(name, size){ var a = saH('span', { class:'sa-av', text:String(name || '?').slice(0, 1) }); a.style.background = chatColor(name || '?'); if(size) { a.style.width = a.style.height = size + 'px'; a.style.fontSize = Math.round(size * .42) + 'px'; } return a; }
@@ -96,10 +107,80 @@ function saSeg(items, cur, on){
   return box;
 }
 
+/* ----- 관리자 코드 관문 ----- */
+function saLock(){ saLeave(); saGate(); }
+function saCodeBox(onDone){
+  var inp = saH('input', { class:'sa-code-in', type:'password', inputmode:'numeric', pattern:'[0-9]*', maxlength:'6', autocomplete:'off', 'aria-label':'관리자 코드 6자리' });
+  var cells = []; for(var i = 0; i < 6; i++) cells.push(saH('i'));
+  var box = saH('div', { class:'sa-code' }, cells.concat([inp]));
+  var draw = function(){ var v = inp.value; cells.forEach(function(c, i){ c.textContent = i < v.length ? '•' : ''; c.classList.toggle('on', document.activeElement === inp && i === Math.min(v.length, 5)); c.classList.toggle('fill', i < v.length); }); };
+  inp.oninput = function(){ inp.value = inp.value.replace(/\D/g, '').slice(0, 6); draw(); if(inp.value.length === 6) onDone(inp.value); };
+  inp.onfocus = inp.onblur = draw; box.onclick = function(){ if(!inp.disabled) inp.focus(); };
+  return { el:box, input:inp, value:function(){ return inp.value; }, clear:function(){ inp.value = ''; draw(); },
+    focus:function(){ setTimeout(function(){ inp.focus(); }, 30); },
+    shake:function(){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); },
+    disable:function(on){ inp.disabled = on; box.classList.toggle('off', on); } };
+}
+function saGate(st){
+  saLeave();
+  var root = document.getElementById('saRoot'); root.innerHTML = '';
+  var card = saH('div', { class:'sa-gate-card' }); root.appendChild(saH('div', { class:'sa-gate' }, [card]));
+  var draw = function(st){
+    card.innerHTML = '';
+    card.appendChild(saH('div', { class:'sa-gate-ic', html:saSvg('<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5.1 7.5-9.5V6Z"/><path d="M9.5 11.5V10a2.5 2.5 0 0 1 5 0v1.5M9 11.5h6v4H9Z"/>', 30) }));
+    var msg = saH('p', { class:'sa-gate-msg' });
+    if(!st.code_set && !st.is_super){
+      card.appendChild(saH('h3', { text:'관리자 코드가 아직 없어요' }));
+      msg.textContent = '최고관리자가 먼저 6자리 관리자 코드를 설정해야 해요. 설정된 뒤에 다시 들어와 주세요.'; card.appendChild(msg);
+      card.appendChild(saH('button', { class:'btn', type:'button', text:'서비스로 돌아가기', onclick:function(){ goView('home'); } })); return;
+    }
+    if(!st.code_set){
+      var step = 1, first = '';
+      card.appendChild(saH('h3', { text:'관리자 코드를 정해 주세요' }));
+      msg.textContent = '처음 한 번만 정하면 돼요. 숫자 6자리 — 이 코드를 입력해야 관리자 페이지가 열려요. (같은 숫자 반복·연속 숫자는 쓸 수 없어요)'; card.appendChild(msg);
+      var sub = saH('div', { class:'sa-gate-step', text:'새 코드 입력' }); card.appendChild(sub);
+      var bx = saCodeBox(function(v){
+        if(step === 1){ first = v; step = 2; sub.textContent = '한 번 더 입력해 확인'; bx.clear(); bx.focus(); return; }
+        if(v !== first){ err.textContent = '두 번 입력한 코드가 달라요. 처음부터 다시 입력해 주세요.'; step = 1; first = ''; sub.textContent = '새 코드 입력'; bx.shake(); bx.clear(); bx.focus(); return; }
+        bx.disable(true);
+        saApi('/gate/setup', { method:'POST', body:JSON.stringify({ code:v }) }).then(function(r){ saSetToken(r.token); pushToast('🛡️', '관리자 코드를 설정했어요', '잊지 않게 안전한 곳에 적어 두세요.'); saEnter(); })
+          .catch(function(e){ err.textContent = e.message; step = 1; first = ''; sub.textContent = '새 코드 입력'; bx.disable(false); bx.shake(); bx.clear(); bx.focus(); });
+      });
+      card.appendChild(bx.el); var err = saH('div', { class:'sa-gate-err' }); card.appendChild(err); bx.focus(); return;
+    }
+    card.appendChild(saH('h3', { text:'관리자 확인' }));
+    msg.textContent = '관리자 코드 6자리를 입력해 주세요.'; card.appendChild(msg);
+    var err2 = saH('div', { class:'sa-gate-err' }), timer = null;
+    var bx2 = saCodeBox(function(v){
+      bx2.disable(true); err2.textContent = '';
+      saApi('/gate/verify', { method:'POST', body:JSON.stringify({ code:v }) }).then(function(r){ saSetToken(r.token); saEnter(); })
+        .catch(function(e){
+          err2.textContent = e.message || '확인하지 못했어요.'; bx2.shake(); bx2.clear();
+          if(e.status === 429){ saCountdown(err2, bx2, e.message); } else { bx2.disable(false); bx2.focus(); }
+        });
+    });
+    card.appendChild(bx2.el); card.appendChild(err2);
+    card.appendChild(saH('div', { class:'sa-gate-foot' }, [saH('button', { class:'sa-link', type:'button', text:'← 서비스로 돌아가기', onclick:function(){ goView('home'); } })]));
+    if(st.locked_seconds > 0){ bx2.disable(true); saCountdown(err2, bx2, null, st.locked_seconds); } else bx2.focus();
+  };
+  if(st) draw(st); else saApi('/gate/status').then(draw).catch(function(e){ card.appendChild(saEmpty(e.message)); });
+}
+function saCountdown(el, bx, msg, secs){
+  var m = secs == null ? /(\d+)분/.exec(msg || '') : null; var left = secs != null ? secs : (m ? parseInt(m[1], 10) * 60 : 60);
+  bx.disable(true);
+  var t = setInterval(function(){
+    left--; if(left <= 0 || !document.body.contains(el)){ clearInterval(t); if(document.body.contains(el)){ el.textContent = ''; bx.disable(false); bx.focus(); } return; }
+    el.textContent = '잠겨 있어요 · ' + Math.floor(left / 60) + '분 ' + (left % 60 < 10 ? '0' : '') + (left % 60) + '초 뒤에 다시 시도할 수 있어요.';
+  }, 1000);
+  el.textContent = '잠겨 있어요 · ' + Math.floor(left / 60) + '분 ' + (left % 60 < 10 ? '0' : '') + (left % 60) + '초 뒤에 다시 시도할 수 있어요.';
+}
+
 /* ----- 화면 틀 ----- */
 function saEnter(){
-  if(!SA.inited){ SA.inited = true; saBuild(); }
-  saShow(SA.tab);
+  saApi('/gate/status').then(function(st){
+    if(st.verified && saToken()){ if(!SA.inited){ SA.inited = true; saBuild(); } saShow(SA.tab); }
+    else { saSetToken(''); SA.inited = false; saGate(st); }
+  }).catch(function(e){ if(!(e && e.status === 403 && /^관리자 코드/.test(e.message || ''))) saErr(e); });
 }
 function saLeave(){ Object.keys(SA.timers).forEach(function(k){ clearInterval(SA.timers[k]); delete SA.timers[k]; }); }
 function saBuild(){
@@ -112,7 +193,7 @@ function saBuild(){
   });
   var head = saH('div', { class:'sa-head' }, [
     saH('div', {}, [saH('span', { class:'view-eyebrow', text:'Admin' }), saH('h2', { text:'관리자 페이지' })]),
-    saH('div', { class:'sa-head-r' }, [saH('span', { id:'saRole' }), saH('button', { class:'btn', type:'button', text:'서비스로 돌아가기', onclick:function(){ goView('home'); } })])
+    saH('div', { class:'sa-head-r' }, [saH('span', { id:'saRole' }), saH('button', { class:'btn', type:'button', text:'🔒 잠그기', title:'관리자 코드를 다시 입력해야 열려요', onclick:function(){ saSetToken(''); SA.inited = false; saLock(); } }), saH('button', { class:'btn', type:'button', text:'서비스로 돌아가기', onclick:function(){ goView('home'); } })])
   ]);
   var body = saH('div', { class:'sa-body' }, [nav, saH('main', { class:'sa-main', id:'saMain' })]);
   root.appendChild(head); root.appendChild(body);
@@ -397,6 +478,20 @@ function saSystem(main){
     var max = Math.max.apply(null, Object.keys(s.tables).map(function(k){ return s.tables[k]; }).concat([1]));
     var labels = { users:'사용자', projects:'프로젝트', chat_messages:'채팅 메시지', project_files:'워크스페이스 파일', meeting_docs:'회의록', calendar_events:'일정', notifications:'알림', community_posts:'커뮤니티 글', crawled_events:'수집된 행사', audit_logs:'감사 로그' };
     main.appendChild(saPanel('데이터 규모', '테이블별 행 수', [saH('div', { class:'sa-bar-list' }, Object.keys(s.tables).map(function(k){ var f = saH('i'); f.style.width = Math.max(2, s.tables[k] / max * 100) + '%'; return saH('div', {}, [saH('span', { text:labels[k] || k }), saH('div', { class:'sa-bar' }, [f]), saH('b', { text:saN(s.tables[k]) })]); }))]));
+    if(saIsSuper()){
+      var cur = saH('input', { class:'sa-input', type:'password', inputmode:'numeric', maxlength:'6', placeholder:'현재 코드 6자리', autocomplete:'off' });
+      var nw = saH('input', { class:'sa-input', type:'password', inputmode:'numeric', maxlength:'6', placeholder:'새 코드 6자리', autocomplete:'off' });
+      var nw2 = saH('input', { class:'sa-input', type:'password', inputmode:'numeric', maxlength:'6', placeholder:'새 코드 한 번 더', autocomplete:'off' });
+      [cur, nw, nw2].forEach(function(i){ i.oninput = function(){ i.value = i.value.replace(/\D/g, '').slice(0, 6); }; });
+      var go = saH('button', { class:'btn primary', type:'button', text:'코드 변경', onclick:function(){
+        if(cur.value.length !== 6 || nw.value.length !== 6){ pushToast('⚠️', '6자리 숫자를 입력해 주세요', ''); return; }
+        if(nw.value !== nw2.value){ pushToast('⚠️', '새 코드가 서로 달라요', '두 칸에 같은 코드를 입력해 주세요.'); return; }
+        saConfirm({ title:'관리자 코드를 바꿀까요?', msg:'바꾸면 지금 다른 곳에 열려 있는 관리자 페이지는 모두 닫히고, 새 코드로 다시 들어와야 해요.', ok:'변경' }, function(){
+          saApi('/gate/change', { method:'POST', body:JSON.stringify({ current:cur.value, new:nw.value }) }).then(function(r){ saSetToken(r.token); pushToast('🛡️', '관리자 코드를 바꿨어요', '다른 접속은 모두 해제됐어요.'); cur.value = nw.value = nw2.value = ''; }).catch(saErr);
+        });
+      } });
+      main.appendChild(saPanel('보안 · 관리자 코드', '최고관리자만 바꿀 수 있어요', [saH('div', { class:'sa-form sa-form-row' }, [saH('div', { class:'sa-faint', text:'관리자 페이지를 열 때 입력하는 6자리 코드예요. 잊어버렸다면 서버에서 scripts/reset_admin_code.py 로 지우고 다시 정할 수 있어요.' }), cur, nw, nw2, go])]));
+    }
     var fl = s.flags;
     main.appendChild(saPanel('서버 설정 (읽기 전용)', '비밀 값은 표시하지 않아요', [saH('ul', { class:'sa-list tight' }, [
       ['외부 공유 모드', fl.PUBLIC_MODE ? '켜짐' : '꺼짐', !fl.PUBLIC_MODE], ['행사 자동 수집', fl.EVENT_CRAWL_ENABLED ? '켜짐' : '꺼짐', fl.EVENT_CRAWL_ENABLED], ['개발용 이메일 로그인', fl.ALLOW_DEV_LOGIN ? '켜짐 (위험)' : '꺼짐', !fl.ALLOW_DEV_LOGIN], ['최고관리자 지정(ADMIN_EMAILS)', fl.ADMIN_EMAILS_SET ? '설정됨' : '미설정', fl.ADMIN_EMAILS_SET]
@@ -410,6 +505,6 @@ function saSyncAccess(){
   var b = document.getElementById('avatarAdminBtn'); if(b) b.hidden = !ok;
   var hr = document.getElementById('avatarAdminSep'); if(hr) hr.hidden = !ok;
   var badge = document.getElementById('adminBadge'); if(badge){ badge.hidden = !ok; badge.textContent = currentUser && currentUser.is_super ? '최고관리자' : '운영자'; }
-  isAdmin = ok;
+  isAdmin = ok; if(!ok) saSetToken('');
   if(ok && !SA.pollOnce){ SA.pollOnce = true; saApi('/overview').then(function(o){ saSetReportBadge(o.todo.reports); if(o.todo.reports){ var ab = document.getElementById('avatarAdminBtn'); if(ab && !ab.querySelector('.sa-dot')) ab.appendChild(saH('i', { class:'sa-dot' })); } }).catch(function(){}); }
 }

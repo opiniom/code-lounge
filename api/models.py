@@ -316,6 +316,16 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
+class SiteSetting(Base):
+    """서버 전체 설정 값 (예: 관리자 코드의 해시). 평문 비밀번호는 저장하지 않는다."""
+    __tablename__ = "site_settings"
+
+    key = Column(String(60), primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_by = Column(Integer, nullable=True)
+
+
 class Announcement(Base):
     """전체 공지 (보낸 기록). 보낼 때 모든 사용자에게 알림으로도 전달된다."""
     __tablename__ = "announcements"

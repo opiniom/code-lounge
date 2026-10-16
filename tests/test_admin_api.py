@@ -22,17 +22,71 @@ mails = {"super": SUPER, "op": "qa-op@example.com", "op2": "qa-op2@example.com",
 T = {k: create_access_token({"sub": str(i), "email": mails[k]}) for k, i in ids.items()}
 def api(m, path, who=None, body=None):
     path = urllib.parse.quote(path, safe="/?&=:@")
-    req = urllib.request.Request(B + path, method=m, data=json.dumps(body).encode() if body is not None else None, headers={"Content-Type": "application/json", **({"Authorization": "Bearer " + T[who]} if who else {})})
+    req = urllib.request.Request(B + path, method=m, data=json.dumps(body).encode() if body is not None else None, headers={"Content-Type": "application/json", **({"Authorization": "Bearer " + T[who]} if who else {}), **({"X-Admin-Token": G[who]} if G.get(who) else {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
             raw = r.read(); return r.status, (json.loads(raw) if raw else None)
     except urllib.error.HTTPError as e: return e.code, (json.loads(e.read() or b"{}"))
+G = {}
 R = []
 def chk(name, cond, extra=""): R.append((name, bool(cond), extra))
 try:
+    # 0) 관리자 코드(6자리) 관문
+    s, r = api("GET", "/api/admin/overview", "super"); chk("코드 설정 전엔 관리 API 막힘", s == 403 and "코드" in r["detail"], r)
+    s, st = api("GET", "/api/admin/gate/status", "super"); chk("관문 상태: 미설정 · 최고관리자", s == 200 and st["code_set"] is False and st["is_super"] is True, st)
+    s, _ = api("GET", "/api/admin/gate/status", "u1"); chk("일반 사용자는 관문도 못 봄(403)", s == 403, s)
+    s, _ = api("POST", "/api/admin/gate/setup", "u1", {"code": "482913"}); chk("일반 사용자는 코드 설정 불가", s == 403, s)
+    for weak in ("111111", "123456", "12345", "1234567", "abcdef", "12345a"):
+        s, _ = api("POST", "/api/admin/gate/setup", "super", {"code": weak}); chk(f"약하거나 잘못된 코드 거부({weak})", s == 400, s)
+    s, r = api("POST", "/api/admin/gate/setup", "super", {"code": "482913"}); chk("최고관리자가 최초 코드 설정", s == 200 and r.get("token"), r)
+    G["super"] = r["token"]
+    s, _ = api("POST", "/api/admin/gate/setup", "super", {"code": "193746"}); chk("이미 설정됐으면 다시 설정 불가", s == 409, s)
+    s, _ = api("GET", "/api/admin/overview", "super"); chk("코드 확인 후 관리 API 열림", s == 200, s)
+    s, h = api("GET", "/api/admin/gate/status", "super"); chk("관문 상태: 확인됨", h["verified"] is True and h["code_set"] is True, h)
+    row = c.execute("select value from site_settings where key='admin_code_hash'").fetchone()
+    chk("코드는 평문이 아닌 해시로 저장", row and row[0] and "482913" not in row[0] and row[0].startswith("$2"), row)
+    s, _ = api("POST", "/api/admin/users/%d/role" % ids["op"], "super", {"is_admin": True}); chk("(준비) 운영자 지정", s == 200, s)
+    s, _ = api("POST", "/api/admin/users/%d/role" % ids["op2"], "super", {"is_admin": True}); chk("(준비) 운영자2 지정", s == 200, s)
+    s, r = api("GET", "/api/admin/overview", "op"); chk("운영자도 코드 없이는 관리 API 막힘", s == 403 and "코드" in r["detail"], r)
+    s, r = api("POST", "/api/admin/gate/verify", "op", {"code": "000000"}); chk("틀린 코드 → 남은 횟수 안내", s == 403 and "남은 시도 4회" in r["detail"], r)
+    s, r = api("POST", "/api/admin/gate/verify", "op", {"code": "abc"}); chk("형식이 틀린 코드도 틀린 시도로 센다", s == 403 and "남은 시도 3회" in r["detail"], r)
+    s, r = api("POST", "/api/admin/gate/verify", "op", {"code": "482913"}); chk("맞는 코드 → 확인 토큰", s == 200 and r.get("token"), r); G["op"] = r["token"]
+    saved = G.pop("op"); G["op"] = G["super"]
+    s, _ = api("GET", "/api/admin/overview", "op"); chk("남의 확인 토큰은 통하지 않음", s == 403, s)
+    G["op"] = T["op"]
+    s, _ = api("GET", "/api/admin/overview", "op"); chk("로그인 토큰을 확인 토큰 자리에 써도 통하지 않음", s == 403, s)
+    G["op"] = saved
+    s, _ = api("GET", "/api/admin/overview", "op"); chk("본인 확인 토큰은 통함", s == 200, s)
+    s, _ = api("POST", "/api/admin/gate/setup", "op", {"code": "193746"}); chk("운영자는 코드 설정 불가", s == 403, s)
+    s, _ = api("POST", "/api/admin/gate/change", "op", {"current": "482913", "new": "193746"}); chk("운영자는 코드 변경 불가", s == 403, s)
+    # 잠금: 5번 틀리면 잠기고, 그 사이엔 맞는 코드도 거부
+    codes = []
+    for i in range(5):
+        s, r = api("POST", "/api/admin/gate/verify", "op2", {"code": "000000"}); codes.append(s)
+    chk("5번 틀리면 잠김(마지막 429)", codes == [403, 403, 403, 403, 429], codes)
+    s, r = api("POST", "/api/admin/gate/verify", "op2", {"code": "482913"}); chk("잠긴 동안은 맞는 코드도 거부(429)", s == 429 and "분 뒤" in r["detail"], r)
+    s, st = api("GET", "/api/admin/gate/status", "op2"); chk("잠금 남은 시간 표시", st["locked_seconds"] > 600, st)
+    s, _ = api("POST", "/api/admin/gate/verify", "op", {"code": "482913"}); chk("다른 사람의 잠금은 영향 없음", s == 200, s)
+    # 코드 변경
+    s, _ = api("POST", "/api/admin/gate/change", "super", {"current": "999111", "new": "193746"}); chk("현재 코드가 틀리면 변경 불가", s == 403, s)
+    s, _ = api("POST", "/api/admin/gate/change", "super", {"current": "482913", "new": "111111"}); chk("약한 새 코드 거부", s == 400, s)
+    s, _ = api("POST", "/api/admin/gate/change", "super", {"current": "482913", "new": "482913"}); chk("같은 코드로는 변경 불가", s == 400, s)
+    old_super, old_op = G["super"], G["op"]
+    s, r = api("POST", "/api/admin/gate/change", "super", {"current": "482913", "new": "193746"}); chk("최고관리자가 코드 변경", s == 200 and r.get("token"), r); new_super = r["token"]
+    G["super"] = old_super; s, _ = api("GET", "/api/admin/overview", "super"); chk("변경 전 확인 토큰은 즉시 무효", s == 403, s)
+    G["super"] = new_super; s, _ = api("GET", "/api/admin/overview", "super"); chk("변경 뒤 받은 토큰은 유효", s == 200, s)
+    s, _ = api("GET", "/api/admin/overview", "op"); chk("다른 사람의 이전 토큰도 무효(다시 코드 필요)", s == 403, s)
+    s, _ = api("POST", "/api/admin/gate/verify", "op", {"code": "482913"}); chk("이전 코드는 더 이상 안 통함", s == 403, s)
+    s, r = api("POST", "/api/admin/gate/verify", "op", {"code": "193746"}); chk("새 코드로 확인", s == 200, r); G["op"] = r["token"]
+    # 비밀번호 재설정 스크립트(서버 접근자용) 후 다시 설정
+    c.execute("update site_settings set value=null where key='admin_code_hash'"); c.commit()
+    s, _ = api("GET", "/api/admin/overview", "super"); chk("코드를 지우면 다시 막힘(재설정 가능 상태)", s == 403, s)
+    s, r = api("POST", "/api/admin/gate/setup", "super", {"code": "193746"}); chk("지운 뒤 최고관리자가 다시 설정", s == 200, r); G["super"] = r["token"]
+    s, r = api("POST", "/api/admin/gate/verify", "op", {"code": "193746"}); G["op"] = r.get("token")
+    s, r = api("POST", "/api/admin/gate/verify", "op2", {"code": "193746"}); chk("코드를 새로 정하면 잠금도 초기화", s == 200, s)
     # 1) 접근 권한
-    for who, want in ((None, 401), ("u1", 403), ("op", 403)):
-        s, _ = api("GET", "/api/admin/overview", who); chk(f"권한 없음({who}) → {want}", s == want, s)   # op 는 아직 운영자 지정 전
+    for who, want in ((None, 401), ("u1", 403)):
+        s, _ = api("GET", "/api/admin/overview", who); chk(f"권한 없음({who}) → {want}", s == want, s)
     s, me = api("GET", "/api/auth/me", "super"); chk("최고관리자 /me 에 is_admin·is_super", s == 200 and me["is_admin"] and me["is_super"], me)
     s, me = api("GET", "/api/auth/me", "u1"); chk("일반 사용자 /me 는 관리자 아님", not me["is_admin"] and not me["is_super"])
     s, _ = api("POST", "/api/admin/users/%d/role" % ids["op"], "super", {"is_admin": True}); chk("최고관리자가 운영자 지정", s == 200, s)

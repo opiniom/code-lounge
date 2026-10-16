@@ -106,14 +106,14 @@ async def get_current_user_optional(
         return None
 
 
-async def require_admin(user: User = Depends(get_current_user)) -> User:
-    """관리자 전용 API 의 문지기. 화면에서 메뉴를 숨기는 것과 별개로 서버가 항상 직접 확인한다."""
+async def require_admin_role(user: User = Depends(get_current_user)) -> User:
+    """관리자 계정인지만 확인 (관리자 코드 확인 전 단계용). 실제 관리 API 는 admin_gate.require_admin 을 쓴다."""
     if not is_admin_user(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자만 사용할 수 있어요.")
     return user
 
 
-async def require_super(user: User = Depends(get_current_user)) -> User:
+async def require_super_role(user: User = Depends(get_current_user)) -> User:
     if not is_super_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="최고관리자만 할 수 있어요.")
     return user

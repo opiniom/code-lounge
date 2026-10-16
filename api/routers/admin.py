@@ -10,7 +10,7 @@ import time
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +21,74 @@ from models import (Announcement, AuditLog, CalendarEvent, ChatMessage, Communit
                     CrawledEvent, EventCrawlRun, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, User)
 from services import event_crawler as ec
 from services import live
-from services.auth_service import is_admin_user, is_super_admin, require_admin, require_super
+from services import admin_gate as gate
+from services.admin_gate import require_admin, require_super
+from services.auth_service import is_admin_user, is_super_admin, require_admin_role, require_super_role
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 STARTED_AT = time.time()
+
+
+# ---------------------------------------------------------------- 관리자 코드 (관문)
+class CodeIn(BaseModel):
+    code: str = Field(..., max_length=20)
+
+
+class CodeChangeIn(BaseModel):
+    current: str = Field(..., max_length=20)
+    new: str = Field(..., max_length=20)
+
+
+@router.get("/gate/status")
+async def gate_status(request: Request, admin: User = Depends(require_admin_role), db: AsyncSession = Depends(get_db)):
+    h, ver = await gate.code_state(db)
+    return {"code_set": bool(h), "is_super": is_super_admin(admin), "verified": bool(h) and gate.token_ok(request.headers.get(gate.GATE_HEADER), admin, ver),
+            "locked_seconds": gate.lock_left(admin.id), "ttl_hours": int(gate.GATE_TTL.total_seconds() // 3600)}
+
+
+@router.post("/gate/verify")
+async def gate_verify(data: CodeIn, admin: User = Depends(require_admin_role), db: AsyncSession = Depends(get_db)):
+    h, ver = await gate.code_state(db)
+    if not h:
+        raise HTTPException(409, "관리자 코드가 아직 설정되지 않았어요. 최고관리자가 먼저 설정해야 해요.")
+    was_locked = gate.lock_left(admin.id) > 0
+    try:
+        gate.check_code(h, data.code, admin.id)
+    except HTTPException:
+        if not was_locked and gate.lock_left(admin.id) > 0:        # 이번 시도로 잠김 → 기록
+            _audit(db, admin, "gate.lock", "user", admin.id, "관리자 코드를 연속으로 틀려 잠김")
+            await db.commit()
+        raise
+    _audit(db, admin, "gate.login", "user", admin.id, "관리자 페이지 접속")
+    await db.commit()
+    return {"token": gate.issue_token(admin, ver), "expires_in": int(gate.GATE_TTL.total_seconds())}
+
+
+@router.post("/gate/setup")
+async def gate_setup(data: CodeIn, admin: User = Depends(require_super_role), db: AsyncSession = Depends(get_db)):
+    """처음 한 번: 최고관리자가 6자리 코드를 정한다"""
+    h, _ = await gate.code_state(db)
+    if h:
+        raise HTTPException(409, "이미 코드가 설정돼 있어요. 바꾸려면 현재 코드가 필요해요.")
+    code = gate.validate_code(data.code)
+    ver = await gate.set_code(db, code, admin.id)
+    _audit(db, admin, "gate.setup", "user", admin.id, "관리자 코드 최초 설정")
+    await db.commit()
+    return {"token": gate.issue_token(admin, ver), "expires_in": int(gate.GATE_TTL.total_seconds())}
+
+
+@router.post("/gate/change")
+async def gate_change(data: CodeChangeIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    """코드 변경 (최고관리자만, 현재 코드를 다시 입력해야 함). 이전에 받은 모든 확인 토큰이 무효가 된다."""
+    h, _ = await gate.code_state(db)
+    gate.check_code(h, data.current, admin.id)
+    new = gate.validate_code(data.new)
+    if new == data.current.strip():
+        raise HTTPException(400, "지금 코드와 같아요. 다른 코드를 정해 주세요.")
+    ver = await gate.set_code(db, new, admin.id)
+    _audit(db, admin, "gate.change", "user", admin.id, "관리자 코드 변경 (다른 접속은 모두 해제)")
+    await db.commit()
+    return {"token": gate.issue_token(admin, ver), "expires_in": int(gate.GATE_TTL.total_seconds())}
 
 
 # ---------------------------------------------------------------- 공통
