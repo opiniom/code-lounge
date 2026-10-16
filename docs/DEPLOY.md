@@ -17,12 +17,12 @@
    | `DEPLOY_USER` | `ubuntu` / `ec2-user` 등 |
    | `DEPLOY_KEY` | `deploy_key` 파일 전체 내용 |
    | `DEPLOY_PATH` | 서버의 프로젝트 폴더 (예: `/home/ubuntu/code-lounge`) |
-   | `DEPLOY_RESTART` | (선택) 재시작 명령. 비우면 `sudo systemctl restart duresync` |
-3. 서버에서 재시작 명령이 비밀번호 없이 실행되어야 합니다. (systemd 서비스라면 sudoers 에 해당 명령만 허용)
+   | `DEPLOY_RESTART` | (선택) 재시작 명령. 비우면 `docker compose -f docker-compose.prod.yml up -d --build` (이 저장소의 Docker + Caddy 구성 기준) |
+3. SSH 사용자가 `docker compose` 를 비밀번호 없이 실행할 수 있어야 합니다. (예: `sudo usermod -aG docker ubuntu` 후 다시 로그인)
 4. AWS 보안 그룹에서 22번 포트(SSH)가 열려 있어야 합니다. (GitHub 서버가 접속하므로)
 
 ## 동작
-- `main` 에 push → 서버에 SSH 접속 → `git fetch` + `git reset --hard origin/main` → 패키지 확인 → 재시작
+- `main` 에 push → 서버에 SSH 접속 → `git fetch` + `git reset --hard origin/main` → `docker compose up -d --build`(이미지를 새로 빌드해 교체)
 - Secrets 가 없으면 자동으로 **건너뜁니다**(실패하지 않음).
 - 서버의 `.env`, `data/`(DB·JWT 비밀키)는 Git 에 없으므로 **그대로 유지**됩니다.
 - 수동 실행: GitHub → Actions → Deploy → Run workflow

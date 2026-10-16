@@ -4,7 +4,7 @@
 #   DEPLOY_USER     SSH 사용자 (예: ubuntu, ec2-user)
 #   DEPLOY_KEY      SSH 개인키 전체 내용 (-----BEGIN ... 부터 END 까지)  ※ 이 저장소에는 절대 커밋하지 말 것
 #   DEPLOY_PATH     서버의 프로젝트 폴더 (예: /home/ubuntu/code-lounge)
-#   DEPLOY_RESTART  (선택) 재시작 명령. 비우면 'sudo systemctl restart duresync'
+#   DEPLOY_RESTART  (선택) 재시작 명령. 비우면 'docker compose -f docker-compose.prod.yml up -d --build' (docker-compose.prod.yml 기준)
 name: Deploy
 
 on:
@@ -41,8 +41,8 @@ jobs:
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          RESTART="${DEPLOY_RESTART:-sudo systemctl restart duresync}"
+          RESTART="${DEPLOY_RESTART:-docker compose -f docker-compose.prod.yml up -d --build}"
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "set -e; cd '$DEPLOY_PATH'; git fetch origin main; git reset --hard origin/main; .venv/bin/pip install -q -r api/requirements.txt || true; $RESTART"
+            "set -e; cd '$DEPLOY_PATH'; git fetch origin main; git reset --hard origin/main; $RESTART; docker image prune -f >/dev/null 2>&1 || true"
           rm -f ~/.ssh/deploy_key
