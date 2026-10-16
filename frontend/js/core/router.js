@@ -2,14 +2,13 @@
    화면마다 자기 주소를 가진다:  /app · /app/login · /app/workspace · /app/meetings · /app/calendar
                                   /app/events · /app/community · /app/community/글번호 · /app/mypage · /app/admin
    주소를 직접 열거나 새로고침해도 그 화면이 열리고, 브라우저 뒤로/앞으로 가기도 동작한다. */
-var ROUTES = { home:'', auth:'login', workspace:'workspace', notes:'meetings', calendar:'calendar', events:'events', community:'community', mypage:'mypage', admin:'team', profile:'profile' };
-var PAGE_TITLES = { home:'홈', auth:'로그인', workspace:'워크스페이스', notes:'회의록', calendar:'캘린더', events:'이벤트', community:'커뮤니티', mypage:'마이페이지', admin:'팀원', profile:'프로필' };
+var ROUTES = { home:'', auth:'login', workspace:'workspace', notes:'meetings', calendar:'calendar', events:'events', community:'community', mypage:'mypage', admin:'team', profile:'profile', sysadmin:'admin' };
+var PAGE_TITLES = { home:'홈', auth:'로그인', workspace:'워크스페이스', notes:'회의록', calendar:'캘린더', events:'이벤트', community:'커뮤니티', mypage:'마이페이지', admin:'팀원', profile:'프로필', sysadmin:'관리자' };
 var ROUTER = { booted:false, replace:false, popping:false };
 function routePath(view, extra){ return '/app' + (ROUTES[view] ? '/' + ROUTES[view] : '') + (extra ? '/' + extra : ''); }
 function routeParse(pathname){
   var parts = String(pathname || '').replace(/^\/(app|ui)\/?/, '').split('/').filter(Boolean);
   var slug = parts[0] || '';
-  if(slug === 'admin') slug = 'team';                         // 예전 주소(/app/admin)도 팀원 화면으로
   for(var v in ROUTES){ if(ROUTES[v] === slug) return { view:v, id: parts[1] || null }; }
   return { view:'home', id:null, unknown: !!slug };
 }
@@ -54,6 +53,7 @@ window.addEventListener('popstate', function(){
 
 function goView(name){
   if(!ROUTES.hasOwnProperty(name)) name = 'home';
+  if(name === 'sysadmin' && !(currentUser && currentUser.is_admin)){ if(authToken && typeof pushToast === 'function') pushToast('🔒', '관리자만 들어갈 수 있어요', '이 페이지는 관리자 권한이 필요해요.'); name = 'home'; }   // 화면 확인일 뿐, 실제 권한은 서버가 다시 확인한다
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===name));
   document.querySelectorAll('#tabnav button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
   document.querySelectorAll('#mnav button[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
@@ -67,6 +67,7 @@ function goView(name){
   if(name==='admin') loadAdminMembers();
   if(name==='mypage') renderMyPage();
   if(name==='profile') renderProfile();
+  if(name==='sysadmin' && typeof saEnter === 'function') saEnter(); else if(typeof saLeave === 'function') saLeave();
   if(name==='workspace') enterWorkspaceView(); else { wsStopPolling(); if(typeof wsPresLeave === 'function') wsPresLeave(); }
   if(name==='workspace'){
     setTimeout(function(){

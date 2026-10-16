@@ -120,6 +120,7 @@ function mockLogout(reason){
     localStorage.removeItem('sync_auth_user');
   } catch(e){}
   document.getElementById('adminBadge').hidden = true;
+  if(typeof saSyncAccess === 'function') saSyncAccess();
   enterGuestHome(true);
   if(reason === 'expired') pushToast('⏰', '로그인이 만료됐어요', '보안을 위해 로그인 유효기간이 지났어요. 다시 로그인하면 채팅·AI를 이어서 쓸 수 있어요.');
   else pushToast('👋', '로그아웃', '로그아웃되었습니다.');

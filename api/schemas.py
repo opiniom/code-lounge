@@ -38,9 +38,22 @@ class UserResponse(BaseModel):
     oauth_provider: Optional[str] = None
     ai_name: Optional[str] = None
     created_at: datetime
+    is_admin: bool = False      # 관리자 페이지 접근 가능 (운영자 또는 최고관리자)
+    is_super: bool = False      # 최고관리자 (ADMIN_EMAILS)
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def model_validate(cls, obj, *a, **k):
+        out = super().model_validate(obj, *a, **k)
+        try:
+            from services.auth_service import is_super_admin, is_admin_user
+            out.is_super = is_super_admin(obj)
+            out.is_admin = is_admin_user(obj)
+        except Exception:
+            pass
+        return out
 
 class AiNameUpdate(BaseModel):
     ai_name: Optional[str] = Field(default=None, max_length=30)

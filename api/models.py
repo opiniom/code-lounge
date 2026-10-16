@@ -16,6 +16,9 @@ class User(Base):
     ai_name = Column(String(30), nullable=True)   # 채팅에서 AI 를 부를 때 쓰는 이름 (예: "미니" → "미니야 …")
     presence_pref = Column(String(10), default="auto", nullable=False, server_default="auto")   # auto(접속하면 온라인) | away | dnd
     last_seen_at = Column(DateTime, nullable=True)   # 마지막 접속 신호(하트비트). 오래되면 오프라인으로 본다
+    is_admin = Column(Boolean, default=False, nullable=False, server_default="0")   # 운영자 (최고관리자는 ADMIN_EMAILS 로 따로 지정)
+    ban_reason = Column(String(200), nullable=True)   # 정지 사유 (is_active=False 일 때)
+    banned_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # 1:N 관계 (사용자의 코드 실행 히스토리)
@@ -294,6 +297,36 @@ class CommunityReport(Base):
     target_id = Column(Integer, nullable=False)
     reason = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status = Column(String(10), default="open", nullable=False, server_default="open")   # open | resolved | dismissed
+    handled_by = Column(Integer, nullable=True)
+    handled_at = Column(DateTime, nullable=True)
+
+
+class AuditLog(Base):
+    """관리자가 한 일의 기록 (누가·언제·무엇을). 지우거나 고치는 화면은 없다."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    admin_name = Column(String(100), nullable=False)
+    action = Column(String(40), nullable=False, index=True)
+    target_type = Column(String(20), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    detail = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class Announcement(Base):
+    """전체 공지 (보낸 기록). 보낼 때 모든 사용자에게 알림으로도 전달된다."""
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(120), nullable=False)
+    message = Column(Text, nullable=False)
+    link = Column(String(300), nullable=True)
+    sent_count = Column(Integer, default=0, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 class UserProfile(Base):

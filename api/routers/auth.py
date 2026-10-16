@@ -181,6 +181,8 @@ async def google_callback(
             await db.commit()
             await db.refresh(user)
         else:
+            if not user.is_active:
+                raise Exception("정지되었거나 비활성화된 계정이에요." + (f" ({user.ban_reason})" if user.ban_reason else ""))
             user.oauth_provider = "google"
             user.oauth_id = sub
             await db.commit()
@@ -263,6 +265,8 @@ async def naver_callback(
             await db.commit()
             await db.refresh(user)
         else:
+            if not user.is_active:
+                raise Exception("정지되었거나 비활성화된 계정이에요." + (f" ({user.ban_reason})" if user.ban_reason else ""))
             user.oauth_provider = "naver"
             user.oauth_id = nid
             await db.commit()
@@ -294,6 +298,8 @@ async def social_login(payload: SocialLoginRequest, db: AsyncSession = Depends(g
         await db.commit()
         await db.refresh(user)
     else:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="비활성화된 계정입니다.")
         user.oauth_provider = payload.provider.lower()
         if payload.oauth_id:
             user.oauth_id = payload.oauth_id

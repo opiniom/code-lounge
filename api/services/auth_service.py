@@ -40,6 +40,20 @@ def decode_access_token(token: str) -> Optional[dict]:
     except jwt.PyJWTError:
         return None
 
+def _admin_emails() -> set:
+    from config import settings
+    return {e.strip().lower() for e in (settings.ADMIN_EMAILS or "").split(",") if e.strip()}
+
+
+def is_super_admin(user) -> bool:
+    """최고관리자: 서버 .env 의 ADMIN_EMAILS 에 있는 이메일 (화면에서는 바꿀 수 없다)"""
+    return bool(user and getattr(user, "is_active", False) and (user.email or "").lower() in _admin_emails())
+
+
+def is_admin_user(user) -> bool:
+    return bool(user and getattr(user, "is_active", False) and (is_super_admin(user) or getattr(user, "is_admin", False)))
+
+
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)
@@ -90,3 +104,16 @@ async def get_current_user_optional(
         return await get_current_user(credentials, db)
     except HTTPException:
         return None
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """관리자 전용 API 의 문지기. 화면에서 메뉴를 숨기는 것과 별개로 서버가 항상 직접 확인한다."""
+    if not is_admin_user(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자만 사용할 수 있어요.")
+    return user
+
+
+async def require_super(user: User = Depends(get_current_user)) -> User:
+    if not is_super_admin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="최고관리자만 할 수 있어요.")
+    return user

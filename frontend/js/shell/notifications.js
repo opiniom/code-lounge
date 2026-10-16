@@ -9,6 +9,7 @@ var NT_KIND = {
   community:{c:'#EC4899', svg:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19c.4-3.2 2.7-5 6-5s5.6 1.8 6 5"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/>'},
   event:{c:'#F59E0B', svg:'<path d="M8 4h8v5a4 4 0 0 1-8 0Z"/><path d="M8 6H5v1.5A3 3 0 0 0 8 10.5M16 6h3v1.5a3 3 0 0 1-3 3M12 13v4M8.5 20h7"/>'},
   follow:{c:'#14B8A6', svg:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/>'},
+  notice:{c:'#EF4444', svg:'<path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'},
   ai:{c:'#6366F1', svg:'<path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7L4.5 10.9 10.1 9Z"/><path d="M18.5 3.5v3M17 5h3"/>'}
 };
 function ntKind(cat){ return NT_KIND[cat] || NT_KIND.ai; }

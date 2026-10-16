@@ -20,6 +20,7 @@
     "css/widgets.css",
     "css/presence.css",
     "css/guest.css",
+    "css/sysadmin.css",
     "css/compat.css",
     "css/mobile.css"
   ],
@@ -46,6 +47,7 @@
     "js/core/live.js",
     "js/pages/community.js",
     "js/pages/profile.js",
-    "js/pages/admin.js"
+    "js/pages/admin.js",
+    "js/pages/sysadmin.js"
   ]
 }
