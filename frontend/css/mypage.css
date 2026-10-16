@@ -31,3 +31,4 @@
 .fb-top .date{margin-left:auto; font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono);}
 .fb-quote{font-family:var(--font-body); font-size:13.5px; color:var(--text); line-height:1.5;}
 
+.mp-empty{padding:22px 24px; display:flex; flex-direction:column; gap:6px;} .mp-empty b{font-size:15px; letter-spacing:-.02em;} .mp-empty p{margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;}

@@ -62,6 +62,7 @@ function goView(name){
   if(name==='events') loadEvents();
   if(name==='community') cmEnter();
   if(name==='admin') loadAdminMembers();
+  if(name==='mypage') renderMyPage();
   if(name==='workspace') enterWorkspaceView(); else wsStopPolling();
   if(name==='workspace'){
     setTimeout(function(){

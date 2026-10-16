@@ -5,7 +5,6 @@ var WG_CATALOG = [
   {id:'events', ic:'🏆', name:'마감 임박 공모전', desc:'자동으로 모은 공모전을 마감 순으로', size:'보통', c:'#F59E0B'},
   {id:'community', ic:'👥', name:'커뮤니티 인기글', desc:'지금 뜨는 질문과 팀원 모집 소식', size:'보통', c:'#EC4899'},
   {id:'notes', ic:'📝', name:'최근 회의록', desc:'최근 정리된 회의록을 한눈에', size:'보통', c:'#22D3EE'},
-  {id:'feedback', ic:'💬', name:'리더 피드백', desc:'팀장에게 받은 응원 한 줄', size:'보통', c:'#10B981'}
 ];
 function wgShown(id){ var c = document.querySelector('.dyn-widget[data-widget="'+id+'"]'); return !!c && !c.hidden; }
 function wgPreview(id){
@@ -15,7 +14,7 @@ function wgPreview(id){
   if(id==='events') return '<div class="wgp-title">🏆 마감 임박 공모전</div>'+row('D-1','#EF4444',74)+row('D-3','#F59E0B',58)+row('D-7','#3B82F6',66);
   if(id==='community') return '<div class="wgp-title">👥 커뮤니티 인기글</div>'+row('질문','#3B82F6',72)+row('모집','#8B5CF6',60)+row('자랑','#EC4899',68);
   if(id==='notes') return '<div class="wgp-title">📝 최근 회의록</div>'+row('9/11','#22D3EE',76)+row('9/09','#8B5CF6',54);
-  return '<div class="wgp-title">💬 리더 피드백</div><div class="wgp-quote"><i></i><div><span class="wgp-l" style="width:94%"></span><span class="wgp-l" style="width:70%"></span></div></div>';
+  return '';
 }
 function wgRender(){
   var q = ((document.getElementById('wgSearch') || {}).value || '').trim().toLowerCase();

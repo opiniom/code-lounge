@@ -10,7 +10,6 @@ function resetToNewMemberState(){
   if(savedMyProjects===null){ savedMyProjects = myProjects.slice(); savedProjPageIndex = projPageIndex; }
   if(savedNotesWidgetHidden===null && notesWidget) savedNotesWidgetHidden = notesWidget.hidden;
   setWidget('today', false);
-  setWidget('feedback', false);
   setWidget('notes', false);
   myProjects = [];
   projPageIndex = 0;
@@ -19,7 +18,6 @@ function resetToNewMemberState(){
 }
 function restoreDemoState(){
   setWidget('today', true);
-  setWidget('feedback', true);
   if(savedNotesWidgetHidden!==null) setWidget('notes', !savedNotesWidgetHidden);
   if(savedMyProjects!==null){ myProjects = savedMyProjects.slice(); projPageIndex = savedProjPageIndex; }
   renderProjRow();

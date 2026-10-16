@@ -1,24 +1,5 @@
 /* ---- admin: team member detail & feedback ---- */
-var teamMembers = {
-  jiwoo:{
-    name:'지우', role:'프론트엔드 · UI/UX', avatarColor:'#3B82F6',
-    tasks:8, attend:'88%', commits:14,
-    aiFeedback:'지우님은 이번 주 UI 컴포넌트 작업을 예정보다 빠르게 마무리했어요. 다만 API 연동 리뷰 참여가 적었으니 다음 스프린트엔 백엔드 리뷰도 함께 맡아보면 좋겠습니다.',
-    history:[{author:'하은', date:'09.05', text:'디자인 시스템 정리를 꼼꼼히 해줘서 좋았어요', tag:'우수'}]
-  },
-  minjae:{
-    name:'민재', role:'백엔드 · 인프라', avatarColor:'#8B5CF6',
-    tasks:11, attend:'95%', commits:21,
-    aiFeedback:'민재님은 캐싱 작업 등 성능 개선 이슈를 스스로 찾아 처리하는 비중이 높아요. 다만 리뷰 코멘트 응답이 평균보다 늦은 편이라 팀 커뮤니케이션 속도를 한 번 점검해보면 좋겠습니다.',
-    history:[{author:'지우', date:'09.06', text:'API 응답 속도 개선 빠르게 대응해줘서 감사해요', tag:'우수'}]
-  },
-  haeun:{
-    name:'하은', role:'디자인 · 기획', avatarColor:'#EC4899',
-    tasks:6, attend:'92%', commits:5,
-    aiFeedback:'하은님은 회의 결정사항 정리와 디자인 시안 확정을 주도적으로 이끌고 있어요. 개발 관련 논의에도 조금 더 참여하면 팀 전체 이해도가 올라갈 것 같아요.',
-    history:[{author:'민재', date:'09.02', text:'회의 진행이 명확해서 의사결정이 빨랐어요', tag:'성장중'}]
-  }
-};
+var teamMembers = {};   // (예전 데모 팀원 정보는 제거 — 팀원 목록은 서버에서 불러온다)
 var currentMemberId = null;
 function openMemberDetail(id){
   var m = teamMembers[id];
@@ -73,3 +54,17 @@ setTimeout(function(){
   pstStart();
   loadEvents();
 }, 600);
+
+/* ---- 마이페이지: 내 활동 숫자 (진짜 데이터) ---- */
+async function renderMyPage(){
+  var set = function(id, v){ var e = document.getElementById(id); if(e) e.textContent = v; };
+  var mpRole = document.getElementById('mypageRole'); if(mpRole) mpRole.textContent = myProfile.role || (currentUser ? currentUser.email : '로그인하면 내 활동이 여기에 모여요');
+  var ym = CAL_TODAY.y + '-' + pad2(CAL_TODAY.m);
+  set('mpProjects', myProjects.length);
+  set('mpEvents', calendarEvents.filter(function(e){ return (e.start || '').indexOf(ym) === 0; }).length);
+  set('mpNotes', (meetingDocs || []).length);
+  set('mpPosts', 0);
+  if(authToken && calApiMode){
+    try { var r = await cmFetch('/api/community/posts?mine=true&limit=1'); set('mpPosts', r.total != null ? r.total : (r.items || []).length); } catch(e){}
+  }
+}

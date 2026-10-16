@@ -266,17 +266,8 @@ function createFromPrompt(){
   // 조합이 끝나지 않은 상태에서 값을 비우면 마지막 글자가 입력창에 다시 남는다 → 먼저 입력을 확정(blur)하고 처리
   if(imeComposing){ input.blur(); setTimeout(go, 30); } else go();
 }
-var myProjects = [
-  {id:'calc_proj', title:'사칙연산 계산기를 만드는 코드를 짜고싶어', isNew:false, stack:'PY', stackColor:'#06B6D4', status:'진행중', statusClass:'accent2',
-    meta:'Python · 1명 · 방금 전 활동', avatars:[{i:'나',c:'#06B6D4'}], files:'3 files', recentFile:'calculator.py'},
-  {id:'capstone', title:'캡스톤 · AI 리테일 추천', isNew:false, stack:'RN', stackColor:'#2F6F5C', status:'진행중', statusClass:'accent2',
-    meta:'React · Node · 4명 · 3분 전 활동', avatars:[{i:'지',c:'#3B82F6'},{i:'민',c:'#8B5CF6'},{i:'하',c:'#EC4899'},{i:'나',c:'#06B6D4'}], files:'18 files', recentFile:'RecommendCard.tsx'},
-  {id:'algo', title:'알고리즘 스터디 자동화 봇', isNew:false, stack:'PY', stackColor:'#06B6D4', status:'대기', statusClass:'',
-    meta:'Python · 3명 · 1시간 전 활동', avatars:[{i:'민',c:'#8B5CF6'},{i:'지',c:'#3B82F6'},{i:'윤',c:'#F59E0B'}], files:'7 files', recentFile:null},
-  {id:'club', title:'학회 홈페이지 리뉴얼', isNew:false, stack:'JS', stackColor:'#B24E9E', status:'리뷰 필요', statusClass:'accent',
-    meta:'Next.js · 5명 · 어제 활동', avatars:[{i:'하',c:'#EC4899'},{i:'나',c:'#06B6D4'},{i:'윤',c:'#F59E0B'}], files:'32 files', recentFile:null}
-];
-var currentWorkspaceId = 'calc_proj';
+var myProjects = [];
+var currentWorkspaceId = null;
 var projPageIndex = 0;
 var PROJ_PAGE_SIZE = 3;
 function buildProjCard(p){
@@ -371,22 +362,21 @@ function addProjectFromPrompt(name, row){
   }
   setWidget('projects', true);
   var id = row ? 'p'+row.id : 'ws'+Date.now()+Math.random().toString(36).slice(2,5);
-  var isCalc = /계산기|사칙연산|calc/i.test(name);
-  var newProj = {
+    var newProj = {
     id: id,
     serverId: row ? row.id : undefined,
     members: row ? row.members : [],
     isOwner: true,
     title: name,
     isNew: false,
-    stack: isCalc ? 'PY' : 'AI',
-    stackColor: isCalc ? '#06B6D4' : 'var(--accent)',
+    stack: 'AI',
+    stackColor: 'var(--accent)',
     status: '방금 생성됨',
     statusClass: 'accent2',
-    meta: (isCalc ? 'Python' : 'AI 워크스페이스') + ' · 지금 막 시작함',
+    meta: 'AI 워크스페이스 · 지금 막 시작함',
     avatars: [{i:'나',c:'#06B6D4'}],
-    files: isCalc ? '3 files' : '2 files',
-    recentFile: isCalc ? 'calculator.py' : 'main.py'
+    files: '2 files',
+    recentFile: 'main.py'
   };
   myProjects.unshift(newProj);
   if(row) registerProjectMembers(newProj);
@@ -405,7 +395,8 @@ function openWorkspace(id){
     goView('workspace');
     return;
   }
-  var proj = myProjects.find(function(p){ return p.id===id; }) || myProjects[0] || { id:'calc_proj', title:'사칙연산 계산기를 만드는 코드를 짜고싶어' };
+  var proj = myProjects.find(function(p){ return p.id===id; }) || myProjects[0] || null;
+  if(!proj){ goView('workspace'); return; }
   currentWorkspaceId = proj.id;
   wsProject = proj.id;
   var crumb = document.getElementById('wsCrumbName');

@@ -5,7 +5,7 @@ function loadDemoCalendar(){
   calendarEvents = []; calDetect = []; calDetectEngine = null; calDetectNote = null;
 }
 function memberColor(m){
-  var map = {jiwoo:'#3B82F6', minjae:'#8B5CF6', haeun:'#EC4899', yoon:'#F59E0B', me:'#06B6D4'};
+  var map = {me:'#06B6D4'};
   if(map[m]) return map[m];
   var u = /^u(\d+)$/.exec(m || '');
   if(u) return ['#06B6D4','#3B82F6','#8B5CF6','#EC4899','#F59E0B','#10B981'][parseInt(u[1], 10) % 6];
@@ -17,7 +17,7 @@ function registerProjectMembers(pr){
 
 /* ---- calendar: 프로젝트별 캘린더 (셀렉터 + 설정) ---- */
 var calReady = false;
-var CAL_TODAY = {y:2026, m:9, d:11};   // 데모 모드의 '오늘' (실제 로그인에서는 진짜 오늘 날짜)
+var CAL_TODAY = (function(){ var n = new Date(); return {y:n.getFullYear(), m:n.getMonth()+1, d:n.getDate()}; })();   // 오늘
 var calYear = CAL_TODAY.y, calMonth = CAL_TODAY.m;
 function pad2(n){ return n<10 ? '0'+n : ''+n; }
 function calYm(y, m){ return (y===undefined?calYear:y)+'-'+pad2(m===undefined?calMonth:m); }
@@ -26,8 +26,8 @@ var calHiddenProjects = {};
 var calProjectColors = {};
 var calHiddenMembers = {};
 var CAL_PALETTE = ['#3B82F6','#8B5CF6','#06B6D4','#EC4899','#F59E0B','#10B981'];
-var calMemberNames = {jiwoo:'지우', minjae:'민재', haeun:'하은', yoon:'윤', me:'나'};
-var calProjectMembers = {capstone:['jiwoo','minjae','haeun','me'], algo:['minjae','jiwoo','yoon','me'], club:['haeun','yoon','me']};
+var calMemberNames = {me:'나'};
+var calProjectMembers = {};
 (function(){
   try{
     var saved = JSON.parse(localStorage.getItem('sync_cal_settings')||'null');

@@ -235,15 +235,6 @@
             <button class="dyn-close" onclick="removeWidget('today')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
 
-          <div class="dyn-widget card" data-widget="feedback">
-            <h4><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>리더 피드백</h4>
-            <div class="feedback-mini">
-              <div class="fb-top favatar" style="width:22px;height:22px;font-size:9px; background:var(--accent-2);">하</div>
-              <p class="q">"UI 작업 속도가 눈에 띄게 빨라졌어요 — 계속 이 페이스로!"</p>
-            </div>
-            <button class="dyn-close" onclick="removeWidget('feedback')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-          </div>
-
           <div class="dyn-widget card" data-widget="events" hidden>
             <h4>🏆 마감 임박 공모전</h4>
             <div class="wl-body" id="wlEvents"></div>
@@ -469,9 +460,8 @@
         <div class="form-row">
           <label>참석자 *</label>
           <div class="attendee-picker" id="attendeePicker">
-            <button type="button" class="member-chip active" data-name="지우" onclick="this.classList.toggle('active')"><span class="dot" style="background:#3B82F6;"></span>지우</button>
-            <button type="button" class="member-chip active" data-name="민재" onclick="this.classList.toggle('active')"><span class="dot" style="background:#8B5CF6;"></span>민재</button>
-            <button type="button" class="member-chip active" data-name="하은" onclick="this.classList.toggle('active')"><span class="dot" style="background:#EC4899;"></span>하은</button>
+
+
             <button type="button" class="member-chip active" data-name="나" onclick="this.classList.toggle('active')"><span class="dot" style="background:#06B6D4;"></span>나</button>
           </div>
         </div>
@@ -734,7 +724,7 @@
         <div class="big-avatar" id="mypageAvatar">나</div>
         <div>
           <h2 id="mypageName">나</h2>
-          <div class="role" id="mypageRole">프론트엔드 · 캡스톤 프로젝트 외 2개 팀 참여중</div>
+          <div class="role" id="mypageRole"></div>
         </div>
         <button class="btn ghost" style="margin-left:auto;" onclick="openProfileModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>프로필 수정
@@ -743,49 +733,26 @@
 
       <div class="stat-grid">
         <div class="stat-tile card">
-          <div class="top"><span class="lbl">이번 주 완료 태스크</span><div class="ic" style="background:var(--accent-soft); color:var(--accent-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></div></div>
-          <b>9</b><span class="delta up">▲ 지난주보다 +3</span>
+          <div class="top"><span class="lbl">참여 프로젝트</span><div class="ic" style="background:var(--accent-soft); color:var(--accent-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h3.3l2 2.2H18A2.5 2.5 0 0 1 20.5 9.7v7.8A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5Z"/></svg></div></div>
+          <b id="mpProjects">0</b><span class="delta">내가 속한 팀</span>
         </div>
         <div class="stat-tile card">
-          <div class="top"><span class="lbl">회의 참석률</span><div class="ic" style="background:var(--accent-2-soft); color:var(--accent-2-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/></svg></div></div>
-          <b>92%</b><span class="delta up">▲ 안정적</span>
+          <div class="top"><span class="lbl">이번 달 일정</span><div class="ic" style="background:var(--accent-2-soft); color:var(--accent-2-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16"/></svg></div></div>
+          <b id="mpEvents">0</b><span class="delta">캘린더에 등록된 일정</span>
         </div>
         <div class="stat-tile card">
-          <div class="top"><span class="lbl">코드 커밋</span><div class="ic" style="background:var(--surface-3); color:var(--text-muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 8-4 4 4 4M15 8l4 4-4 4"/></svg></div></div>
-          <b>21</b><span class="delta up">▲ +6</span>
+          <div class="top"><span class="lbl">회의록</span><div class="ic" style="background:var(--surface-3); color:var(--text-muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6"/></svg></div></div>
+          <b id="mpNotes">0</b><span class="delta">정리된 회의록</span>
         </div>
         <div class="stat-tile card">
-          <div class="top"><span class="lbl">커뮤니티 기여</span><div class="ic" style="background:#EFE1F2; color:#EC4899;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1-3.8 3.6-5.7 7-5.7s6 1.9 7 5.7"/></svg></div></div>
-          <b>5</b><span class="delta">글/댓글</span>
+          <div class="top"><span class="lbl">내가 쓴 커뮤니티 글</span><div class="ic" style="background:rgba(236,72,153,.14); color:#EC4899;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7.5 7.5 0 0 1-10.9 6.7L4 20l1.4-4.3A7.5 7.5 0 1 1 20 12Z"/></svg></div></div>
+          <b id="mpPosts">0</b><span class="delta">글</span>
         </div>
       </div>
 
-      <div class="mypage-grid">
-        <div class="chart-card card">
-          <h4>주간 태스크 완료 추이</h4>
-          <div class="bars">
-            <div class="bar-col"><div class="bar" style="height:38%;"></div><span class="dlbl">월</span></div>
-            <div class="bar-col"><div class="bar" style="height:55%;"></div><span class="dlbl">화</span></div>
-            <div class="bar-col"><div class="bar" style="height:44%;"></div><span class="dlbl">수</span></div>
-            <div class="bar-col peak"><div class="bar" style="height:88%;"></div><span class="dlbl">목</span></div>
-            <div class="bar-col"><div class="bar" style="height:70%;"></div><span class="dlbl">금</span></div>
-            <div class="bar-col"><div class="bar" style="height:20%;"></div><span class="dlbl">토</span></div>
-            <div class="bar-col"><div class="bar" style="height:12%;"></div><span class="dlbl">일</span></div>
-          </div>
-        </div>
-        <div class="chart-card card">
-          <h4>리더 피드백</h4>
-          <div class="feedback-list">
-            <div class="fb-card" style="background:var(--surface-2); border:none;">
-              <div class="fb-top"><div class="favatar">하</div><b>하은 · 팀장</b><span class="date">09.08</span><span class="chip accent2">성장중</span></div>
-              <p class="fb-quote">"이번 스프린트 UI 작업 속도가 눈에 띄게 빨라졌어요. 다음엔 API 에러 핸들링도 같이 맡아볼까요?"</p>
-            </div>
-            <div class="fb-card" style="background:var(--surface-2); border:none;">
-              <div class="fb-top"><div class="favatar" style="background:#06B6D4;">민</div><b>민재 · 파트장</b><span class="date">09.01</span><span class="chip accent">우수</span></div>
-              <p class="fb-quote">"회의 때 의견 제시가 명확해서 논의가 빨리 정리됐어요."</p>
-            </div>
-          </div>
-        </div>
+      <div class="card mp-empty">
+        <b>활동 기록</b>
+        <p>태스크 완료·회의 참석 같은 활동 통계와 팀장 피드백은 팀 활동이 쌓이면 이곳에 나타나요.</p>
       </div>
     </div>
   </section>
@@ -797,60 +764,14 @@
         <div class="big-avatar" style="background:linear-gradient(150deg,var(--accent-2),var(--accent));">나</div>
         <div>
           <h2>팀 관리 <span class="chip accent2" style="margin-left:6px;">관리자</span></h2>
-          <div class="role">캡스톤 · AI 리테일 추천 · 팀장</div>
+          <div class="role">프로젝트 팀원과 권한을 관리해요</div>
         </div>
-      </div>
-
-      <div class="card" style="padding:18px; margin-bottom:20px;">
-        <div class="eyebrow" style="margin-bottom:12px;">🤖 AI 업무 분담 분석 · 최근 2주 활동 기준</div>
-        <div class="workload-list">
-          <div class="workload-row">
-            <div class="wl-who"><div class="mini" style="background:#3B82F6; margin-left:0;">지</div>지우</div>
-            <div class="wl-bar-wrap"><div class="wl-bar" style="width:32%; background:#3B82F6;"></div></div>
-            <span class="wl-pct">32%</span>
-          </div>
-          <div class="workload-row">
-            <div class="wl-who"><div class="mini" style="background:#8B5CF6; margin-left:0;">민</div>민재</div>
-            <div class="wl-bar-wrap"><div class="wl-bar" style="width:29%; background:#8B5CF6;"></div></div>
-            <span class="wl-pct">29%</span>
-          </div>
-          <div class="workload-row">
-            <div class="wl-who"><div class="mini" style="background:#EC4899; margin-left:0;">하</div>하은</div>
-            <div class="wl-bar-wrap"><div class="wl-bar" style="width:24%; background:#EC4899;"></div></div>
-            <span class="wl-pct">24%</span>
-          </div>
-          <div class="workload-row">
-            <div class="wl-who"><div class="mini" style="background:#06B6D4; margin-left:0;">나</div>나</div>
-            <div class="wl-bar-wrap"><div class="wl-bar" style="width:15%; background:#06B6D4;"></div></div>
-            <span class="wl-pct">15%</span>
-          </div>
-        </div>
-        <p style="font-size:11.5px; color:var(--text-faint); margin-top:12px;">커밋 수, 완료 태스크, 회의 발언 비중을 종합해 AI가 계산한 예상치예요. 지우님 쪽 업무가 다소 쏠려 있으니 다음 스프린트 배분을 조정해보세요.</p>
       </div>
 
       <div class="section-head">
         <div><span class="view-eyebrow">Team</span><h2 style="font-size:18px;">팀원 관리</h2><span class="sub">상세 정보를 열면 AI 분석과 피드백 기록을 볼 수 있어요</span></div>
       </div>
-      <div class="admin-member-grid" id="adminMemberGrid">
-        <div class="admin-member-card card" onclick="openMemberDetail('jiwoo')">
-          <div class="pavatar" style="background:#3B82F6;">지</div>
-          <div class="amc-info"><b>지우</b><span>프론트엔드 · UI/UX</span></div>
-          <div class="amc-stats"><span>태스크 8</span><span>참석 88%</span></div>
-          <button class="btn ghost">상세보기 →</button>
-        </div>
-        <div class="admin-member-card card" onclick="openMemberDetail('minjae')">
-          <div class="pavatar" style="background:#8B5CF6;">민</div>
-          <div class="amc-info"><b>민재</b><span>백엔드 · 인프라</span></div>
-          <div class="amc-stats"><span>태스크 11</span><span>참석 95%</span></div>
-          <button class="btn ghost">상세보기 →</button>
-        </div>
-        <div class="admin-member-card card" onclick="openMemberDetail('haeun')">
-          <div class="pavatar" style="background:#EC4899;">하</div>
-          <div class="amc-info"><b>하은</b><span>디자인 · 기획</span></div>
-          <div class="amc-stats"><span>태스크 6</span><span>참석 92%</span></div>
-          <button class="btn ghost">상세보기 →</button>
-        </div>
-      </div>
+      <div class="admin-member-grid" id="adminMemberGrid"><div style="padding:16px; color:var(--text-faint); grid-column:1/-1;">선택된 프로젝트가 없습니다.</div></div>
     </div>
 
     <div class="modal-backdrop" id="memberModal" onclick="if(event.target===this)closeMemberDetail()">

@@ -57,7 +57,7 @@ function syncThemeButtons(){
 }
 
 /* ---- settings: profile ---- */
-var myProfile = { name:'나', role:'프론트엔드 · 캡스톤 프로젝트 외 2개 팀 참여중', swatch:0 };
+var myProfile = { name:'나', role:'', swatch:0 };
 var avatarSwatches = [
   'linear-gradient(150deg,#3B82F6,#8B5CF6)',
   'linear-gradient(150deg,#06B6D4,#EC4899)',
