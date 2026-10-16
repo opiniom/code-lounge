@@ -2,6 +2,7 @@
 # sync/ 한 줄 실행 스크립트 (macOS / Linux)
 #   ./run.sh            → 서버를 켜고 브라우저로 http://localhost:8000/app 을 엽니다
 #   PORT=9000 ./run.sh  → 포트 변경
+#   HOST=0.0.0.0 ./run.sh → 같은 와이파이의 다른 기기도 접속 허용 (기본은 이 컴퓨터에서만)
 set -e
 cd "$(dirname "$0")"
 
@@ -32,4 +33,4 @@ echo ""
   if command -v open >/dev/null 2>&1; then open "$URL"
   elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL"; fi ) >/dev/null 2>&1 &
 
-exec .venv/bin/uvicorn main:app --app-dir api --host 0.0.0.0 --port "$PORT"
+exec .venv/bin/uvicorn main:app --app-dir api --host "${HOST:-127.0.0.1}" --port "$PORT"

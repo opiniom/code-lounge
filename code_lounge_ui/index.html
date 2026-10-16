@@ -962,6 +962,8 @@ a{color:inherit;}
 .auth-desc{font-size:12px; color:var(--text-muted); line-height:1.5;}
 .invite-card{width:100%; padding:14px; border:1px solid var(--border); border-radius:var(--radius-m); background:var(--accent-soft); display:flex; flex-direction:column; gap:8px; text-align:left;}
 .invite-card[hidden]{display:none;}
+.auth-buttons[hidden], .auth-terms[hidden], .auth-skip[hidden], .invite-card-or[hidden], .auth-remote-note[hidden]{display:none;}
+.auth-remote-note{font-size:12.5px; color:var(--text-muted); line-height:1.7; text-align:center; padding:10px 12px; border:1px dashed var(--border-strong); border-radius:var(--radius-m);}
 .invite-card-t{font-weight:700; font-size:14px; line-height:1.5;}
 .invite-card-s{font-size:12.5px; color:var(--text-muted); line-height:1.5;}
 .invite-card input{width:100%; padding:9px 11px; border:1px solid var(--border-strong); border-radius:8px; font:inherit; font-size:14px; background:var(--surface); color:var(--text);}
@@ -1401,9 +1403,9 @@ a{color:inherit;}
           <div class="invite-card-s" id="inviteCardSub"></div>
           <input type="text" id="inviteGuestName" maxlength="20" placeholder="팀에서 쓸 이름 (예: 홍길동)" autocomplete="off" onkeydown="if(isEnter(event))acceptInviteAsGuest()">
           <button class="btn primary" id="inviteGuestBtn" onclick="acceptInviteAsGuest()">초대 수락하고 들어가기</button>
-          <div class="invite-card-or">또는 아래 계정으로 로그인하면 내 계정으로 참여해요</div>
+          <div class="invite-card-or" id="inviteCardOr">또는 아래 계정으로 로그인하면 내 계정으로 참여해요</div>
         </div>
-        <div class="auth-buttons">
+        <div class="auth-buttons" id="authButtons">
           <button class="oauth-btn google" onclick="handleSocialLogin('Google')">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.8Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.26v3.1C3.24 21.3 7.28 24 12 24Z"/><path fill="#FBBC05" d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58v-3.1H1.26a12 12 0 0 0 0 10.78l4.01-3.1Z"/><path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.23 0 12 0 7.28 0 3.24 2.7 1.26 6.61l4.01 3.1C6.22 6.88 8.87 4.77 12 4.77Z"/></svg>
             Google로 계속하기
@@ -1413,8 +1415,9 @@ a{color:inherit;}
             네이버로 계속하기
           </button>
         </div>
-        <p class="auth-terms">계속 진행하면 sync/의 <a>이용약관</a> 및 <a>개인정보 처리방침</a>에 동의하게 됩니다.</p>
-        <button class="auth-skip" onclick="mockLogin('게스트')">게스트로 둘러보기 →</button>
+        <p class="auth-terms" id="authTerms">계속 진행하면 sync/의 <a>이용약관</a> 및 <a>개인정보 처리방침</a>에 동의하게 됩니다.</p>
+        <p class="auth-remote-note" id="authRemoteNote" hidden>이 주소에서는 구글/네이버 로그인을 쓸 수 없어요.<br>팀원에게 받은 <b>초대 링크</b>로 들어오거나, 서버를 켠 컴퓨터에서 로그인하세요.</p>
+        <button class="auth-skip" id="authSkip" onclick="mockLogin('게스트')">게스트로 둘러보기 →</button>
       </div>
     </div>
   </section>
@@ -2410,7 +2413,24 @@ function restoreDemoState(){
   unreadCount = 2;
   updateNotifBadge();
 }
+/* 구글/네이버 로그인은 서버에 등록된 주소(PUBLIC_BASE_URL)에서만 돌아올 수 있다.
+   ./share.sh 로 열린 임시 공개 주소 등 다른 주소에서는 로그인 버튼을 숨기고 초대 카드만 보여준다 */
+var oauthHere = true;
+function applyAuthMode(){
+  return fetch(API_BASE + '/api/auth/config').then(function(r){ return r.ok ? r.json() : {}; }).then(function(conf){
+    try{ oauthHere = !conf.public_base_url || new URL(conf.public_base_url, location.href).origin === location.origin; }catch(e){ oauthHere = true; }
+    var card = document.getElementById('inviteCard');
+    var cardShown = !!(card && !card.hidden);
+    ['authButtons','authTerms','authSkip'].forEach(function(id){ var el = document.getElementById(id); if(el) el.hidden = !oauthHere; });
+    var or = document.getElementById('inviteCardOr'); if(or) or.hidden = !oauthHere;
+    var note = document.getElementById('authRemoteNote'); if(note) note.hidden = oauthHere || cardShown;
+  }).catch(function(){});
+}
 async function handleSocialLogin(provider){
+  if(!oauthHere){
+    pushToast('ℹ️','이 주소에서는 소셜 로그인을 쓸 수 없어요','팀원에게 받은 초대 링크로 들어오거나, 서버를 켠 컴퓨터(localhost)에서 로그인하세요.');
+    return;
+  }
   try {
     var confRes = await fetch(API_BASE + '/api/auth/config');
     var conf = confRes.ok ? await confRes.json() : {};
@@ -2986,7 +3006,7 @@ function projNext(){
 var appBuild = null;
 function checkAppVersion(){
   if (document.hidden) return;
-  var base = (typeof API_BASE === 'string') ? API_BASE : (function(){ try { return localStorage.getItem('sync_api_base') || 'http://localhost:8000'; } catch(e){ return 'http://localhost:8000'; } })();
+  var base = (typeof API_BASE === 'string') ? API_BASE : (function(){ try { return localStorage.getItem('sync_api_base') || defaultApiBase(); } catch(e){ return defaultApiBase(); } })();
   fetch(base + '/api/version', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(v){
     if (!v || !v.build) return;
     var tag = document.getElementById('buildTag');
@@ -4256,7 +4276,16 @@ function escapeHtml(str) {
 }
 
 /* ---- Backend API Integration ---- */
-var API_BASE = localStorage.getItem('sync_api_base') || 'http://localhost:8000';
+/* API 주소: 이 화면을 서버가 직접 내려준 경우(/app, /ui)에는 접속한 주소 그대로(같은 출처) 쓴다.
+   그래야 ./share.sh 의 공개 주소로 들어온 팀원도 자기 컴퓨터가 아니라 이 서버로 요청한다.
+   파일로 열었거나 다른 곳(Vercel 등)에 올린 화면이면 예전처럼 localhost:8000 (또는 직접 지정한 주소) */
+function defaultApiBase(){
+  try{
+    if(/^https?:$/.test(location.protocol) && /^\/(app|ui)\/?$/.test(location.pathname)) return location.origin;
+  }catch(e){}
+  return 'http://localhost:8000';
+}
+var API_BASE = localStorage.getItem('sync_api_base') || defaultApiBase();
 var authToken = localStorage.getItem('sync_auth_token') || null;
 var pendingInviteMem = '';
 function getPendingInvite(){ try{ return pendingInviteMem || localStorage.getItem('sync_pending_invite') || ''; }catch(e){ return pendingInviteMem; } }
@@ -5067,6 +5096,7 @@ function showInviteCard(token){
     document.getElementById('inviteCardTitle').textContent = info.inviter_name + '님이 \'' + info.project_title + '\' 프로젝트에 초대했어요';
     document.getElementById('inviteCardSub').textContent = '팀에서 쓸 이름만 정하면 바로 참여할 수 있어요. 가입은 필요 없어요.';
     card.hidden = false;
+    applyAuthMode();
     var d = document.getElementById('authDesc'); if(d) d.textContent = '초대를 수락하고 팀 워크스페이스에 들어오세요.';
     setTimeout(function(){ var i = document.getElementById('inviteGuestName'); if(i) i.focus(); }, 100);
   }).catch(function(e){
@@ -5143,6 +5173,7 @@ async function processPendingInvite(){
     if(e.status === 404) setPendingInvite('');
   } finally { inviteBusy = false; }
 }
+applyAuthMode();
 function checkInviteParam(){
   // 로그인 안 된 상태로 열었을 때만 여기서 처리 (로그인된 경우는 자동 로그인 확인이 끝난 뒤 처리)
   if(!authToken) processPendingInvite();

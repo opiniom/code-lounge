@@ -4,6 +4,8 @@ REM sync/ 한 줄 실행 스크립트 (Windows)  -  더블클릭하면 서버가
 cd /d "%~dp0"
 
 if not defined PORT set PORT=8000
+REM 기본은 이 컴퓨터에서만 접속 (같은 와이파이 기기도 허용하려면 HOST=0.0.0.0 으로 실행)
+if not defined HOST set HOST=127.0.0.1
 
 where python >nul 2>nul
 if errorlevel 1 (
@@ -29,4 +31,4 @@ echo   실행 주소:  http://localhost:%PORT%/app
 echo   (종료: 이 창에서 Ctrl + C)
 echo.
 start "" /b cmd /c "timeout /t 3 >nul & start http://localhost:%PORT%/app"
-.venv\Scripts\python.exe -m uvicorn main:app --app-dir api --host 0.0.0.0 --port %PORT%
+.venv\Scripts\python.exe -m uvicorn main:app --app-dir api --host %HOST% --port %PORT%

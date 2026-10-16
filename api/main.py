@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Optional, List
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
@@ -76,6 +77,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 응답 압축: 화면(index.html)이 크기 때문에, 느린 외부 공유 터널로도 빨리 열리게 한다 (웹소켓에는 영향 없음)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # 라우터 등록
 app.include_router(auth_router)
