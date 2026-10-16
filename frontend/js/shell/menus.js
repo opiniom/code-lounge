@@ -29,7 +29,7 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.status-popover') && !e.target.closest('.mdr-status-btn')) closeStatusEditor();
 });
 document.addEventListener('keydown', function(e){
-  if(e.key==='Escape'){ closeInviteModal(); closeAddEvent(); closeMemberDetail(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
+  if(e.key==='Escape'){ closeInviteModal(); closeAddEvent(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
 });
 
 

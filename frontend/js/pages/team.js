@@ -212,52 +212,82 @@ function loadCalProjects(){
   });
 }
 
-/* ---- team admin & permissions ---- */
-async function loadAdminMembers(){
-  var sid = chatServerId();
-  var grid = document.getElementById('adminMemberGrid');
-  if(!grid) return;
-  if(!sid){
-    grid.innerHTML = '<div style="padding:16px; color:var(--text-faint); grid-column:1/-1;">선택된 프로젝트가 없습니다.</div>';
-    return;
-  }
-  var cur = calProjectById(sid);
-  if(!cur || !cur.members){
-    try {
-      var pList = await apiFetch('/api/projects');
-      cur = pList.find(function(p){ return p.id === sid; });
-    } catch(e){}
-  }
-  if(!cur || !cur.members) return;
-
-  var myId = currentUser ? currentUser.id : null;
-  var isLeader = cur.is_owner || cur.members.some(function(m){ return m.id === myId && m.role === 'leader'; });
-  var html = '';
-  cur.members.forEach(function(m){
-    var roleLabel = (m.role === 'leader' || m.id === cur.owner_id) ? '👑 팀장' : '팀원';
-    var isSelf = (myId === m.id);
-    html += '<div class="admin-member-card card" style="display:flex; flex-direction:column; gap:8px; padding:16px;">';
-    html += '  <div style="display:flex; align-items:center; gap:12px;">';
-    html += '    <div class="pavatar" style="background:var(--accent);">' + (m.username ? m.username[0] : '팀') + '</div>';
-    html += '    <div style="flex:1;"><b>' + escapeHtml(m.username) + '</b>' + (isSelf ? ' <span class="chip accent2">나</span>' : '') + '<br><span style="font-size:12px; color:var(--text-faint);">' + (m.email || '') + '</span></div>';
-    html += '    <span class="chip">' + roleLabel + '</span>';
-    html += '  </div>';
-
-    if(isLeader && !isSelf){
-      html += '  <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">';
-      html += '    <select onchange="changeMemberRole(' + sid + ',' + m.id + ', this.value)" style="padding:5px 8px; font-size:12px; border-radius:4px; background:var(--bg-elev); color:var(--text); border:1px solid var(--border);">';
-      html += '      <option value="member"' + (m.role === 'member' ? ' selected' : '') + '>팀원</option>';
-      html += '      <option value="leader"' + (m.role === 'leader' ? ' selected' : '') + '>팀장</option>';
-      html += '    </select>';
-      html += '    <button class="btn ghost danger" onclick="kickMember(' + sid + ',' + m.id + ')" style="color:var(--danger, #e53935); font-size:12px; padding:5px 10px;">내보내기</button>';
-      html += '  </div>';
-    } else if(isSelf && !cur.is_owner){
-      html += '  <div style="margin-top:8px;"><button class="btn ghost danger" onclick="leaveProject(' + sid + ',' + m.id + ')" style="font-size:12px; color:var(--danger, #e53935);">프로젝트 탈퇴</button></div>';
-    }
-    html += '</div>';
-  });
-  grid.innerHTML = html;
+/* ---- 팀원 화면: 누가 들어와 있는지(접속 상태) + 팀원 관리 ---- */
+var TM = { pid:null, filter:'all' };
+function tmProject(){
+  if(!calApiMode || !myProjects.length) return null;
+  var cur = TM.pid ? calProjectById(TM.pid) : null;
+  if(!cur){ cur = calProjectById(chatProject) || calProjectById(calSelected) || myProjects[0]; TM.pid = cur ? cur.id : null; }
+  return cur;
 }
+function tmSelect(id){ TM.pid = id; TM.filter = 'all'; renderTeamPage(); }
+function tmFilter(f){ TM.filter = f; renderTeamPage(); }
+function tmInvite(){ var cur = tmProject(); if(!cur){ openInviteModal(); return; } openInviteModal(cur.id); }
+function tmStatusOf(m){ return pstOf(m.id); }
+function renderTeamPage(){
+  var grid = document.getElementById('tmGrid'); if(!grid) return;
+  var box = document.getElementById('tmProjects'), sum = document.getElementById('tmSummary'), fl = document.getElementById('tmFilters'), inv = document.getElementById('tmInviteBtn');
+  var cur = tmProject();
+  grid.innerHTML = ''; box.innerHTML = ''; sum.innerHTML = '';
+  var empty = function(title, text, btn, fn){
+    var e = document.createElement('div'); e.className = 'tm-empty';
+    e.innerHTML = '<div class="tm-empty-ic"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/></svg></div><b></b><span></span>';
+    e.querySelector('b').textContent = title; e.querySelector('span').textContent = text;
+    if(btn){ var b = document.createElement('button'); b.className = 'btn primary'; b.textContent = btn; b.onclick = fn; e.appendChild(b); }
+    grid.appendChild(e);
+  };
+  fl.hidden = !cur; inv.hidden = !cur;
+  if(!calApiMode){ empty('로그인하면 팀원을 볼 수 있어요', '프로젝트를 만들고 팀원을 초대하면 누가 접속 중인지 한눈에 보여요.', '로그인', openLogin); return; }
+  if(!cur){ empty('아직 프로젝트가 없어요', '프로젝트를 만들면 팀원을 초대하고 관리할 수 있어요.', '프로젝트 만들러 가기', function(){ goView('home'); var pi = document.getElementById('promptInput'); if(pi) setTimeout(function(){ pi.focus(); }, 200); }); return; }
+  // 프로젝트 선택
+  myProjects.forEach(function(p){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'tm-proj' + (p.id === cur.id ? ' on' : '');
+    var n = (p.members || []).length || 1;
+    b.innerHTML = '<span class="pd"></span><b></b><small></small>'; b.querySelector('b').textContent = p.title; b.querySelector('small').textContent = n + '명';
+    b.querySelector('.pd').style.background = calProjColor(p);
+    b.onclick = function(){ tmSelect(p.id); }; box.appendChild(b);
+  });
+  var members = (cur.members && cur.members.length) ? cur.members.slice() : (currentUser ? [{ id:currentUser.id, username:myProfile.name || currentUser.username, email:currentUser.email, role:'leader' }] : []);
+  var ownerId = members.length ? members[0].id : null;          // 목록의 첫 번째가 프로젝트 소유자
+  var rank = { online:0, dnd:1, away:2, offline:3 };
+  var rows = members.map(function(m){ return { m:m, st:tmStatusOf(m) }; });
+  var on = rows.filter(function(r){ return r.st !== 'offline'; }).length;
+  var chip = function(t, n, c){ var e = document.createElement('div'); e.className = 'tm-stat'; e.innerHTML = '<b></b><span></span>'; e.querySelector('b').textContent = n; e.querySelector('span').textContent = t; if(c) e.style.setProperty('--c', c); sum.appendChild(e); };
+  chip('전체 팀원', members.length, null); chip('지금 접속 중', on, '#22C55E'); chip('오프라인', members.length - on, '#94A3B8');
+  fl.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.f === TM.filter); });
+  var cnt = { all:rows.length, online:rows.filter(function(r){ return r.st === 'online'; }).length, busy:rows.filter(function(r){ return r.st === 'away' || r.st === 'dnd'; }).length, offline:rows.filter(function(r){ return r.st === 'offline'; }).length };
+  fl.querySelectorAll('button').forEach(function(b){ var f = b.dataset.f; var base = b.textContent.replace(/\s*\d+$/, ''); b.textContent = base + ' ' + cnt[f]; });
+  var show = rows.filter(function(r){ return TM.filter === 'all' || (TM.filter === 'online' && r.st === 'online') || (TM.filter === 'busy' && (r.st === 'away' || r.st === 'dnd')) || (TM.filter === 'offline' && r.st === 'offline'); })
+    .sort(function(a, b){ return rank[a.st] - rank[b.st] || (a.m.id === ownerId ? -1 : b.m.id === ownerId ? 1 : 0); });
+  if(!show.length){ empty('해당하는 팀원이 없어요', '다른 필터를 눌러 보세요.'); return; }
+  var myId = currentUser ? currentUser.id : null, sid = parseInt(String(cur.id).replace(/^p/, ''), 10);
+  show.forEach(function(r){
+    var m = r.m, isSelf = m.id === myId, isOwner = m.id === ownerId, st = r.st;
+    var card = document.createElement('div'); card.className = 'tm-card' + (st === 'offline' ? ' off' : '');
+    var role = isOwner ? '👑 소유자' : (m.role === 'leader' ? '팀장' : '팀원');
+    card.innerHTML = '<div class="tm-top"><div class="tm-av" data-pst="' + st + '"></div><div class="tm-who"><div class="tm-name"><b></b></div><span class="tm-mail"></span></div><span class="tm-role"></span></div>'
+      + '<div class="tm-state"><span class="tm-dot" data-pst="' + st + '"></span><span class="tm-st"></span></div><div class="tm-act"></div>';
+    var av = card.querySelector('.tm-av'); av.textContent = String(m.username || '?').slice(0, 1); av.style.background = isSelf ? '#06B6D4' : chatColor(m.username);
+    card.querySelector('.tm-name b').textContent = m.username;
+    if(isSelf){ var me = document.createElement('span'); me.className = 'chip accent2'; me.textContent = '나'; card.querySelector('.tm-name').appendChild(me); }
+    card.querySelector('.tm-mail').textContent = m.email || '';
+    card.querySelector('.tm-role').textContent = role; if(isOwner || m.role === 'leader') card.querySelector('.tm-role').classList.add('lead');
+    var stText = { online:'접속 중', away:'자리비움', dnd:'방해금지', offline:'오프라인' }[st];
+    card.querySelector('.tm-st').textContent = stText; card.querySelector('.tm-st').dataset.pst = st;
+    var act = card.querySelector('.tm-act');
+    if(cur.isOwner && !isSelf){
+      var sel = document.createElement('select'); sel.className = 'tm-sel';
+      [['member','팀원'],['leader','팀장']].forEach(function(o){ var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if(m.role === o[0]) op.selected = true; sel.appendChild(op); });
+      sel.onchange = function(){ changeMemberRole(sid, m.id, sel.value); };
+      var kick = document.createElement('button'); kick.className = 'btn ghost tm-kick'; kick.textContent = '내보내기'; kick.onclick = function(){ kickMember(sid, m.id); };
+      act.appendChild(sel); act.appendChild(kick);
+    } else if(isSelf && !cur.isOwner){
+      var lv = document.createElement('button'); lv.className = 'btn ghost tm-kick'; lv.textContent = '프로젝트 탈퇴'; lv.onclick = function(){ leaveProject(sid, m.id); }; act.appendChild(lv);
+    } else { act.remove(); }
+    grid.appendChild(card);
+  });
+}
+function loadAdminMembers(){ renderTeamPage(); }
 
 async function changeMemberRole(projectId, userId, newRole){
   try {
@@ -267,7 +297,7 @@ async function changeMemberRole(projectId, userId, newRole){
     });
     pushToast('👑', '역할 변경', '팀원 역할이 성공적으로 변경되었습니다.');
     await loadCalProjects();
-    loadAdminMembers();
+    renderTeamPage();
   } catch(e){
     pushToast('⚠️', '역할 변경 실패', e.message);
   }
@@ -279,7 +309,7 @@ async function kickMember(projectId, userId){
     await apiFetch('/api/projects/' + projectId + '/members/' + userId, { method: 'DELETE' });
     pushToast('👋', '팀원 내보내기', '팀원이 프로젝트에서 제외되었습니다.');
     await loadCalProjects();
-    loadAdminMembers();
+    renderTeamPage();
   } catch(e){
     pushToast('⚠️', '내보내기 실패', e.message);
   }

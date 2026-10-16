@@ -40,13 +40,15 @@ function liveResync(){
   loadNotifications(true); pstLoadTeam();
   if(chatServerId()) loadChat(false);
 }
+/* 팀원 화면이 열려 있을 때만 다시 그린다 */
+function tmRefresh(){ var v = document.querySelector('.view.active'); if(v && v.dataset.view === 'admin') renderTeamPage(); }
 function liveSend(obj){ if(LIVE.ok && LIVE.ws && LIVE.ws.readyState === 1){ try { LIVE.ws.send(JSON.stringify(obj)); return true; } catch(e){} } return false; }
 function liveHandle(m){
   switch(m.t){
     case 'presence':
       PST.team[String(m.user_id)] = m.status;
       if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader();
-      renderDureOrbit(); chatRenderPresence();
+      renderDureOrbit(); chatRenderPresence(); tmRefresh();
       break;
     case 'notification': loadNotifications(true); break;
     case 'chat':
@@ -57,7 +59,7 @@ function liveHandle(m){
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': refreshMeetingDocs(); break;
     case 'projects':
-      if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); }).catch(function(){});
+      if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); tmRefresh(); }).catch(function(){});
       break;
   }
 }

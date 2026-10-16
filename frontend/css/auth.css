@@ -45,3 +45,4 @@
 .auth-skip{border:none; background:none; color:var(--text-faint); font-size:12px; cursor:pointer; margin-top:2px;}
 .auth-skip:hover{color:var(--text-muted);}
 
+.auth-devnote{margin:0; font-size:12px; font-weight:600; color:var(--accent-ink); background:var(--accent-soft); border-radius:10px; padding:8px 12px; text-align:center;} .auth-devnote[hidden]{display:none;}

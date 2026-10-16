@@ -3,7 +3,7 @@ import secrets
 import urllib.parse
 from typing import Optional
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -74,10 +74,33 @@ async def get_me(current_user: User = Depends(get_current_user)):
 # 소셜 로그인 (Google & Naver OAuth 2.0)
 # ==========================================
 
+def _dev_auto_allowed(request: Request) -> bool:
+    """임시 서버 자동 로그인: 설정이 있고, 외부 공유 모드가 아니며, 프록시를 거치지 않은 내 컴퓨터 접속일 때만"""
+    if not settings.DEV_AUTO_LOGIN_EMAIL or settings.PUBLIC_MODE:
+        return False
+    if request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip"):
+        return False
+    host = request.client.host if request.client else ""
+    return host in ("127.0.0.1", "::1", "localhost")
+
+
+@router.post("/dev-auto", response_model=TokenResponse, tags=["OAuth"])
+async def dev_auto_login(request: Request, db: AsyncSession = Depends(get_db)):
+    """임시(로컬) 서버 전용 자동 로그인. 이미 있는 계정으로만 로그인하고, 계정을 만들지 않는다."""
+    if not _dev_auto_allowed(request):
+        raise HTTPException(status_code=404, detail="Not Found")
+    user = (await db.execute(select(User).where(User.email == settings.DEV_AUTO_LOGIN_EMAIL))).scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=404, detail="DEV_AUTO_LOGIN_EMAIL 계정이 아직 없어요. 한 번 정상 로그인해 계정을 만든 뒤 쓰세요.")
+    token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    return TokenResponse(access_token=token, token_type="bearer", user=UserResponse.model_validate(user))
+
+
 @router.get("/config", tags=["OAuth"])
-async def get_auth_config():
+async def get_auth_config(request: Request):
     """소셜 로그인 설정 활성화 여부 확인"""
     return {
+        "dev_auto_login": _dev_auto_allowed(request),
         "google_enabled": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
         "naver_enabled": bool(settings.NAVER_CLIENT_ID and settings.NAVER_CLIENT_SECRET),
         "public_base_url": settings.PUBLIC_BASE_URL,

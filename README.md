@@ -69,6 +69,14 @@ cd code-lounge
 - **다른 장소(다른 네트워크)에서 통화하려면 TURN 중계 서버가 필요합니다.** `.env` 의 `TURN_URLS` 와 `TURN_USERNAME`/`TURN_CREDENTIAL`(Metered 등) 또는 `TURN_SECRET`(직접 운영하는 coturn)을 설정하세요. 설정이 없으면 화면에 안내가 표시되고, 같은 네트워크에서만 확실히 연결돼요.
 - 마이크는 `https` 또는 `localhost` 주소에서만 쓸 수 있어요.
 
+### 👥 팀원 화면 · 임시 서버 자동 로그인
+
+- 상단 **팀원** 탭(`/app/team`): 프로젝트별로 누가 접속 중인지(온라인·자리비움·방해금지·오프라인)를 보고, 접속 상태별로 걸러 볼 수 있어요. 소유자는 여기서 팀원 초대·역할 변경(팀장/팀원)·내보내기를, 팀원은 탈퇴를 할 수 있어요. 접속 상태는 실시간으로 바뀝니다.
+- **임시(로컬) 서버용 자동 로그인:** 서버를 켤 때 `DEV_AUTO_LOGIN_EMAIL=내이메일@gmail.com` 을 주면, 로그인 버튼을 누르는 순간 그 이메일의 *이미 있는* 계정으로 바로 로그인돼요. 내 컴퓨터(127.0.0.1)에서 직접 접속할 때만 동작하고(프록시·외부 접속은 거부), 계정을 새로 만들지 않아요. **배포 서버에서는 비워 두세요.**
+  ```bash
+  DEV_AUTO_LOGIN_EMAIL=내이메일@gmail.com EVENT_CRAWL_ENABLED=false .venv/bin/uvicorn main:app --app-dir api --host 127.0.0.1 --port 8080
+  ```
+
 ### 🗂 화면 주소와 폴더 구조
 
 화면마다 주소가 있어요: `/app`(홈) · `/app/login` · `/app/workspace` · `/app/meetings` · `/app/calendar` · `/app/events` · `/app/community`(글은 `/app/community/12`) · `/app/mypage` · `/app/admin`.

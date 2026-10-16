@@ -33,6 +33,7 @@ function applyAuthMode(){
       var curHost = location.hostname.replace(/^www\./, '').toLowerCase();
       oauthHere = !pubHost || pubHost === curHost || curHost === 'localhost' || curHost === '127.0.0.1' || curHost === 'duresync.cloud';
     }catch(e){ oauthHere = true; }
+    var dn = document.getElementById('authDevNote'); if(dn) dn.hidden = !conf.dev_auto_login;
     var card = document.getElementById('inviteCard');
     var cardShown = !!(card && !card.hidden);
     ['authButtons','authTerms','authSkip'].forEach(function(id){ var el = document.getElementById(id); if(el) el.hidden = !oauthHere; });
@@ -50,6 +51,18 @@ async function handleSocialLogin(provider){
   try {
     var confRes = await fetch(API_BASE + '/api/auth/config');
     var conf = confRes.ok ? await confRes.json() : {};
+    if(conf.dev_auto_login){                      // 임시(로컬) 서버: 소셜 로그인을 거치지 않고 바로 로그인
+      var dr = await fetch(API_BASE + '/api/auth/dev-auto', { method:'POST' });
+      if(dr.ok){
+        var dj = await dr.json();
+        try { localStorage.setItem('sync_auth_token', dj.access_token); } catch(e){}
+        window.location.href = '/app';
+        return;
+      }
+      var de = await dr.json().catch(function(){ return {}; });
+      pushToast('⚠️', '자동 로그인을 못 했어요', de.detail || '');
+      return;
+    }
     
     if (provider === 'Google') {
       if (conf.google_enabled) {

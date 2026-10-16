@@ -61,6 +61,9 @@
       <button data-view="community" onclick="goView('community')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10.5" r="2.4"/><path d="M3 19c.5-3 2.4-4.6 5-4.6s4.5 1.6 5 4.6M14.5 19c.3-2.2 1.6-3.5 3.6-3.5S21.5 16.8 21.8 19"/></svg>커뮤니티
       </button>
+      <button data-view="admin" onclick="goView('admin')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/></svg>팀원
+      </button>
     </nav>
     <div class="topbar-right">
       <div class="pst-wrap">
@@ -100,7 +103,7 @@
         <button class="avatar" id="avatarBtn" onclick="toggleAvatarMenu(event)" title="계정">나</button>
         <div class="avatar-menu" id="avatarMenu">
           <button onclick="goView('mypage')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1-3.8 3.6-5.7 7-5.7s6 1.9 7 5.7"/></svg>마이페이지</button>
-          <button onclick="goView('admin')" id="teamManageMenuItem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9.5" r="2.4"/><path d="M2.5 19c.5-3.2 2.6-4.9 6-4.9s5.5 1.7 6 4.9M14.5 19c.3-2.3 1.7-3.7 3.9-3.7s3.5 1.4 3.9 3.7"/></svg>팀 관리</button>
+          <button onclick="goView('admin')" id="teamManageMenuItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9.5" r="2.4"/><path d="M2.5 19c.5-3.2 2.6-4.9 6-4.9s5.5 1.7 6 4.9M14.5 19c.3-2.3 1.7-3.7 3.9-3.7s3.5 1.4 3.9 3.7"/></svg>팀 관리</button>
           <button onclick="openSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.04Z"/></svg>설정</button>
           <hr>
           <button onclick="mockLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>로그아웃</button>
@@ -136,6 +139,7 @@
             네이버로 계속하기
           </button>
         </div>
+        <p class="auth-devnote" id="authDevNote" hidden>🧪 임시 서버예요 — 로그인 버튼을 누르면 자동으로 로그인돼요.</p>
         <p class="auth-terms" id="authTerms">계속 진행하면 DureSync의 <a>이용약관</a> 및 <a>개인정보 처리방침</a>에 동의하게 됩니다.</p>
         <p class="auth-remote-note" id="authRemoteNote" hidden>이 주소에서는 구글/네이버 로그인을 쓸 수 없어요.<br>팀원에게 받은 <b>초대 링크</b>로 들어오거나, 서버를 켠 컴퓨터에서 로그인하세요.</p>
         <button class="auth-skip" id="authSkip" onclick="enterGuestHome(true)">← 로그인 없이 둘러보기</button>
@@ -753,51 +757,21 @@
   <!-- ============ ADMIN (Naver 로그인 시 팀장 권한) ============ -->
   <section class="view" data-view="admin">
     <div class="page-pad">
-      <div class="mypage-head">
-        <div class="big-avatar" style="background:linear-gradient(150deg,var(--accent-2),var(--accent));">나</div>
-        <div>
-          <h2>팀 관리 <span class="chip accent2" style="margin-left:6px;">관리자</span></h2>
-          <div class="role">프로젝트 팀원과 권한을 관리해요</div>
-        </div>
-      </div>
-
       <div class="section-head">
-        <div><span class="view-eyebrow">Team</span><h2 style="font-size:18px;">팀원 관리</h2><span class="sub">상세 정보를 열면 AI 분석과 피드백 기록을 볼 수 있어요</span></div>
+        <div><span class="view-eyebrow">Team</span><h2>팀원</h2><span class="sub">누가 들어와 있는지 보고, 팀원과 권한을 관리해요</span></div>
+        <button class="btn primary tm-invite" id="tmInviteBtn" onclick="tmInvite()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg>팀원 초대
+        </button>
       </div>
-      <div class="admin-member-grid" id="adminMemberGrid"><div style="padding:16px; color:var(--text-faint); grid-column:1/-1;">선택된 프로젝트가 없습니다.</div></div>
-    </div>
-
-    <div class="modal-backdrop" id="memberModal" onclick="if(event.target===this)closeMemberDetail()">
-      <div class="share-modal" style="text-align:left;">
-        <div class="mh">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div class="pavatar" id="mdAvatar" style="width:38px; height:38px;">지</div>
-            <div><h3 id="mdName" style="font-size:15px;">지우</h3><span style="font-size:11.5px; color:var(--text-faint);" id="mdRole">프론트엔드</span></div>
-          </div>
-          <button class="icon-btn" onclick="closeMemberDetail()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-        </div>
-        <div class="summary-stats">
-          <div class="stat-mini"><b id="mdTasks">8</b><span>완료 태스크</span></div>
-          <div class="stat-mini"><b id="mdAttend">88%</b><span>회의 참석률</span></div>
-          <div class="stat-mini"><b id="mdCommits">14</b><span>커밋</span></div>
-        </div>
-        <div class="sum-block">
-          <h5>🤖 AI 피드백 제안</h5>
-          <textarea id="mdAiFeedback" rows="3" style="width:100%; border:1px solid var(--border); background:var(--surface-2); border-radius:10px; padding:10px 12px; font-size:12.5px; font-family:var(--font-body); resize:vertical;"></textarea>
-          <button class="btn primary" style="margin-top:8px;" onclick="sendMemberFeedback(true)">이 피드백 보내기</button>
-        </div>
-        <div class="sum-block">
-          <h5>리더 피드백 작성</h5>
-          <div class="note-compose-input">
-            <input type="text" id="mdFeedbackInput" placeholder="예: '이번 주 UI 작업 속도가 빨라졌어요'">
-            <button class="btn primary" onclick="sendMemberFeedback(false)">남기기</button>
-          </div>
-        </div>
-        <div class="sum-block">
-          <h5>피드백 기록</h5>
-          <div class="feedback-list" id="mdHistory"></div>
-        </div>
+      <div class="tm-projects" id="tmProjects"></div>
+      <div class="tm-summary" id="tmSummary"></div>
+      <div class="tm-filters" id="tmFilters" role="tablist">
+        <button type="button" class="on" data-f="all" onclick="tmFilter('all')">전체</button>
+        <button type="button" data-f="online" onclick="tmFilter('online')">접속 중</button>
+        <button type="button" data-f="busy" onclick="tmFilter('busy')">자리비움·방해금지</button>
+        <button type="button" data-f="offline" onclick="tmFilter('offline')">오프라인</button>
       </div>
+      <div class="tm-grid" id="tmGrid"></div>
     </div>
   </section>
 

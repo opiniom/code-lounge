@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     PUBLIC_MODE: bool = False
     # 개발/테스트 전용: 이메일만으로 로그인하는 /api/auth/social 허용. 기본 꺼짐 (켜면 누구나 어떤 계정으로든 로그인 가능)
     ALLOW_DEV_LOGIN: bool = False
+    # 임시(로컬) 서버 전용: 이 이메일의 '이미 있는' 계정으로 로그인 버튼 한 번에 자동 로그인. 내 컴퓨터(127.0.0.1)에서 직접 접속할 때만 동작하고 계정을 새로 만들지 않는다. 배포 서버에서는 비워 둘 것
+    DEV_AUTO_LOGIN_EMAIL: str = ""
 
     # 팀 통화방(WebRTC) 연결 서버. 같은 네트워크 밖(다른 집·카페 등)에서 연결하려면 TURN 중계 서버가 필요하다.
     #  - STUN: 내 공인 주소를 알아내는 용도 (무료 공용 서버)

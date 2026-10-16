@@ -28,6 +28,7 @@ function pstRender(){
   var av = document.getElementById('avatarBtn'); if(av) av.dataset.pst = PST.server === false ? 'offline' : pstOwn();
   ntRender();
   if(typeof chatRenderPresence === 'function') chatRenderPresence();
+  if(typeof tmRefresh === 'function') tmRefresh();
 }
 function pstToggle(e){
   if(e) e.stopPropagation();
