@@ -9,13 +9,15 @@ var WG_CATALOG = [
 ];
 function wgShown(id){ var c = document.querySelector('.dyn-widget[data-widget="'+id+'"]'); return !!c && !c.hidden; }
 function wgPreview(id){
-  var row = function(t, a, b){ return '<div class="wgp-row"><span class="wgp-t">'+t+'</span><i style="background:'+a+'"></i><span class="wgp-l" style="width:'+b+'%"></span></div>'; };
-  if(id==='projects') return '<div class="wgp-title">🗂️ 워크스페이스</div><div class="wgp-cards">'+[['PY','#06B6D4'],['AI','#3B82F6'],['JS','#B24E9E']].map(function(x){ return '<div class="wgp-card"><b style="background:'+x[1]+'">'+x[0]+'</b><span class="wgp-l" style="width:80%"></span><span class="wgp-l s" style="width:50%"></span></div>'; }).join('')+'</div>';
-  if(id==='today') return '<div class="wgp-title">📅 오늘의 일정</div>'+row('14:00','#3B82F6',70)+row('16:30','#8B5CF6',52)+row('21:00','#22D3EE',62);
-  if(id==='events') return '<div class="wgp-title">🏆 마감 임박 공모전</div>'+row('D-1','#EF4444',74)+row('D-3','#F59E0B',58)+row('D-7','#3B82F6',66);
-  if(id==='community') return '<div class="wgp-title">👥 커뮤니티 인기글</div>'+row('질문','#3B82F6',72)+row('모집','#8B5CF6',60)+row('자랑','#EC4899',68);
-  if(id==='team') return '<div class="wgp-title">👥 팀원 접속 현황</div><div class="wgp-stack">'+['#3B82F6|#22C55E','#EC4899|#F59E0B','#8B5CF6|#22C55E','#06B6D4|#94A3B8'].map(function(x){ var q=x.split('|'); return '<b style="background:'+q[0]+'"><i style="background:'+q[1]+'"></i></b>'; }).join('')+'</div><div class="wgp-sbar"><i style="flex:2;background:#22C55E"></i><i style="flex:1;background:#F59E0B"></i><i style="flex:1;background:var(--border-strong)"></i></div>';
-  if(id==='notes') return '<div class="wgp-title">📝 최근 회의록</div>'+row('9/11','#22D3EE',76)+row('9/09','#8B5CF6',54);
+  /* 갤러리 미리보기는 예시 글자·숫자 없이 '모양'만 보여주는 뼈대(스켈레톤)로 그린다 */
+  var row = function(a, b){ return '<div class="wgp-row"><span class="wgp-t"><span class="wgp-l" style="width:100%"></span></span><i style="background:'+a+'"></i><span class="wgp-l" style="width:'+b+'%"></span></div>'; };
+  var title = function(ic, t){ return '<div class="wgp-title">'+ic+' '+t+'</div>'; };
+  if(id==='projects') return title('🗂️', '워크스페이스')+'<div class="wgp-cards">'+['#3B82F6','#8B5CF6','#06B6D4'].map(function(c){ return '<div class="wgp-card"><b style="background:'+c+'"></b><span class="wgp-l" style="width:80%"></span><span class="wgp-l s" style="width:50%"></span></div>'; }).join('')+'</div>';
+  if(id==='today') return title('📅', '오늘의 일정')+row('#3B82F6',70)+row('#8B5CF6',52)+row('#22D3EE',62);
+  if(id==='events') return title('🏆', '마감 임박 공모전')+row('#EF4444',74)+row('#F59E0B',58)+row('#3B82F6',66);
+  if(id==='community') return title('👥', '커뮤니티 인기글')+row('#3B82F6',72)+row('#8B5CF6',60)+row('#EC4899',68);
+  if(id==='team') return title('👥', '팀원 접속 현황')+'<div class="wgp-stack">'+['#3B82F6|#22C55E','#EC4899|#F59E0B','#8B5CF6|#22C55E','#06B6D4|#94A3B8'].map(function(x){ var q=x.split('|'); return '<b style="background:'+q[0]+'"><i style="background:'+q[1]+'"></i></b>'; }).join('')+'</div><div class="wgp-sbar"><i style="flex:2;background:#22C55E"></i><i style="flex:1;background:#F59E0B"></i><i style="flex:1;background:var(--border-strong)"></i></div>';
+  if(id==='notes') return title('📝', '최근 회의록')+row('#22D3EE',76)+row('#8B5CF6',54);
   return '';
 }
 function wgRender(){

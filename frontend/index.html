@@ -131,7 +131,7 @@
         <div class="invite-card" id="inviteCard" hidden>
           <div class="invite-card-t" id="inviteCardTitle"></div>
           <div class="invite-card-s" id="inviteCardSub"></div>
-          <input type="text" id="inviteGuestName" maxlength="20" placeholder="팀에서 쓸 이름 (예: 홍길동)" autocomplete="off" onkeydown="if(isEnter(event))acceptInviteAsGuest()">
+          <input type="text" id="inviteGuestName" maxlength="20" placeholder="팀에서 쓸 이름" autocomplete="off" onkeydown="if(isEnter(event))acceptInviteAsGuest()">
           <button class="btn primary" id="inviteGuestBtn" onclick="acceptInviteAsGuest()">초대 수락하고 들어가기</button>
           <div class="invite-card-or" id="inviteCardOr">또는 아래 계정으로 로그인하면 내 계정으로 참여해요</div>
         </div>
@@ -576,7 +576,7 @@
       <div class="share-modal">
         <div class="mh"><h3>내 일정 추가</h3><button class="icon-btn" onclick="closeAddEvent()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
         <div class="form-row"><label>프로젝트</label><select id="newEvtProject"></select></div>
-        <div class="form-row"><label>제목</label><input type="text" id="newEvtTitle" placeholder="예: 포트폴리오 정리"></div>
+        <div class="form-row"><label>제목</label><input type="text" id="newEvtTitle" placeholder="일정 제목"></div>
         <div class="form-row"><label>시작일 · 종료일</label>
           <div style="display:flex; gap:8px;"><input type="date" id="newEvtDate" style="flex:1; min-width:0;"><input type="date" id="newEvtEndDate" style="flex:1; min-width:0;"></div>
         </div>
@@ -820,7 +820,7 @@
     <div class="call-create" id="callCreate">
       <button class="call-create-btn" id="callCreateBtn" onclick="toggleCreateRoom()">＋ 방 만들기</button>
       <div class="call-create-form" id="callCreateForm" hidden>
-        <input type="text" id="callNewRoomName" maxlength="20" placeholder="방 이름 (예: 회의실, 스터디)" autocomplete="off" onkeydown="if(isEnter(event))submitCreateRoom()">
+        <input type="text" id="callNewRoomName" maxlength="20" placeholder="방 이름" autocomplete="off" onkeydown="if(isEnter(event))submitCreateRoom()">
         <button class="btn primary" onclick="submitCreateRoom()">만들기</button>
       </div>
     </div>
