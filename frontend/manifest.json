@@ -15,6 +15,7 @@
     "css/events.css",
     "css/editor.css",
     "css/polish.css",
+    "css/profile.css",
     "css/shell.css",
     "css/widgets.css",
     "css/presence.css",
@@ -42,6 +43,7 @@
     "js/core/session.js",
     "js/core/live.js",
     "js/pages/community.js",
+    "js/pages/profile.js",
     "js/pages/admin.js"
   ]
 }

@@ -93,7 +93,11 @@ async def teammate_ids(db, user_id: int) -> Set[int]:
     pids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))).scalar_subquery()
     members = (await db.execute(select(ProjectMember.user_id).where(ProjectMember.project_id.in_(select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))))))).scalars().all()
     owners = (await db.execute(select(Project.owner_id).where(or_(Project.id.in_(mine), Project.id.in_(owned))))).scalars().all()
-    return set(members) | set(owners) | {user_id}
+    base = set(members) | set(owners) | {user_id}
+    # 서로 팔로우한 사람(친구)에게도 접속 상태가 보인다
+    out = set((await db.execute(select(Follow.followee_id).where(Follow.follower_id == user_id))).scalars().all())
+    inn = set((await db.execute(select(Follow.follower_id).where(Follow.followee_id == user_id))).scalars().all())
+    return base | (out & inn)
 
 
 async def project_audience(db, project_id: int) -> Set[int]:
@@ -116,7 +120,7 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import CalendarEvent, ChatMessage, MeetingDoc, Notification, Project, ProjectFile, ProjectMember
+    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
@@ -125,6 +129,9 @@ def _collect(session: Session, flush_context=None) -> None:
             bag.add(("chat", None, obj.project_id, obj.user_id))
         elif isinstance(obj, CalendarEvent):
             bag.add(("calendar", None, obj.project_id, None))
+        elif isinstance(obj, Follow):                      # 팔로우/언팔로우: 양쪽 화면의 숫자·목록을 바로 갱신
+            bag.add(("follow", obj.followee_id, None, obj.follower_id))
+            bag.add(("follow", obj.follower_id, None, obj.followee_id))
         elif isinstance(obj, ProjectFile):
             bag.add(("files", None, obj.project_id, None))
         elif isinstance(obj, MeetingDoc):

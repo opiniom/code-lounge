@@ -2,8 +2,8 @@
    화면마다 자기 주소를 가진다:  /app · /app/login · /app/workspace · /app/meetings · /app/calendar
                                   /app/events · /app/community · /app/community/글번호 · /app/mypage · /app/admin
    주소를 직접 열거나 새로고침해도 그 화면이 열리고, 브라우저 뒤로/앞으로 가기도 동작한다. */
-var ROUTES = { home:'', auth:'login', workspace:'workspace', notes:'meetings', calendar:'calendar', events:'events', community:'community', mypage:'mypage', admin:'team' };
-var PAGE_TITLES = { home:'홈', auth:'로그인', workspace:'워크스페이스', notes:'회의록', calendar:'캘린더', events:'이벤트', community:'커뮤니티', mypage:'마이페이지', admin:'팀원' };
+var ROUTES = { home:'', auth:'login', workspace:'workspace', notes:'meetings', calendar:'calendar', events:'events', community:'community', mypage:'mypage', admin:'team', profile:'profile' };
+var PAGE_TITLES = { home:'홈', auth:'로그인', workspace:'워크스페이스', notes:'회의록', calendar:'캘린더', events:'이벤트', community:'커뮤니티', mypage:'마이페이지', admin:'팀원', profile:'프로필' };
 var ROUTER = { booted:false, replace:false, popping:false };
 function routePath(view, extra){ return '/app' + (ROUTES[view] ? '/' + ROUTES[view] : '') + (extra ? '/' + extra : ''); }
 function routeParse(pathname){
@@ -26,7 +26,7 @@ function routerSync(view){
   if(ROUTER.popping) return;
   var cur = routeParse(location.pathname);
   if(cur.view === view && view === 'community') return;      // 커뮤니티 글 주소(/app/community/번호)는 그대로 둔다
-  routerSetUrl(routePath(view));
+  routerSetUrl(view === 'profile' ? routePath('profile', PF.uid) : routePath(view));
 }
 /* 세션(게스트/로그인)이 정해진 뒤 한 번만: 처음 열린 주소의 화면으로 이동 */
 function routerBoot(){
@@ -36,6 +36,7 @@ function routerBoot(){
   if(v === 'auth' && authToken) v = 'home';
   ROUTER.replace = true;
   try {
+    if(v === 'profile') PF.uid = (r.id && /^\d+$/.test(r.id)) ? parseInt(r.id, 10) : null;
     if(v !== 'home') goView(v);
     else routerSetUrl('/app', true);
     if(v === 'community' && r.id && /^\d+$/.test(r.id)) cmOpenPost(parseInt(r.id, 10));
@@ -47,7 +48,7 @@ window.addEventListener('popstate', function(){
   try {
     var m = document.getElementById('cmPostModal');
     if(r.view === 'community' && r.id && /^\d+$/.test(r.id)){ goView('community'); cmOpenPost(parseInt(r.id, 10)); }
-    else { if(m && m.classList.contains('open')) cmClosePost(); goView(r.view === 'auth' && authToken ? 'home' : r.view); }
+    else { if(r.view === 'profile') PF.uid = (r.id && /^\d+$/.test(r.id)) ? parseInt(r.id, 10) : null; if(m && m.classList.contains('open')) cmClosePost(); goView(r.view === 'auth' && authToken ? 'home' : r.view); }
   } finally { ROUTER.popping = false; }
 });
 
@@ -63,6 +64,7 @@ function goView(name){
   if(name==='community') cmEnter();
   if(name==='admin') loadAdminMembers();
   if(name==='mypage') renderMyPage();
+  if(name==='profile') renderProfile();
   if(name==='workspace') enterWorkspaceView(); else wsStopPolling();
   if(name==='workspace'){
     setTimeout(function(){

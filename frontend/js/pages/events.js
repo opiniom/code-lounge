@@ -307,6 +307,7 @@ function renderProjRow(){
   }
   if(calReady) syncCalProjects();
   renderDureOrbit();
+  if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
 }
 function projPrev(){ if(projPageIndex>0){ projPageIndex--; renderProjRow(); } }
 function projNext(){

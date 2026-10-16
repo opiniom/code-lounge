@@ -219,7 +219,7 @@ function cmRenderPost(d){
   if(d.category === 'recruit' && d.recruit) h += d.recruit.open ? '<span class="cm-st open">모집중' + (d.recruit.d_day ? ' · ' + escapeHtml(d.recruit.d_day) : '') + '</span>' : '<span class="cm-st closed">모집 마감</span>';
   h += '</div><button class="icon-btn" onclick="cmClosePost()" title="닫기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>';
   h += '<div class="cm-d-title">' + escapeHtml(d.title) + '</div>';
-  h += '<div class="cm-d-author">' + cmAvatar(d.author.name, 30) + '<span><b>' + escapeHtml(d.author.name) + '</b>' + (d.author.official ? ' <span class="cm-badge author">운영</span>' : '') + '<br>' + escapeHtml(cmAgo(d.created_at)) + (d.updated_at && d.updated_at !== d.created_at ? ' · 수정됨' : '') + '</span>' + (d.project ? '<span class="cm-proj" style="margin-left:auto">📁 ' + escapeHtml(d.project.title) + ' · 팀원 ' + d.project.members + '명</span>' : '') + '</div>';
+  h += '<div class="cm-d-author">' + cmAvatar(d.author.name, 30) + '<span><b' + (d.author.id ? ' class="cm-au" onclick="cmClosePost();openProfile(' + d.author.id + ')" title="프로필 보기"' : '') + '>' + escapeHtml(d.author.name) + '</b>' + (d.author.official ? ' <span class="cm-badge author">운영</span>' : '') + '<br>' + escapeHtml(cmAgo(d.created_at)) + (d.updated_at && d.updated_at !== d.created_at ? ' · 수정됨' : '') + '</span>' + (d.project ? '<span class="cm-proj" style="margin-left:auto">📁 ' + escapeHtml(d.project.title) + ' · 팀원 ' + d.project.members + '명</span>' : '') + '</div>';
   if(d.event){
     h += '<div class="cm-evtcard" onclick="window.open(' + "'" + escapeHtml(evtSafeUrl(d.event.url)) + "'" + ',\'_blank\',\'noopener,noreferrer\')">' + (d.event.image_url && /^https:\/\//.test(d.event.image_url) ? '<img src="' + escapeHtml(d.event.image_url) + '" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">' : '<span style="font-size:30px">🏆</span>') + '<div><b>' + escapeHtml(d.event.title) + '</b><span>' + escapeHtml(d.event.category) + (d.event.d_day ? ' · ' + escapeHtml(d.event.d_day) : '') + ' · 공고 보기 ↗</span></div></div>';
   }
@@ -445,6 +445,8 @@ function openNotifLink(link){
   if(!link) return;
   var m = /^community:(\d+)$/.exec(link);
   if(m){ goView('community'); cmOpenPost(parseInt(m[1], 10)); return; }
+  m = /^profile:(\d+)$/.exec(link);
+  if(m){ openProfile(parseInt(m[1], 10)); return; }
   m = /^project:(\d+)$/.exec(link);
   if(m){ openWorkspace('p' + m[1]); return; }
   if(/^\/calendar/.test(link)) goView('calendar');

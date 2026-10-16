@@ -75,4 +75,10 @@ async def team_presence(current_user: User = Depends(get_current_user), db: Asyn
     rows = (await db.execute(select(User).where(or_(User.id.in_(member_ids), User.id.in_(owner_ids))))).scalars().all()
     now = datetime.utcnow()
     from services import live
+    from models import Follow
+    out_ids = set((await db.execute(select(Follow.followee_id).where(Follow.follower_id == current_user.id))).scalars().all())
+    in_ids = set((await db.execute(select(Follow.follower_id).where(Follow.followee_id == current_user.id))).scalars().all())
+    friends = out_ids & in_ids
+    if friends:
+        rows = list({u.id: u for u in list(rows) + list((await db.execute(select(User).where(User.id.in_(friends)))).scalars().all())}.values())
     return {str(u.id): effective_status(u.presence_pref, now if live.hub.is_online(u.id) else u.last_seen_at, now) for u in rows}

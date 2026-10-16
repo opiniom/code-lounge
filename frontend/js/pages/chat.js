@@ -191,7 +191,7 @@ function refreshTeamEvents(){
   apiFetch('/api/calendar/events').then(function(rows){
     calendarEvents = rows.map(serverEventToLocal);
     syncCandidateStatus();
-    renderCalendarEvents(); renderCalSelector(); renderDetectCard(); wgLiveToday();
+    renderCalendarEvents(); renderCalSelector(); renderDetectCard(); wgLiveToday(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
   }).catch(function(){});
 }
 function startChat(){
@@ -278,7 +278,7 @@ function refreshMeetingDocs(){
   apiFetch('/api/meetings').then(function(rows){
     meetingDocs = rows.map(docFromServer);
     meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });
-    renderMeetingDocs();
+    renderMeetingDocs(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
   }).catch(function(){});
 }
 function buildMsgRow(m){

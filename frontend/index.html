@@ -108,6 +108,7 @@
       <div class="avatar-wrap">
         <button class="avatar" id="avatarBtn" onclick="toggleAvatarMenu(event)" title="계정">나</button>
         <div class="avatar-menu" id="avatarMenu">
+          <button onclick="openProfile()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="4" width="17" height="16" rx="3"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 16.5c.5-1.6 1.7-2.4 3.2-2.4s2.7.8 3.2 2.4M14.5 9.5h3.5M14.5 13h3.5"/></svg>프로필 · 포트폴리오</button>
           <button onclick="goView('mypage')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1-3.8 3.6-5.7 7-5.7s6 1.9 7 5.7"/></svg>마이페이지</button>
           <button onclick="goView('admin')" id="teamManageMenuItem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9.5" r="2.4"/><path d="M2.5 19c.5-3.2 2.6-4.9 6-4.9s5.5 1.7 6 4.9M14.5 19c.3-2.3 1.7-3.7 3.9-3.7s3.5 1.4 3.9 3.7"/></svg>팀 관리</button>
           <button onclick="openSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.04Z"/></svg>설정</button>
@@ -729,36 +730,40 @@
           <h2 id="mypageName">나</h2>
           <div class="role" id="mypageRole"></div>
         </div>
-        <button class="btn ghost" style="margin-left:auto;" onclick="openProfileModal()">
+        <button class="btn primary" style="margin-left:auto;" onclick="openProfile()">프로필 · 포트폴리오</button>
+        <button class="btn ghost" onclick="openProfileModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>프로필 수정
         </button>
       </div>
 
       <div class="stat-grid">
-        <div class="stat-tile card">
+        <div class="stat-tile card" role="button" tabindex="0" data-tab="projects" onclick="mpTab('projects')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mpTab('projects');}">
           <div class="top"><span class="lbl">참여 프로젝트</span><div class="ic" style="background:var(--accent-soft); color:var(--accent-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h3.3l2 2.2H18A2.5 2.5 0 0 1 20.5 9.7v7.8A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5Z"/></svg></div></div>
           <b id="mpProjects">0</b><span class="delta">내가 속한 팀</span>
         </div>
-        <div class="stat-tile card">
+        <div class="stat-tile card" role="button" tabindex="0" data-tab="events" onclick="mpTab('events')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mpTab('events');}">
           <div class="top"><span class="lbl">이번 달 일정</span><div class="ic" style="background:var(--accent-2-soft); color:var(--accent-2-ink);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16"/></svg></div></div>
           <b id="mpEvents">0</b><span class="delta">캘린더에 등록된 일정</span>
         </div>
-        <div class="stat-tile card">
+        <div class="stat-tile card" role="button" tabindex="0" data-tab="notes" onclick="mpTab('notes')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mpTab('notes');}">
           <div class="top"><span class="lbl">회의록</span><div class="ic" style="background:var(--surface-3); color:var(--text-muted);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6"/></svg></div></div>
           <b id="mpNotes">0</b><span class="delta">정리된 회의록</span>
         </div>
-        <div class="stat-tile card">
+        <div class="stat-tile card" role="button" tabindex="0" data-tab="posts" onclick="mpTab('posts')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mpTab('posts');}">
           <div class="top"><span class="lbl">내가 쓴 커뮤니티 글</span><div class="ic" style="background:rgba(236,72,153,.14); color:#EC4899;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7.5 7.5 0 0 1-10.9 6.7L4 20l1.4-4.3A7.5 7.5 0 1 1 20 12Z"/></svg></div></div>
           <b id="mpPosts">0</b><span class="delta">글</span>
         </div>
       </div>
 
-      <div class="card mp-empty">
-        <b>활동 기록</b>
-        <p>태스크 완료·회의 참석 같은 활동 통계와 팀장 피드백은 팀 활동이 쌓이면 이곳에 나타나요.</p>
+      <div class="card mp-panel" id="mpPanel">
+        <div class="mp-head"><b id="mpTitle">참여 프로젝트</b><span id="mpCount"></span><span class="mp-hint">위의 숫자 카드를 눌러 자세히 보고 관리하세요</span></div>
+        <div class="mp-list" id="mpList"></div>
       </div>
     </div>
   </section>
+
+  <!-- ============ PROFILE ============ -->
+  <section class="view" data-view="profile"><div class="page-pad" id="pfRoot"></div></section>
 
   <!-- ============ ADMIN (Naver 로그인 시 팀장 권한) ============ -->
   <section class="view" data-view="admin">

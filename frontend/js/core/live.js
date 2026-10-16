@@ -51,7 +51,7 @@ function liveNotes(m){
     liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; });
     meetingDocs = rows.map(docFromServer);
     meetingDocs.forEach(function(d){ detectCache[d.id] = d.raw; });
-    renderMeetingDocs(); if(typeof wgLiveNotes === 'function') wgLiveNotes();
+    renderMeetingDocs(); if(typeof wgLiveNotes === 'function') wgLiveNotes(); if(typeof mpRefreshSoon === 'function') mpRefreshSoon();
     if(fresh.length){ var r = fresh[0]; pushToast('📝', (r.author || '팀원') + '님이 회의록을 올렸어요', r.title + (fresh.length > 1 ? ' 외 ' + (fresh.length - 1) + '개' : ''), { duration:3500, onclick:function(){ goView('notes'); } }); }
   }).catch(function(){});
 }
@@ -71,6 +71,7 @@ function liveHandle(m){
       if(chatServerId()) loadChat(false);
       break;
     case 'typing': chatTypingEvent(m); break;
+    case 'follow': pfLive(); break;
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': liveNotes(m); break;
     case 'files': wsPollSoon(); break;

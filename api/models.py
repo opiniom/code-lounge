@@ -294,3 +294,39 @@ class CommunityReport(Base):
     target_id = Column(Integer, nullable=False)
     reason = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserProfile(Base):
+    """내 프로필: 한 줄 소개·자기소개·기술 스택·링크 (포트폴리오 화면에 보인다)"""
+    __tablename__ = "user_profiles"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    headline = Column(String(120), nullable=True)
+    bio = Column(Text, nullable=True)
+    skills = Column(Text, nullable=True)     # JSON 배열 (최대 20개)
+    links = Column(Text, nullable=True)      # JSON 배열 [{label,url}] (최대 6개)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PortfolioEntry(Base):
+    """프로젝트별로 '내가 한 일'을 직접 적는 포트폴리오 항목 (자동 집계 통계는 따로 계산한다)"""
+    __tablename__ = "portfolio_entries"
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_portfolio_user_project"),)
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    summary = Column(Text, nullable=True)
+    tech = Column(Text, nullable=True)       # JSON 배열 (최대 12개)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class Follow(Base):
+    """팔로우 관계: follower 가 followee 를 팔로우한다"""
+    __tablename__ = "follows"
+    __table_args__ = (UniqueConstraint("follower_id", "followee_id", name="uq_follow_pair"),)
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    follower_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    followee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

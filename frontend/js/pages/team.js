@@ -261,31 +261,39 @@ function renderTeamPage(){
     .sort(function(a, b){ return rank[a.st] - rank[b.st] || (a.m.id === ownerId ? -1 : b.m.id === ownerId ? 1 : 0); });
   if(!show.length){ empty('해당하는 팀원이 없어요', '다른 필터를 눌러 보세요.'); return; }
   var myId = currentUser ? currentUser.id : null, sid = parseInt(String(cur.id).replace(/^p/, ''), 10);
-  show.forEach(function(r){
-    var m = r.m, isSelf = m.id === myId, isOwner = m.id === ownerId, st = r.st;
-    var card = document.createElement('div'); card.className = 'tm-card' + (st === 'offline' ? ' off' : '');
-    var role = isOwner ? '👑 소유자' : (m.role === 'leader' ? '팀장' : '팀원');
-    card.innerHTML = '<div class="tm-top"><div class="tm-av" data-pst="' + st + '"></div><div class="tm-who"><div class="tm-name"><b></b></div><span class="tm-mail"></span></div><span class="tm-role"></span></div>'
-      + '<div class="tm-state"><span class="tm-dot" data-pst="' + st + '"></span><span class="tm-st"></span></div><div class="tm-act"></div>';
-    var av = card.querySelector('.tm-av'); av.textContent = String(m.username || '?').slice(0, 1); av.style.background = isSelf ? '#06B6D4' : chatColor(m.username);
-    card.querySelector('.tm-name b').textContent = m.username;
-    if(isSelf){ var me = document.createElement('span'); me.className = 'chip accent2'; me.textContent = '나'; card.querySelector('.tm-name').appendChild(me); }
-    card.querySelector('.tm-mail').textContent = m.email || '';
-    card.querySelector('.tm-role').textContent = role; if(isOwner || m.role === 'leader') card.querySelector('.tm-role').classList.add('lead');
-    var stText = { online:'접속 중', away:'자리비움', dnd:'방해금지', offline:'오프라인' }[st];
-    card.querySelector('.tm-st').textContent = stText; card.querySelector('.tm-st').dataset.pst = st;
-    var act = card.querySelector('.tm-act');
-    if(cur.isOwner && !isSelf){
-      var sel = document.createElement('select'); sel.className = 'tm-sel';
-      [['member','팀원'],['leader','팀장']].forEach(function(o){ var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if(m.role === o[0]) op.selected = true; sel.appendChild(op); });
-      sel.onchange = function(){ changeMemberRole(sid, m.id, sel.value); };
-      var kick = document.createElement('button'); kick.className = 'btn ghost tm-kick'; kick.textContent = '내보내기'; kick.onclick = function(){ kickMember(sid, m.id); };
-      act.appendChild(sel); act.appendChild(kick);
-    } else if(isSelf && !cur.isOwner){
-      var lv = document.createElement('button'); lv.className = 'btn ghost tm-kick'; lv.textContent = '프로젝트 탈퇴'; lv.onclick = function(){ leaveProject(sid, m.id); }; act.appendChild(lv);
-    } else { act.remove(); }
-    grid.appendChild(card);
+  var groups = [['owner', '팀장'], ['leader', '부팀장'], ['member', '팀원']];
+  var roleOf = function(m){ return m.id === ownerId ? 'owner' : (m.role === 'leader' ? 'leader' : 'member'); };
+  var myId = currentUser ? currentUser.id : null, sid = parseInt(String(cur.id).replace(/^p/, ''), 10);
+  groups.forEach(function(g){
+    var part = show.filter(function(r){ return roleOf(r.m) === g[0]; }); if(!part.length) return;
+    var gh = document.createElement('div'); gh.className = 'tm-group'; gh.innerHTML = '<b></b><span></span>'; gh.querySelector('b').textContent = g[1]; gh.querySelector('span').textContent = part.length + '명'; grid.appendChild(gh);
+    part.forEach(function(r){ grid.appendChild(tmCard(r, g[0], cur, sid, myId)); });
   });
+}
+function tmCard(r, role, cur, sid, myId){
+  var m = r.m, isSelf = m.id === myId, st = r.st;
+  var card = document.createElement('div'); card.className = 'tm-card' + (st === 'offline' ? ' off' : '');
+  card.innerHTML = '<div class="tm-top"><div class="tm-av" data-pst="' + st + '"></div><div class="tm-who"><div class="tm-name"><b></b></div><span class="tm-mail"></span></div><span class="tm-role"></span></div>'
+    + '<div class="tm-state"><span class="tm-dot" data-pst="' + st + '"></span><span class="tm-st"></span></div><div class="tm-act"></div>';
+  var av = card.querySelector('.tm-av'); av.textContent = String(m.username || '?').slice(0, 1); av.style.background = isSelf ? '#06B6D4' : chatColor(m.username);
+  av.style.cursor = 'pointer'; av.title = '프로필 · 포트폴리오 보기'; av.onclick = function(){ openProfile(m.id); };
+  card.querySelector('.tm-name b').textContent = m.username;
+  if(isSelf){ var me = document.createElement('span'); me.className = 'chip accent2'; me.textContent = '나'; card.querySelector('.tm-name').appendChild(me); }
+  card.querySelector('.tm-mail').textContent = m.email || '';
+  var rl = card.querySelector('.tm-role'); rl.textContent = role === 'owner' ? '👑 팀장' : (role === 'leader' ? '부팀장' : '팀원'); if(role !== 'member') rl.classList.add('lead');
+  card.querySelector('.tm-st').textContent = { online:'접속 중', away:'자리비움', dnd:'방해금지', offline:'오프라인' }[st]; card.querySelector('.tm-st').dataset.pst = st;
+  var act = card.querySelector('.tm-act');
+  var pb = document.createElement('button'); pb.className = 'btn ghost tm-prof'; pb.textContent = '프로필'; pb.onclick = function(){ openProfile(m.id); }; act.appendChild(pb);
+  if(cur.isOwner && !isSelf){
+    var sel = document.createElement('select'); sel.className = 'tm-sel';
+    [['member', '팀원'], ['leader', '부팀장']].forEach(function(o){ var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if(m.role === o[0]) op.selected = true; sel.appendChild(op); });
+    sel.onchange = function(){ changeMemberRole(sid, m.id, sel.value); };
+    var kick = document.createElement('button'); kick.className = 'btn ghost tm-kick'; kick.textContent = '내보내기'; kick.onclick = function(){ kickMember(sid, m.id); };
+    act.appendChild(sel); act.appendChild(kick);
+  } else if(isSelf && !cur.isOwner){
+    var lv = document.createElement('button'); lv.className = 'btn ghost tm-kick'; lv.textContent = '프로젝트 탈퇴'; lv.onclick = function(){ leaveProject(sid, m.id); }; act.appendChild(lv);
+  }
+  return card;
 }
 function loadAdminMembers(){ renderTeamPage(); }
 
@@ -295,7 +303,7 @@ async function changeMemberRole(projectId, userId, newRole){
       method: 'PATCH',
       body: JSON.stringify({ role: newRole })
     });
-    pushToast('👑', '역할 변경', '팀원 역할이 성공적으로 변경되었습니다.');
+    pushToast('👑', '역할을 바꿨어요', (newRole === 'leader' ? '부팀장' : '팀원') + '으로 변경했어요.', { duration:2200 });
     await loadCalProjects();
     renderTeamPage();
   } catch(e){

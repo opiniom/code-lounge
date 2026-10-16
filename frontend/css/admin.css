@@ -48,3 +48,7 @@
 .tm-empty-ic{width:60px; height:60px; border-radius:20px; display:flex; align-items:center; justify-content:center; background:var(--accent-soft); color:var(--accent-ink); margin-bottom:4px;} .tm-empty b{font-size:15px;} .tm-empty span{font-size:13px; color:var(--text-faint);} .tm-empty .btn{margin-top:8px;}
 .tm-invite[hidden]{display:none;}
 @media (max-width:640px){ .tm-summary{grid-template-columns:repeat(3,1fr); gap:8px;} .tm-stat{padding:12px;} .tm-stat b{font-size:22px;} }
+
+.tm-group{grid-column:1/-1; display:flex; align-items:baseline; gap:8px; margin:8px 0 -2px; padding:0 4px;} .tm-group b{font-size:13px; font-weight:800; letter-spacing:-.02em;} .tm-group span{font-size:12px; color:var(--text-faint);}
+.tm-prof{font-size:12.5px;}
+.tm-act .tm-kick{margin-left:auto;}
