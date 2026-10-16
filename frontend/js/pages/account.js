@@ -13,13 +13,6 @@ function wdH(tag, attrs, kids){
   (kids || []).forEach(function(c){ if(c == null || c === false) return; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
   return e;
 }
-/* 지금 실제로 보이는 영역(주소창·키보드를 뺀)에 창을 맞춘다. iPhone Safari 는 vh 가 보이는 높이보다 커서 아래 버튼이 가려지고,
-   키보드가 올라오면 고정 위치 창이 키보드 뒤로 숨기 때문이다. */
-function wdFit(){
-  var ov = document.getElementById('wdOverlay'); if(!ov || ov.hidden) return;
-  var vv = window.visualViewport, h = vv ? vv.height : window.innerHeight, t = vv ? vv.offsetTop : 0;
-  ov.style.setProperty('--wd-h', Math.round(h) + 'px'); ov.style.setProperty('--wd-top', Math.round(t) + 'px');
-}
 function wdN(n){ return (n || 0).toLocaleString('ko-KR'); }
 
 function wdTerms(d){
@@ -60,9 +53,6 @@ function wdEnsure(){
   ]);
   document.body.appendChild(ov);
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !ov.hidden) wdClose(); });
-  if(window.visualViewport){ window.visualViewport.addEventListener('resize', wdFit); window.visualViewport.addEventListener('scroll', wdFit); }
-  window.addEventListener('resize', wdFit);
-  window.addEventListener('orientationchange', function(){ setTimeout(wdFit, 250); });
   ov.addEventListener('focusin', function(e){            // 입력칸을 누르면 키보드에 가려지지 않게 가운데로 스크롤
     var t = e.target; if(t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) setTimeout(function(){ try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 320);
   });
@@ -73,7 +63,6 @@ function wdOpen(){
   wdEnsure();
   WD.step = 1; WD.busy = false; WD.data = null; WD.c1 = WD.c2 = false; WD.reason = ''; WD.reasonText = ''; WD.typed = '';
   var ov = document.getElementById('wdOverlay'); ov.hidden = false; document.documentElement.classList.add('wd-lock');
-  wdFit();
   wdRender();
   apiFetch('/api/account/withdraw/preview').then(function(d){ WD.data = d; wdRender(); }).catch(function(e){ WD.data = { error:(e && e.message) || '불러오지 못했어요.' }; wdRender(); });
 }
@@ -195,5 +184,5 @@ function wdDone(days){
     wdH('p', { text:'계정과 개인 데이터는 삭제됐어요. 탈퇴 기록은 ' + days + '일 뒤 자동으로 지워져요. 언제든 다시 가입할 수 있어요.' })
   ]));
   foot.appendChild(wdH('button', { class:'btn primary wd-ok', type:'button', text:'확인', onclick:function(){ ov.hidden = true; document.documentElement.classList.remove('wd-lock'); goView('home'); } }));
-  ov.hidden = false; document.documentElement.classList.add('wd-lock'); wdFit();
+  ov.hidden = false; document.documentElement.classList.add('wd-lock');
 }
