@@ -62,6 +62,27 @@ async function checkBackendHealth() {
 }
 
 
+/* 이 서버가 실제로 실행할 수 있는 언어 목록 (/health). 잠깐 기억해 두고 다시 묻지 않는다 */
+var WS_RUN_CACHE = { at: 0, langs: null };
+async function wsRunSupported() {
+  if (WS_RUN_CACHE.langs && Date.now() - WS_RUN_CACHE.at < 60000) return WS_RUN_CACHE.langs;
+  try {
+    var res = await fetch(API_BASE + '/health', { signal: AbortSignal.timeout(4000) });
+    var d = await res.json();
+    if (Array.isArray(d.supported_languages)) { WS_RUN_CACHE = { at: Date.now(), langs: d.supported_languages.map(function(x){ return String(x).toLowerCase(); }) }; return WS_RUN_CACHE.langs; }
+  } catch(e){}
+  return null;
+}
+/* 실행하지 않고 이유만 터미널에 알려 준다 */
+function wsRunNotice(title, detail) {
+  var termPanel = document.getElementById('wsTerminalPanel'); if (termPanel) termPanel.classList.remove('collapsed');
+  setTerminalTab('output');
+  var chip = document.getElementById('termStatusChip'), t = document.getElementById('termExecTime'), out = document.getElementById('termOutputText');
+  if (chip) { chip.style.display = 'inline-block'; chip.className = 'term-status-chip error'; chip.textContent = '실행 안 함'; }
+  if (t) t.style.display = 'none';
+  if (out) out.innerHTML = '<div class="term-err">// ' + escapeHtml(title) + '</div>\n<span class="term-dim">' + escapeHtml(detail) + '</span>';
+  pushToast('ℹ️', title, '');
+}
 async function runCurrentCode() {
   if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
   var code = '';
@@ -74,12 +95,18 @@ async function runCurrentCode() {
     pushToast('⚠️', '코드 없음', '실행할 코드를 입력해주세요.');
     return;
   }
-  // 파일 확장자/속성으로 언어 자동 감지
-  var lang = getFileLanguage(currentFileKey);
-  var validLangs = ['python', 'java', 'csharp', 'cpp', 'c'];
-  if (!validLangs.includes(lang)) {
-    pushToast('ℹ️', '언어 안내', '격리 샌드박스는 Python, Java, C#, C++, C 실행을 지원합니다.');
-    lang = 'python';
+  // 파일 확장자로 실행 언어를 정한다. 실행할 수 없는 파일(.md .txt .json …)을 몰래 Python 으로 돌리지 않는다
+  var fobj = currentFileKey && files[currentFileKey];
+  var lang = wsRunLang(currentFileKey);
+  var supported = await wsRunSupported();
+  if (!lang) {
+    var ex = fobj ? wsExt(fobj.path || fobj.tab) : '';
+    wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','rb','php','pl','sh','go','rs'].map(function(e){ return '.' + e; }).join(' '));
+    return;
+  }
+  if (supported && supported.indexOf(lang) < 0) {
+    wsRunNotice(WS_RUN_LABEL[lang] + ' 실행 환경이 이 서버에 없어요', '이 서버에서 지금 실행할 수 있는 언어: ' + (supported.map(function(l){ return WS_RUN_LABEL[l] || l; }).join(', ') || '없음') + '\n(서버에 ' + WS_RUN_LABEL[lang] + ' 를 설치하면 실행할 수 있어요)');
+    return;
   }
   var stdin = document.getElementById('termStdinText').value;
   var runBtn = document.getElementById('wsRunBtn');
@@ -117,11 +144,13 @@ async function runCurrentCode() {
     if (!res.ok) throw new Error(result.detail || '실행 요청 실패');
 
     var isOk = (result.status === 'Accepted');
+    if (result.error && !result.stdout && !result.stderr && !result.compile_output) { statusChip.className = 'term-status-chip error'; statusChip.textContent = result.status; execTime.textContent = result.execution_time != null ? result.execution_time + 's' : '-'; outPre.innerHTML = '<div class="term-err">// ' + escapeHtml(result.error) + '</div>'; return; }
     statusChip.className = 'term-status-chip ' + (isOk ? 'success' : 'error');
     statusChip.textContent = result.status;
     execTime.textContent = (result.execution_time !== null ? result.execution_time : 0) + 's';
 
     var html = '';
+    if (result.error) { html += '<div class="term-err">// ' + escapeHtml(result.error) + '</div>\n'; }
     if (result.compile_output) {
       html += '<div class="term-err">// [컴파일 에러]\n' + escapeHtml(result.compile_output) + '</div>\n';
     }
@@ -144,7 +173,8 @@ async function runCurrentCode() {
     statusChip.className = 'term-status-chip error';
     statusChip.textContent = 'Error';
     execTime.textContent = '-';
-    outPre.innerHTML = '<span class="term-err">// 오류 발생: ' + escapeHtml(err.message) + '\n// 백엔드 서버(http://localhost:8000) 가동 여부를 확인하세요.</span>';
+    var offline = (err instanceof TypeError);      // 네트워크 자체가 안 될 때만 '서버 확인' 안내를 붙인다
+    outPre.innerHTML = '<span class="term-err">// ' + (offline ? '서버에 연결할 수 없어요. 인터넷 연결이나 서버 상태를 확인해 주세요.' : escapeHtml(err.message)) + '</span>';
   } finally {
     if (runBtn) runBtn.disabled = false;
   }

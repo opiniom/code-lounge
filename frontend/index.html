@@ -329,15 +329,17 @@
             <button class="icon-btn" onclick="triggerOpenFolder()" title="내 컴퓨터 폴더 열기" style="padding:2px 4px; width:26px; height:26px;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
             </button>
-            <button class="icon-btn" onclick="promptNewFile()" title="새 파일 생성" style="padding:2px 4px; width:26px; height:26px;">
+            <button class="icon-btn" onclick="promptNewFile()" title="새 파일 (선택한 폴더 안에 만들어져요)" style="padding:2px 4px; width:26px; height:26px;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15h6"/></svg>
+            </button>
+            <button class="icon-btn" onclick="promptNewFile('folder')" title="새 폴더 (선택한 폴더 안에 만들어져요)" style="padding:2px 4px; width:26px; height:26px;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M12 11v6M9 14h6"/></svg>
             </button>
             <button class="icon-btn" onclick="toggleSidebar()" title="탐색기 접기" style="padding:2px 4px; width:26px; height:26px;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
             </button>
           </div>
         </div>
-        <div class="ft-newrow" id="wsNewFileRow" hidden><input id="wsNewFileInput" placeholder="파일 이름 · 예: src/main.py (Enter)" onkeydown="wsNewFileKey(event)" onblur="wsNewFileBlur()"></div>
         <div class="ft-search"><input id="wsFileSearch" placeholder="파일 검색" oninput="wsSetSearch(this.value)"></div>
         <div class="filetree-content" id="wsFileTreeContent"></div>
       </aside>

@@ -1,22 +1,29 @@
 /* ---- 파일 확장자 및 헬퍼 ---- */
 function getDotColorForExt(ext) {
   var map = {
-    py: '#3572A5', java: '#b07219', ts: '#3178c6', tsx: '#3178c6',
-    js: '#f1e05a', jsx: '#f1e05a', json: '#cbcb41', html: '#e34c26',
-    css: '#563d7c', md: '#42a5f5', txt: '#888888', sql: '#e38c00',
-    sh: '#89e051', yml: '#cb171e', yaml: '#cb171e'
+    py: '#3572A5', java: '#b07219', ts: '#3178c6', tsx: '#3178c6', js: '#f1e05a', jsx: '#f1e05a', mjs: '#f1e05a', cjs: '#f1e05a',
+    json: '#cbcb41', html: '#e34c26', css: '#563d7c', md: '#42a5f5', txt: '#888888', sql: '#e38c00', sh: '#89e051', bash: '#89e051',
+    yml: '#cb171e', yaml: '#cb171e', c: '#555555', h: '#555555', cpp: '#f34b7d', cc: '#f34b7d', cxx: '#f34b7d', hpp: '#f34b7d',
+    cs: '#178600', rb: '#cc342d', php: '#4F5D95', pl: '#0298c3', go: '#00ADD8', rs: '#dea584', kt: '#A97BFF', swift: '#F05138', lua: '#000080'
   };
   return map[ext] || '#888888';
 }
 
 function getLangForExt(ext) {
   var map = {
-    py: 'python', java: 'java', ts: 'typescript', tsx: 'typescript',
-    js: 'javascript', jsx: 'javascript', json: 'json', html: 'html',
-    css: 'css', md: 'markdown', sql: 'sql', sh: 'shell'
+    py: 'python', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
+    java: 'java', c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp', cs: 'csharp', rb: 'ruby', php: 'php', pl: 'perl',
+    sh: 'shell', bash: 'shell', go: 'go', rs: 'rust', kt: 'kotlin', swift: 'swift', lua: 'lua', json: 'json', html: 'html', htm: 'html',
+    css: 'css', scss: 'scss', md: 'markdown', sql: 'sql', yml: 'yaml', yaml: 'yaml', xml: 'xml'
   };
   return map[ext] || 'plaintext';
 }
+
+/* 실행할 수 있는 파일: 확장자 → 실행 언어 (서버 샌드박스가 아는 이름). 그 밖의 파일(.md .txt .json …)은 실행하지 않는다 */
+var WS_RUN_BY_EXT = { py:'python', js:'javascript', mjs:'javascript', cjs:'javascript', ts:'typescript', java:'java', c:'c', cpp:'cpp', cc:'cpp', cxx:'cpp', cs:'csharp', rb:'ruby', php:'php', pl:'perl', sh:'bash', bash:'bash', go:'go', rs:'rust' };
+var WS_RUN_LABEL = { python:'Python', javascript:'JavaScript', typescript:'TypeScript', java:'Java', c:'C', cpp:'C++', csharp:'C#', ruby:'Ruby', php:'PHP', perl:'Perl', bash:'Bash', go:'Go', rust:'Rust' };
+function wsExt(name) { var n = String(name || '').split('/').pop(); var i = n.lastIndexOf('.'); return i > 0 ? n.slice(i + 1).toLowerCase() : ''; }
+function wsRunLang(key) { var f = key && files[key]; return f ? (WS_RUN_BY_EXT[wsExt(f.path || f.tab)] || null) : null; }
 
 /* ---- 사용자 컴퓨터 폴더 입력 및 새 파일 생성 ---- */
 function triggerOpenFolder() {
@@ -41,7 +48,7 @@ function handleFolderSelect(event) {
       var parts = relPath.split('/');
       if (parts.length > 1 && !rootFolderName) rootFolderName = parts[0];
       var displayPath = parts.length > 1 ? parts.slice(1).join('/') : file.name;
-      if (/(^|\/)(node_modules|\.git|__pycache__|\.venv|dist|build)(\/|$)/.test(displayPath)) { skipped++; return; }
+      if (/(^|\/)(node_modules|\.git|__pycache__|\.venv|dist|build)(\/|$)/.test(displayPath) || !wsValidatePath(displayPath).ok) { skipped++; return; }
       var ext = (file.name.split('.').pop() || '').toLowerCase();
       if (WS_BINARY_EXT.indexOf(ext) >= 0 || file.size > 300000) { skipped++; return; }
       reads.push(new Promise(function(resolve) {
@@ -70,24 +77,61 @@ function handleFolderSelect(event) {
   });
 }
 
-function promptNewFile() {
+/* VS Code 처럼: 폴더를 누르고 "새 파일/새 폴더"를 누르면 그 폴더 안에 입력칸이 바로 생긴다 (폴더 이름을 다시 칠 필요 없음) */
+var wsSelDir = '', wsCreating = null;
+function wsDirOf(path) { var i = String(path || '').lastIndexOf('/'); return i < 0 ? '' : path.slice(0, i); }
+function wsDirExists(dir) { if (!dir) return true; return Object.keys(files).some(function(k){ return files[k].path.indexOf(dir + '/') === 0; }); }
+function promptNewFile(kind) { wsStartCreate(wsSelDir, kind === 'folder' ? 'folder' : 'file'); }
+function wsStartCreate(dir, kind) {
   var tree = document.getElementById('wsFileTree');
   if (tree && tree.classList.contains('collapsed')) toggleSidebar();
-  var row = document.getElementById('wsNewFileRow');
-  var inp = document.getElementById('wsNewFileInput');
-  if (!row || !inp) return;
-  row.hidden = false; inp.value = '';
-  var empty = document.getElementById('wsEmptyState');
-  if (empty && !empty.hidden && Object.keys(files).length === 0) { empty.hidden = true; }   // 빈 화면에서 눌러도 탐색기에서 바로 입력
-  inp.focus();
+  if (!wsDirExists(dir)) dir = '';
+  wsSelDir = dir; wsRenaming = null; wsDeleting = null;
+  var parts = dir ? dir.split('/') : [], acc = '';
+  parts.forEach(function(p){ acc += (acc ? '/' : '') + p; wsCollapsed[acc] = false; });       // 닫혀 있던 폴더는 펼친다
+  wsSearch = ''; var si = document.getElementById('wsFileSearch'); if (si) si.value = '';
+  wsCreating = { dir: dir, kind: kind || 'file' };
+  var empty = document.getElementById('wsEmptyState'), shell = document.querySelector('.ws-shell');
+  if (empty && !Object.keys(files).length) {            // 파일이 하나도 없을 땐 탐색기를 먼저 보여준다
+    empty.hidden = true; if (shell) shell.classList.remove('is-empty');
+    if (tree) tree.hidden = false;
+    var col = document.getElementById('wsEditorCol'); if (col) col.hidden = false;
+    var rv = document.getElementById('wsResizerSidebar'); if (rv) rv.hidden = false;
+  }
+  renderFileTree();
+  var inp = document.querySelector('#wsFileTreeContent .ft-create input');
+  if (inp) { inp.focus(); var row = inp.closest('.ft-create'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' }); }
 }
-function wsNewFileKey(e){
-  if (isEnter(e)) { var v = e.target.value; wsHideNewFileRow(); wsCreateFile(v); }
-  else if (e.key === 'Escape') { wsHideNewFileRow(); renderWsEmpty(); }
+function wsCancelCreate() { wsCreating = null; renderFileTree(); renderWsEmpty(); }
+function wsCommitCreate(inp, value) {
+  var c = wsCreating; if (!c) return;
+  var rel = String(value || '').trim().replace(/^\/+/, '');
+  if (!rel) { wsCancelCreate(); return; }
+  var full = (c.dir ? c.dir + '/' : '') + rel;
+  var v = wsValidatePath(full);
+  if (!v.ok) { inp.classList.add('err'); inp.title = v.err; pushToast('⚠️', (c.kind === 'folder' ? '폴더' : '파일') + ' 이름을 확인해 주세요', v.err); return false; }
+  wsCreating = null;
+  (c.kind === 'folder' ? wsCreateFolder(v.path) : wsCreateFile(v.path)).then(function(){ renderFileTree(); renderWsEmpty(); });
+  return true;
 }
-function wsNewFileBlur(){ setTimeout(function(){ var row = document.getElementById('wsNewFileRow'); if (row && !row.hidden && document.activeElement !== document.getElementById('wsNewFileInput')) { wsHideNewFileRow(); renderWsEmpty(); } }, 120); }
-function wsHideNewFileRow(){ var row = document.getElementById('wsNewFileRow'); if (row) row.hidden = true; }
-
+/* 이름 검사 (서버 규칙과 같음): 점(.)으로만 된 이름 · 금지 문자 · 앞뒤 공백/끝의 마침표 */
+function wsValidatePath(name) {
+  var p = String(name || '').trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!p) return { ok: false, err: '이름을 입력해 주세요.' };
+  if (p.length > 300) return { ok: false, err: '경로가 너무 길어요.' };
+  var segs = p.split('/');
+  for (var i = 0; i < segs.length; i++) {
+    var sg = segs[i];
+    if (!sg.replace(/\./g, '')) return { ok: false, err: "'" + sg + "' 처럼 점(.)으로만 된 이름은 쓸 수 없어요." };
+    if (sg !== sg.trim() || /\.$/.test(sg)) return { ok: false, err: '이름의 앞뒤 공백이나 끝의 마침표는 쓸 수 없어요.' };
+    if (/[\x00-\x1f\\:*?"<>|]/.test(sg)) return { ok: false, err: '이름에 \\ : * ? " < > | 문자는 쓸 수 없어요.' };
+    if (sg.length > 120) return { ok: false, err: '이름이 너무 길어요. (최대 120자)' };
+  }
+  return { ok: true, path: p };
+}
+function wsPaintSel() {
+  document.querySelectorAll('#wsFileTreeContent .ftree-node.folder[data-path]').forEach(function(n){ n.classList.toggle('sel', n.dataset.path === wsSelDir); });
+}
 /* ---- 트리 뷰 렌더링 ---- */
 var wsSearch = '', wsRenaming = null, wsDeleting = null, wsCollapsed = {};
 function wsSetSearch(v){ wsSearch = (v || '').trim().toLowerCase(); renderFileTree(); }
@@ -98,34 +142,71 @@ function renderFileTree() {
   var treeEl = document.getElementById('wsFileTreeContent');
   if (!treeEl) return;
   treeEl.innerHTML = '';
-  var keys = Object.keys(files).filter(function(k){ return !wsSearch || (files[k].tab || k).toLowerCase().indexOf(wsSearch) >= 0; });
-  if (keys.length === 0) {
-    treeEl.innerHTML = '<div class="ft-empty">' + (Object.keys(files).length ? '검색 결과가 없어요.' : '아직 파일이 없어요.<br><button class="btn" style="margin-top:8px; font-size:12px; padding:6px 12px;" onclick="promptNewFile()">＋ 새 파일</button>') + '</div>';
+  var allKeys = Object.keys(files);
+  var keys = allKeys.filter(function(k){
+    var nm = (files[k].tab || k).toLowerCase();
+    return !wsSearch || (nm.split('/').pop() !== '.gitkeep' && nm.indexOf(wsSearch) >= 0);
+  });
+  if (keys.length === 0 && !wsCreating) {
+    treeEl.innerHTML = '<div class="ft-empty">' + (allKeys.length ? '검색 결과가 없어요.' : '아직 파일이 없어요.<br><button class="btn" style="margin-top:8px; font-size:12px; padding:6px 12px;" onclick="promptNewFile()">＋ 새 파일</button>') + '</div>';
     return;
   }
-  var root = { dirs: {}, files: [] };
+  var root = { dirs: {}, files: [], path: '' };
   keys.forEach(function(key) {
     var f = files[key];
     var parts = (f.tab || key).split('/');
-    var curr = root;
-    var acc = '';
+    var curr = root, acc = '';
     for (var i = 0; i < parts.length - 1; i++) {
       acc += (acc ? '/' : '') + parts[i];
       var d = parts[i];
       if (!curr.dirs[d]) curr.dirs[d] = { dirs: {}, files: [], path: acc };
       curr = curr.dirs[d];
     }
-    curr.files.push({ key: key, name: parts[parts.length - 1], file: f });
+    if (parts[parts.length - 1] !== '.gitkeep') curr.files.push({ key: key, name: parts[parts.length - 1], file: f });      // .gitkeep 은 빈 폴더를 붙잡아 두는 표시라서 목록엔 숨긴다
   });
   function countFiles(n){ var c = n.files.length; Object.keys(n.dirs).forEach(function(k){ c += countFiles(n.dirs[k]); }); return c; }
+  function createRow(dir) {
+    var row = document.createElement('div');
+    row.className = 'ftree-node ft-create';
+    row.innerHTML = (wsCreating.kind === 'folder' ? ICON_FOLDER : ICON_FILE);
+    var inp = document.createElement('input');
+    inp.className = 'ft-rename'; inp.autocomplete = 'off'; inp.spellcheck = false;
+    inp.placeholder = (wsCreating.kind === 'folder' ? '폴더 이름' : '파일 이름 · 예: main.py') + (dir ? '  (' + dir + '/ 안)' : '');
+    var done = false;
+    inp.onkeydown = function(e){
+      e.stopPropagation();
+      if (isEnter(e)) { done = true; if (wsCommitCreate(inp, inp.value) === false) done = false; }
+      else if (e.key === 'Escape') { done = true; wsCancelCreate(); }
+      else inp.classList.remove('err');
+    };
+    inp.onblur = function(){ setTimeout(function(){ if (done || !wsCreating) return; if (inp.value.trim()) { done = true; if (wsCommitCreate(inp, inp.value) === false) done = false; } else { done = true; wsCancelCreate(); } }, 120); };
+    inp.onclick = function(e){ e.stopPropagation(); };
+    row.appendChild(inp);
+    return row;
+  }
   function buildBranch(node) {
     var frag = document.createDocumentFragment();
+    if (wsCreating && wsCreating.dir === node.path) frag.appendChild(createRow(node.path));
     Object.keys(node.dirs).sort().forEach(function(dirName) {
       var dn = node.dirs[dirName];
       var closed = !wsSearch && wsCollapsed[dn.path];
       var dirNode = document.createElement('div');
-      dirNode.className = 'ftree-node folder' + (closed ? ' closed' : ''); dirNode.dataset.path = dn.path;
-      dirNode.innerHTML = ICON_CHEV + ICON_FOLDER + '<span class="fname"></span><span class="fcnt">' + countFiles(dn) + '</span>';
+      dirNode.dataset.path = dn.path;
+      if (wsDeleting === 'dir:' + dn.path) {
+        dirNode.className = 'ftree-node folder confirm';
+        dirNode.innerHTML = '<span class="fname"></span><button class="cbtn yes">삭제</button><button class="cbtn no">취소</button>';
+        dirNode.querySelector('.fname').textContent = '"' + dirName + '" 폴더와 안의 파일 ' + countFiles(dn) + '개를 삭제할까요?';
+        dirNode.querySelector('.yes').onclick = function(e){ e.stopPropagation(); wsDeleteDir(dn.path); };
+        dirNode.querySelector('.no').onclick = function(e){ e.stopPropagation(); wsDeleting = null; renderFileTree(); };
+        frag.appendChild(dirNode);
+        return;
+      }
+      dirNode.className = 'ftree-node folder' + (closed ? ' closed' : '') + (wsSelDir === dn.path ? ' sel' : '');
+      dirNode.innerHTML = ICON_CHEV + ICON_FOLDER + '<span class="fname"></span>' +
+        '<span class="fact"><button class="nf" title="이 폴더에 새 파일"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg></button>' +
+        '<button class="nd" title="이 폴더에 새 폴더"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M12 11v6M9 14h6"/></svg></button>' +
+        '<button class="del" title="폴더 삭제"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></span>' +
+        '<span class="fcnt">' + countFiles(dn) + '</span>';
       dirNode.querySelector('.fname').textContent = dirName;
       var childContainer = document.createElement('div');
       childContainer.className = 'ftree-children';
@@ -133,12 +214,17 @@ function renderFileTree() {
       childContainer.appendChild(buildBranch(dn));
       dirNode.onclick = function(e) {
         e.stopPropagation();
+        wsSelDir = dn.path;                                  // 폴더를 누르면 그 폴더가 선택돼서, 다음 "새 파일"이 이 안에 만들어진다
         wsCollapsed[dn.path] = !wsCollapsed[dn.path];
         var nowClosed = wsCollapsed[dn.path];
         childContainer.style.display = nowClosed ? 'none' : 'block';
         dirNode.classList.toggle('closed', nowClosed);
+        wsPaintSel();
         if (typeof wsPresPaint === 'function') wsPresPaint();
       };
+      dirNode.querySelector('.nf').onclick = function(e){ e.stopPropagation(); wsStartCreate(dn.path, 'file'); };
+      dirNode.querySelector('.nd').onclick = function(e){ e.stopPropagation(); wsStartCreate(dn.path, 'folder'); };
+      dirNode.querySelector('.del').onclick = function(e){ e.stopPropagation(); wsDeleting = 'dir:' + dn.path; renderFileTree(); };
       frag.appendChild(dirNode);
       frag.appendChild(childContainer);
     });
@@ -179,7 +265,7 @@ function renderFileTree() {
         '<span class="fdot" style="background:' + (item.file.dot || '#888') + ';"></span>';
       fileNode.querySelector('.fname').textContent = item.name;
       fileNode.title = item.file.tab + (item.file.updatedBy ? ' · 마지막 수정 ' + item.file.updatedBy : '');
-      fileNode.onclick = function(e) { e.stopPropagation(); openFile(item.key, fileNode); };
+      fileNode.onclick = function(e) { e.stopPropagation(); wsSelDir = wsDirOf(item.file.path); wsPaintSel(); openFile(item.key, fileNode); };      // 파일을 누르면 그 파일이 있는 폴더가 선택된다
       fileNode.ondblclick = function(e) { e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
       fileNode.querySelector('.ren').onclick = function(e){ e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
       fileNode.querySelector('.del').onclick = function(e){ e.stopPropagation(); wsDeleting = item.key; renderFileTree(); };
@@ -188,6 +274,7 @@ function renderFileTree() {
     return frag;
   }
   treeEl.appendChild(buildBranch(root));
+  treeEl.onclick = function(e){ if (e.target === treeEl) { wsSelDir = ''; wsPaintSel(); } };       // 빈 곳을 누르면 맨 위(루트)가 선택된다
   if (typeof wsPresPaint === 'function') wsPresPaint();
 }
 
@@ -238,34 +325,11 @@ var monacoLoaded = false;
 function getFileLanguage(key) {
   if (!key || !files[key]) return 'python';
   var f = files[key];
-  if (f.lang) return f.lang;
-  var name = (f.tab || '').toLowerCase();
-  if (name.endsWith('.py')) return 'python';
-  if (name.endsWith('.java')) return 'java';
-  if (name.endsWith('.cs')) return 'csharp';
-  if (name.endsWith('.cpp') || name.endsWith('.cc')) return 'cpp';
-  if (name.endsWith('.c')) return 'c';
-  if (name.endsWith('.tsx') || name.endsWith('.ts')) return 'typescript';
-  if (name.endsWith('.js') || name.endsWith('.jsx')) return 'javascript';
-  if (name.endsWith('.json')) return 'json';
-  if (name.endsWith('.html')) return 'html';
-  if (name.endsWith('.css')) return 'css';
-  return 'python';
+  return getLangForExt(wsExt(f.path || f.tab));
 }
 
 function getMonacoLanguage(key) {
-  var lang = getFileLanguage(key);
-  if (lang === 'typescript') return 'typescript';
-  if (lang === 'javascript') return 'javascript';
-  if (lang === 'python') return 'python';
-  if (lang === 'java') return 'java';
-  if (lang === 'csharp') return 'csharp';
-  if (lang === 'cpp') return 'cpp';
-  if (lang === 'c') return 'c';
-  if (lang === 'json') return 'json';
-  if (lang === 'html') return 'html';
-  if (lang === 'css') return 'css';
-  return 'plaintext';
+  return getFileLanguage(key);      // getLangForExt 가 돌려주는 이름이 곧 Monaco 언어 이름
 }
 
 function updateEditorStatusBar() {
@@ -282,15 +346,8 @@ function updateEditorStatusBar() {
   }
   var badge = document.getElementById('sbLangBadge');
   if (badge && currentFileKey) {
-    var lang = getFileLanguage(currentFileKey);
-    if (lang === 'python') badge.textContent = '🐍 Python 3';
-    else if (lang === 'java') badge.textContent = '☕ Java 17';
-    else if (lang === 'csharp') badge.textContent = '🔷 C#';
-    else if (lang === 'cpp') badge.textContent = '⚡ C++';
-    else if (lang === 'c') badge.textContent = '⚙️ C';
-    else if (lang === 'typescript') badge.textContent = 'TS TypeScript';
-    else if (lang === 'json') badge.textContent = '{} JSON';
-    else badge.textContent = lang.toUpperCase();
+    var lang = getFileLanguage(currentFileKey), run = wsRunLang(currentFileKey);
+    badge.textContent = run ? WS_RUN_LABEL[run] : (lang === 'plaintext' ? '텍스트' : lang.toUpperCase());
   }
 }
 
@@ -642,21 +699,41 @@ function wsOpenKey(key){
   renderWsEmpty(); renderFileTree(); renderTabs(); renderFileContent(key);
   try { localStorage.setItem('sync_ws_last_' + (wsProject || ''), files[key].path); } catch (e) {}
 }
-function wsCreateFile(name, content){
-  name = (name || '').trim().replace(/^\/+/, '').replace(/\/+/g, '/');
-  if (!name) { renderWsEmpty(); return Promise.resolve(); }
+function wsCreateFile(name, content, opts){
+  opts = opts || {};
+  var v = wsValidatePath(name);
+  if (!v.ok) { pushToast('⚠️', '파일 이름을 확인해 주세요', v.err); return Promise.resolve(false); }
+  name = v.path;
   var key = wsKey(name);
-  if (files[key]) { pushToast('ℹ️', '이미 있는 파일이에요', name); wsOpenKey(key); return Promise.resolve(); }
+  if (files[key]) { pushToast('ℹ️', '이미 있는 파일이에요', name); if (!opts.silent) wsOpenKey(key); return Promise.resolve(false); }
+  if (wsDirExists(name)) { pushToast('⚠️', '같은 이름의 폴더가 있어요', name); return Promise.resolve(false); }
+  var parts = name.split('/');
+  for (var i = 1; i < parts.length; i++) {
+    var pre = parts.slice(0, i).join('/');
+    if (files[wsKey(pre)]) { pushToast('⚠️', "'" + pre + "' 는 파일이라 폴더로 쓸 수 없어요", name); return Promise.resolve(false); }
+  }
   var f = wsMakeFile({ path: name, content: content || '', updated_at: null, updated_by: null });
-  files[key] = f;
-  wsOpenKey(key);
-  if (!wsUseServer()) return Promise.resolve();
-  return wsSave(key, true);
+  function added(){ files[key] = f; if (!opts.silent) wsOpenKey(key); else { renderWsEmpty(); renderFileTree(); } return true; }
+  if (!wsUseServer()) return Promise.resolve(added());
+  // 서버가 저장을 받아준 뒤에만 화면에 올린다 → 서버가 거부해도 '지워지지도 않는 유령 파일'이 남지 않는다
+  return apiFetch('/api/projects/' + wsServerId() + '/files', { method: 'PUT', body: JSON.stringify({ path: name, content: f.raw, force: true }) })
+    .then(function(row){ f.baseUpdatedAt = row.updated_at; f.updatedBy = row.updated_by; f.dirty = false; return added(); })
+    .catch(function(e){ pushToast('⚠️', '파일을 만들지 못했어요', e.message); return false; });
+}
+/* 빈 폴더: 서버는 파일만 저장하므로, 폴더 안에 보이지 않는 .gitkeep 파일을 하나 둬서 폴더를 붙잡아 둔다 (Git 에서 쓰는 방식) */
+function wsCreateFolder(path){
+  if (wsDirExists(path)) { pushToast('ℹ️', '이미 있는 폴더예요', path); wsSelDir = path; return Promise.resolve(false); }
+  return wsCreateFile(path + '/.gitkeep', '', { silent: true }).then(function(ok){
+    if (ok) { wsSelDir = path; var acc = ''; path.split('/').forEach(function(p){ acc += (acc ? '/' : '') + p; wsCollapsed[acc] = false; }); pushToast('📁', '폴더를 만들었어요', path); }
+    return ok;
+  });
 }
 function wsRenameFile(key, newPath){
   wsRenaming = null;
   var f = files[key];
-  newPath = (newPath || '').trim().replace(/^\/+/, '').replace(/\/+/g, '/');
+  var nv = wsValidatePath(newPath);
+  if (f && String(newPath || '').trim() && !nv.ok) { pushToast('⚠️', '이름을 확인해 주세요', nv.err); renderFileTree(); return; }
+  newPath = nv.ok ? nv.path : '';
   if (!f || !newPath || newPath === f.path) { renderFileTree(); return; }
   if (files[wsKey(newPath)]) { pushToast('⚠️', '같은 이름의 파일이 이미 있어요', newPath); renderFileTree(); return; }
   function applyLocal(row){
@@ -675,26 +752,45 @@ function wsRenameFile(key, newPath){
     pushToast('ℹ️', '저장 후에 이름을 바꿀 수 있어요', '변경 내용을 먼저 저장하는 중이에요'); wsSave(key).then(function(){ renderFileTree(); });
   } else { applyLocal(null); }
 }
+function wsDropLocal(keys){
+  keys.forEach(function(key){
+    delete files[key];
+    var idx = openedTabs.indexOf(key); if (idx >= 0) openedTabs.splice(idx, 1);
+    if (currentFileKey === key) currentFileKey = null;
+  });
+  if (!currentFileKey) {
+    currentFileKey = openedTabs.length ? openedTabs[openedTabs.length - 1] : null;
+    if (currentFileKey) renderFileContent(currentFileKey);
+    else if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
+  }
+  if (wsSelDir && !wsDirExists(wsSelDir)) wsSelDir = '';
+  renderWsEmpty(); renderFileTree(); renderTabs(); wsUpdateSaveStatus(); wsRenderConflict();
+}
 function wsDeleteFile(key){
   wsDeleting = null;
   var f = files[key];
   if (!f) return;
-  function dropLocal(){
-    delete files[key];
-    var idx = openedTabs.indexOf(key);
-    if (idx >= 0) openedTabs.splice(idx, 1);
-    if (currentFileKey === key) {
-      currentFileKey = openedTabs.length ? openedTabs[Math.max(0, idx - 1)] : null;
-      if (currentFileKey) renderFileContent(currentFileKey);
-      else if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
-    }
-    renderWsEmpty(); renderFileTree(); renderTabs(); wsUpdateSaveStatus(); wsRenderConflict();
-  }
-  if (wsUseServer()) {
+  // 서버에 저장된 적 없는 파일(옛 오류로 화면에만 남은 것)은 서버에 묻지 않고 바로 치운다
+  if (wsUseServer() && f.baseUpdatedAt) {
     apiFetch('/api/projects/' + wsServerId() + '/files?path=' + encodeURIComponent(f.path), { method: 'DELETE' })
-      .then(function(){ dropLocal(); pushToast('🗑️', '파일을 삭제했어요', f.tab); })
+      .then(function(){ wsDropLocal([key]); pushToast('🗑️', '파일을 삭제했어요', f.tab); })
+      .catch(function(e){
+        if (e.status === 400 || e.status === 404) { wsDropLocal([key]); pushToast('🗑️', '서버에 없는 파일이라 화면에서 지웠어요', f.tab); }   // 서버에 이미 없다면 화면에서도 지운다
+        else { pushToast('⚠️', '삭제하지 못했어요', e.message); renderFileTree(); }
+      });
+  } else { wsDropLocal([key]); }
+}
+function wsDeleteDir(dir){
+  wsDeleting = null;
+  var keys = Object.keys(files).filter(function(k){ var p = files[k].path; return p === dir || p.indexOf(dir + '/') === 0; });
+  if (!keys.length) { renderFileTree(); return; }
+  var dirty = keys.filter(function(k){ return files[k].dirty; });
+  if (dirty.length) { pushToast('ℹ️', '저장 중인 파일이 있어요', '잠시 뒤에 다시 삭제해 주세요'); wsFlushSaves(); renderFileTree(); return; }
+  if (wsUseServer()) {
+    apiFetch('/api/projects/' + wsServerId() + '/files?path=' + encodeURIComponent(dir), { method: 'DELETE' })
+      .then(function(){ wsDropLocal(keys); pushToast('🗑️', '폴더를 삭제했어요', dir + ' · 파일 ' + keys.filter(function(k){ return !/\.gitkeep$/.test(k); }).length + '개'); })
       .catch(function(e){ pushToast('⚠️', '삭제하지 못했어요', e.message); renderFileTree(); });
-  } else { dropLocal(); }
+  } else { wsDropLocal(keys); }
 }
 function wsStarter(){
   var title = (calProjectById(wsProject) || { title: '프로젝트' }).title;

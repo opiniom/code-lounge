@@ -250,7 +250,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         engine_desc = f"Judge0 CE ({version_info})"
         supported_langs = list(LANGUAGE_MAP.keys())
     else:
-        engine_desc = "Local Isolated Sandbox (Python 3.11 + OpenJDK 17 Hotspot)"
+        engine_desc = "Local Sandbox (" + ", ".join(local_sandbox_runner.get_supported_languages()) + ")"
         supported_langs = local_sandbox_runner.get_supported_languages()
 
     return HealthCheckResponse(

@@ -14,13 +14,27 @@ from services.access import get_member_project
 router = APIRouter(prefix="/api/projects/{project_id}/files", tags=["Workspace Files"])
 
 MAX_FILES = 300
-_BAD_PATH = re.compile(r"(^/)|(\\)|(\.\.)|([\x00-\x1f])")
+_BAD_CHARS = re.compile(r'[\x00-\x1f\\:*?"<>|]')
+
+
+def _norm(path: str) -> str:
+    return re.sub(r"/+", "/", (path or "").strip().strip("/"))
 
 
 def _clean_path(path: str) -> str:
-    p = re.sub(r"/+", "/", path.strip().strip("/"))
-    if not p or _BAD_PATH.search(p) or len(p) > 300:
+    """새로 만들거나 옮길 '목적지' 경로 검사. 폴더/파일 이름 한 칸씩 확인한다 (a..b.txt 같은 정상 이름은 허용, '.' '..' '...' 처럼 점만 있는 이름은 거부)."""
+    p = _norm(path)
+    if not p or len(p) > 300:
         raise HTTPException(status_code=400, detail="파일 경로가 올바르지 않아요. (예: src/main.py)")
+    for seg in p.split("/"):
+        if not seg.strip(".") :
+            raise HTTPException(status_code=400, detail=f"'{seg}' 처럼 점(.)으로만 된 이름은 쓸 수 없어요.")
+        if seg != seg.strip() or seg.endswith("."):
+            raise HTTPException(status_code=400, detail="이름의 앞뒤 공백이나 끝의 마침표는 쓸 수 없어요.")
+        if _BAD_CHARS.search(seg):
+            raise HTTPException(status_code=400, detail='이름에 \\ : * ? " < > | 문자는 쓸 수 없어요.')
+        if len(seg) > 120:
+            raise HTTPException(status_code=400, detail="이름이 너무 길어요. (최대 120자)")
     return p
 
 
@@ -100,7 +114,7 @@ async def save_bulk(project_id: int, data: FileBulk, current_user: User = Depend
 @router.post("/rename", response_model=FileResponse_)
 async def rename_file(project_id: int, data: FileRename, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await get_member_project(db, project_id, current_user)
-    src, dst = _clean_path(data.from_path), _clean_path(data.to_path)
+    src, dst = _norm(data.from_path), _clean_path(data.to_path)      # 원본은 이미 저장돼 있는 이름 그대로(옛 이름이 규칙에 안 맞아도 옮길 수 있게)
     row = (await db.execute(select(ProjectFile).where(ProjectFile.project_id == project_id, ProjectFile.path == src))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없어요.")
@@ -118,7 +132,9 @@ async def rename_file(project_id: int, data: FileRename, current_user: User = De
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file(project_id: int, path: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await get_member_project(db, project_id, current_user)
-    p = _clean_path(path)
+    p = _norm(path)              # 삭제는 저장된 이름 그대로 찾는다 (규칙에 안 맞는 옛 파일도 지울 수 있어야 한다)
+    if not p:
+        raise HTTPException(status_code=400, detail="삭제할 경로가 비어 있어요.")
     # 폴더 경로면 그 아래 파일 전체 삭제
     await db.execute(delete(ProjectFile).where(
         ProjectFile.project_id == project_id,

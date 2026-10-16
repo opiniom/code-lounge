@@ -2,9 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 시스템 의존성 설치 (curl 등)
+# 시스템 의존성 설치 (curl 등) + 워크스페이스 '실행' 버튼이 쓰는 언어 실행 도구
+#   gcc/g++ (C·C++), JDK (Java), Node.js (JavaScript), Ruby, PHP, Perl.  Python 은 기본 이미지에 있음.
+#   서버에 설치된 도구만 자동으로 '실행 가능한 언어' 목록에 올라간다 (/health). Go·Rust·C# 이 필요하면 여기에 추가.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    gcc g++ libc6-dev \
+    default-jdk-headless \
+    nodejs \
+    ruby \
+    php-cli \
+    perl \
     && rm -rf /var/lib/apt/lists/*
 
 # 파이썬 의존성 설치

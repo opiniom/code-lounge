@@ -4,3 +4,7 @@ __pycache__
 *.pyc
 data
 .claude
+# 비밀 값은 이미지에 굽지 않는다 (실행할 때 docker compose 의 env_file 로 전달)
+.env
+*.pem
+*.key
