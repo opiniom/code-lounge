@@ -78,9 +78,26 @@ async def websocket_terminal(websocket: WebSocket):
 
                 if language == "python":
                     script_path = os.path.join(temp_dir, "solution.py")
+                    wrapper_path = os.path.join(temp_dir, "run_wrapper.py")
                     with open(script_path, "w", encoding="utf-8") as f:
                         f.write(source_code)
-                    cmd = [PYTHON_EXEC, "-u", "-B", script_path]
+                    
+                    wrapper_code = (
+                        "import sys, runpy\n"
+                        "if hasattr(sys.stdout, 'reconfigure'):\n"
+                        "    sys.stdout.reconfigure(line_buffering=True, write_through=True)\n"
+                        "if hasattr(sys.stderr, 'reconfigure'):\n"
+                        "    sys.stderr.reconfigure(line_buffering=True, write_through=True)\n"
+                        "try:\n"
+                        "    runpy.run_path('solution.py', run_name='__main__')\n"
+                        "except Exception as e:\n"
+                        "    import traceback\n"
+                        "    traceback.print_exc()\n"
+                    )
+                    with open(wrapper_path, "w", encoding="utf-8") as f:
+                        f.write(wrapper_code)
+
+                    cmd = [PYTHON_EXEC, "-u", "-B", wrapper_path]
 
                 elif language in ("c", "cpp"):
                     ext = "cpp" if language == "cpp" else "c"
@@ -192,14 +209,12 @@ async def websocket_terminal(websocket: WebSocket):
                 async def pipe_stream(stream, msg_type):
                     try:
                         while True:
-                            # 1024바이트씩 즉시 읽기 (개행 대기 없이 프롬프트 즉시 출력)
-                            chunk = await stream.read(1024)
+                            # 즉시 읽기 (개행 대기 없이 짧은 프롬프트도 즉각 클라이언트로 전송)
+                            chunk = await stream.read(256)
                             if not chunk:
                                 break
                             text = decode_bytes(chunk)
-                            # CR-LF 변환 (웹 터미널 줄바꿈 일치)
-                            normalized = text.replace("\r\n", "\n").replace("\n", "\r\n")
-                            await websocket.send_json({"type": msg_type, "data": normalized})
+                            await websocket.send_json({"type": msg_type, "data": text})
                     except Exception:
                         pass
 

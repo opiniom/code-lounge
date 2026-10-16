@@ -1118,9 +1118,8 @@ function initResizers() {
 function clearTerminal() {
   var out = document.getElementById('termOutputText');
   if (out) out.innerHTML = '';
-  if (xtermInstance) {
-    xtermInstance.clear();
-  }
+  var live = document.getElementById('termLiveLog');
+  if (live) live.innerHTML = '<div style="color:#6e7681;">// 터미널이 초기화되었습니다.</div>';
   var statusChip = document.getElementById('termStatusChip');
   if (statusChip) statusChip.style.display = 'none';
   var execTime = document.getElementById('termExecTime');
@@ -1134,17 +1133,14 @@ function setTerminalTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
     if (body) {
       if (t === tab) {
-        body.style.display = (t === 'interactive') ? 'block' : 'block';
+        body.style.display = (t === 'interactive') ? 'flex' : 'block';
       } else {
         body.style.display = 'none';
       }
     }
   });
   if (tab === 'interactive') {
-    initXtermIfNeeded();
-    if (xtermFitAddon) {
-      setTimeout(function(){ try { xtermFitAddon.fit(); } catch(e){} }, 50);
-    }
+    focusLiveInput();
   }
   if (tab === 'history') loadSubmissions();
 }
@@ -1155,59 +1151,54 @@ function escapeHtml(str) {
 }
 
 /* =========================================================
-   실시간 대화형 터미널 (Live Interactive Terminal / PTY)
+   실시간 대화형 콘솔 (Native Live Interactive Console)
    ========================================================= */
 var activeTermSocket = null;
-var xtermInstance = null;
-var xtermFitAddon = null;
 
-function initXtermIfNeeded() {
-  if (xtermInstance) return;
-  var container = document.getElementById('termXtermContainer');
-  if (!container || !window.Terminal) return;
-
-  xtermInstance = new Terminal({
-    cursorBlink: true,
-    fontSize: 13,
-    fontFamily: "'JetBrains Mono', 'D2Coding', 'Cascadia Code', Consolas, monospace",
-    theme: {
-      background: '#0c1017',
-      foreground: '#e6edf3',
-      cursor: '#58a6ff',
-      black: '#484f58',
-      red: '#ff7b72',
-      green: '#3fb950',
-      yellow: '#d29922',
-      blue: '#58a6ff',
-      magenta: '#bc8cff',
-      cyan: '#39c5cf',
-      white: '#b1bac4'
-    }
-  });
-
-  if (window.FitAddon && window.FitAddon.FitAddon) {
-    xtermFitAddon = new window.FitAddon.FitAddon();
-    xtermInstance.loadAddon(xtermFitAddon);
-  }
-
-  xtermInstance.open(container);
-  if (xtermFitAddon) {
-    setTimeout(function(){ try { xtermFitAddon.fit(); } catch(e){} }, 60);
-  }
-
-  // 브라우저에서 키 입력 시 WebSocket을 통해 파이썬 stdin으로 실시간 전송
-  xtermInstance.onData(function(data) {
-    if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
-      activeTermSocket.send(JSON.stringify({ action: 'input', data: data }));
-    }
-  });
+function focusLiveInput() {
+  var inp = document.getElementById('termLiveInput');
+  if (inp) inp.focus();
 }
 
-window.addEventListener('resize', function(){
-  if (xtermFitAddon) {
-    try { xtermFitAddon.fit(); } catch(e){}
+function ansiToHtml(text) {
+  if (!text) return '';
+  var escaped = escapeHtml(text);
+  // 간단한 ANSI 컬러 변환
+  return escaped
+    .replace(/\x1b\[31m/g, '<span style="color:#ff7b72;">')
+    .replace(/\x1b\[32m/g, '<span style="color:#3fb950;">')
+    .replace(/\x1b\[33m/g, '<span style="color:#d29922;">')
+    .replace(/\x1b\[36m/g, '<span style="color:#39c5cf;">')
+    .replace(/\x1b\[90m/g, '<span style="color:#8b949e;">')
+    .replace(/\x1b\[0m/g, '</span>');
+}
+
+function appendLiveOutput(text, isErr) {
+  var log = document.getElementById('termLiveLog');
+  if (!log) return;
+  var span = document.createElement('span');
+  if (isErr) span.style.color = '#ff7b72';
+  span.innerHTML = ansiToHtml(text);
+  log.appendChild(span);
+  log.scrollTop = log.scrollHeight;
+}
+
+function submitLiveInput(e) {
+  if (e) e.preventDefault();
+  var inp = document.getElementById('termLiveInput');
+  if (!inp) return;
+  var val = inp.value;
+  inp.value = '';
+  
+  if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
+    // 화면에 사용자 입력 에코 출력
+    appendLiveOutput(val + '\n', false);
+    activeTermSocket.send(JSON.stringify({ action: 'input', data: val + '\n' }));
+  } else {
+    appendLiveOutput('\n[실행 중인 대화형 프로세스가 없습니다]\n', true);
   }
-});
+  inp.focus();
+}
 
 function stopInteractiveCode() {
   if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
@@ -1238,12 +1229,12 @@ async function runInteractiveCode() {
   var termPanel = document.getElementById('wsTerminalPanel');
   if (termPanel) termPanel.classList.remove('collapsed');
   setTerminalTab('interactive');
-  initXtermIfNeeded();
 
-  if (xtermInstance) {
-    xtermInstance.clear();
-    xtermInstance.write('\x1b[36m// [⚡ 실시간 대화형 실행 시작]\x1b[0m\r\n\x1b[90m// 키보드로 직접 값을 입력하고 Enter를 누르세요.\x1b[0m\r\n\r\n');
+  var log = document.getElementById('termLiveLog');
+  if (log) {
+    log.innerHTML = '<div style="color:#06b6d4; font-weight:600;">// [⚡ 실시간 대화형 콘솔 실행 시작]</div><div style="color:#8b949e; margin-bottom:8px;">// 하단 INPUT 입력창에 값을 입력하고 Enter를 누르시면 실시간 전달됩니다.</div>';
   }
+  focusLiveInput();
 
   var runInteractiveBtn = document.getElementById('wsRunInteractiveBtn');
   var runBtn = document.getElementById('wsRunBtn');
@@ -1282,24 +1273,27 @@ async function runInteractiveCode() {
       language: lang,
       source_code: code
     }));
+    focusLiveInput();
   };
 
   ws.onmessage = function(ev) {
     try {
       var msg = JSON.parse(ev.data);
-      if (msg.type === 'stdout' || msg.type === 'stderr') {
-        if (xtermInstance) xtermInstance.write(msg.data);
+      if (msg.type === 'stdout') {
+        appendLiveOutput(msg.data, false);
+      } else if (msg.type === 'stderr') {
+        appendLiveOutput(msg.data, true);
       } else if (msg.type === 'exit') {
-        if (msg.data && xtermInstance) xtermInstance.write(msg.data);
+        if (msg.data) appendLiveOutput(msg.data, false);
         finishRun(msg.code);
       }
     } catch(e) {
-      if (xtermInstance) xtermInstance.write(ev.data);
+      appendLiveOutput(ev.data, false);
     }
   };
 
   ws.onerror = function() {
-    if (xtermInstance) xtermInstance.write('\r\n\x1b[31m[WebSocket 연결 오류가 발생했습니다]\x1b[0m\r\n');
+    appendLiveOutput('\n[WebSocket 연결 오류가 발생했습니다]\n', true);
     finishRun(-1);
   };
 
