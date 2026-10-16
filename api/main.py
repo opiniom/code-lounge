@@ -142,6 +142,7 @@ async def app_version():
     except OSError:
         return {"build": "none"}
 
+@app.get("/", tags=["UI"])
 @app.get("/ui", tags=["UI"])
 @app.get("/app", tags=["UI"])
 async def serve_ui():
@@ -150,7 +151,7 @@ async def serve_ui():
     return {"error": "UI index.html 파일을 찾을 수 없습니다."}
 
 
-@app.get("/", tags=["General"])
+@app.get("/api", tags=["General"])
 async def root():
     return {
         "message": "자체 DB 및 JWT 인증이 탑재된 코드 실행 백엔드 API가 정상 가동 중입니다.",
