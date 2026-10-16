@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, update
 from database import get_db
-from models import User, Project, ProjectMember, ChatMessage, CalendarEvent, ProjectFile, MeetingDoc
-from schemas import ProjectCreate, ProjectResponse, MemberBrief, InviteRequest, MemberRoleUpdate
+from models import User, Project, ProjectMember, ChatMessage, CalendarEvent, ProjectFile, MeetingDoc, CallRoom, CommunityPost
+from schemas import ProjectCreate, ProjectRename, ProjectResponse, MemberBrief, InviteRequest, MemberRoleUpdate
 from services.auth_service import get_current_user
 from services.access import member_project_ids, get_member_project, project_users, project_members_info
 
@@ -138,6 +138,25 @@ async def remove_member(
     return await _to_response(db, project, current_user)
 
 
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def rename_project(
+    project_id: int,
+    data: ProjectRename,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """프로젝트(워크스페이스) 이름 변경 — 소유자만. 채팅·통화방 등 이름을 따라가는 곳이 함께 바뀐다."""
+    project = await get_member_project(db, project_id, current_user)
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="프로젝트 소유자만 이름을 바꿀 수 있어요.")
+    title = " ".join(data.title.split())[:200]
+    if not title:
+        raise HTTPException(status_code=400, detail="프로젝트 이름을 입력해 주세요.")
+    project.title = title
+    await db.commit()
+    await db.refresh(project)
+    return await _to_response(db, project, current_user)
+
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: int,
@@ -152,6 +171,10 @@ async def delete_project(
     await db.execute(delete(CalendarEvent).where(CalendarEvent.project_id == project_id))
     await db.execute(delete(ProjectFile).where(ProjectFile.project_id == project_id))
     await db.execute(delete(ProjectMember).where(ProjectMember.project_id == project_id))
+    await db.execute(delete(CallRoom).where(CallRoom.project_id == project_id))
+    await db.execute(update(CommunityPost).where(CommunityPost.project_id == project_id).values(project_id=None, status="closed"))   # 커뮤니티 글은 남기고 프로젝트 연결만 끊는다
     await db.execute(update(MeetingDoc).where(MeetingDoc.project_id == project_id).values(project_id=None))
     await db.execute(delete(Project).where(Project.id == project_id))
     await db.commit()
+    from routers.call import close_project_rooms
+    await close_project_rooms(project_id)   # 통화 중이던 팀원은 통화방에서 내보낸다

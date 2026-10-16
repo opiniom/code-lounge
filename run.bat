@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-REM sync/ 한 줄 실행 스크립트 (Windows)  -  더블클릭하면 서버가 켜지고 브라우저가 열립니다
+REM DureSync 한 줄 실행 스크립트 (Windows)  -  더블클릭하면 서버가 켜지고 브라우저가 열립니다
 cd /d "%~dp0"
 
 if not defined PORT set PORT=8000

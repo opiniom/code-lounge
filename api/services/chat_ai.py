@@ -23,7 +23,7 @@ from services.schedule_ai import _gemini_json, _claude_tool, TIME_RE
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_NAMES = ("AI", "sync", "에이아이")
+DEFAULT_NAMES = ("AI", "Dure", "두레", "DureSync", "sync", "에이아이")   # 이름을 정하지 않아도 이렇게 부르면 AI가 응답
 MAX_ACTIONS = 5
 _WD = "월화수목금토일"
 
@@ -58,9 +58,9 @@ _ACTION_TYPES = ["add_event", "update_event", "delete_event", "add_note", "delet
 
 
 def _system(ai_name: Optional[str]) -> str:
-    me = (ai_name or "").strip() or "sync AI"
+    me = (ai_name or "").strip() or "Dure AI"
     return (
-        f"당신의 이름은 '{me}'이고, 팀 프로젝트 협업 도구 'sync/' 안의 AI 어시스턴트입니다. "
+        f"당신의 이름은 '{me}'이고, 팀 프로젝트 협업 도구 'DureSync'(두레싱크) 안의 AI 어시스턴트입니다. "
         "사용자가 이름을 불러 말을 걸면, 대화체 문장을 읽고 스스로 판단해 답하거나 일을 처리합니다.\n"
         "[규칙]\n"
         "1. 질문·요약·브리핑: [프로젝트 자료]에 있는 내용만 근거로 한국어로 간결하게 답하세요 "
@@ -413,7 +413,7 @@ async def run_agent(db: AsyncSession, project_id: int, user: User, text: str,
     if ai_name:
         meta["ai_name"] = ai_name
     body = strip_call(text, ai_name)
-    n = (ai_name or "").strip() or "AI"
+    n = (ai_name or "").strip() or "두레"
     if not body:
         return (f"네, 불러주셨네요! 이렇게 말해보세요.\n- `{n}야 이번 주 마감이 뭐야?`\n"
                 f"- `{n}야 다음 주 화요일 3시에 중간발표 일정 잡아줘`\n- `{n}야 어제 회의 내용 정리해줘`"), meta

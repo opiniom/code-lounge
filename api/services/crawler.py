@@ -35,77 +35,6 @@ class MetaHTMLParser(HTMLParser):
                 self.body_texts.append(cleaned)
 
 
-# =========================================================================
-# [개발자 임의 설정] 크롤링 대상 사이트 URL 목록
-# 원하는 공모전/해커톤 웹페이지 주소를 코드상에서 자유롭게 등록/수정하세요.
-# =========================================================================
-CONFIGURED_CRAWL_URLS = [
-    {
-        "url": "https://dacon.io/competitions/official/236200/overview",
-        "category": "해커톤",
-    },
-    {
-        "url": "https://www.oss.kr/competition",
-        "category": "공모전",
-    },
-    {
-        "url": "https://wevity.com",
-        "category": "공모전",
-    },
-    {
-        "url": "https://thinkcontest.com",
-        "category": "해커톤",
-    }
-]
-
-PRESET_EVENTS = [
-    {
-        "id": -1,
-        "url": "https://dacon.io/competitions/official/236200/overview",
-        "title": "2026 대학생 생성형 AI 해커톤",
-        "category": "해커톤",
-        "host": "과학기술정보통신부 · 인공지능연구원",
-        "deadline": "2026-10-18",
-        "d_day": "D-5",
-        "description": "생성형 AI 모델을 활용한 대학생 협업 프로덕트 개발 해커톤 대회",
-        "created_at": "2026-10-10T09:00:00Z"
-    },
-    {
-        "id": -2,
-        "url": "https://www.oss.kr/competition",
-        "title": "제12회 오픈소스 SW 개발 공모전",
-        "category": "공모전",
-        "host": "정보통신산업진흥원 · 공개SW역량프라자",
-        "deadline": "2026-10-25",
-        "d_day": "D-12",
-        "description": "국내외 오픈소스 생태계를 발전시킬 창의적인 공개 소프트웨어 개발 프로젝트",
-        "created_at": "2026-10-08T11:00:00Z"
-    },
-    {
-        "id": -3,
-        "url": "https://wevity.com",
-        "title": "캠퍼스 스타트업 ICT 아이디어 챌린지",
-        "category": "공모전",
-        "host": "창업진흥원",
-        "deadline": "2026-11-05",
-        "d_day": "D-23",
-        "description": "대학생 예비 창업팀을 위한 비즈니스 모델 발굴 및 시제품 제작 지원 공모전",
-        "created_at": "2026-10-05T14:00:00Z"
-    },
-    {
-        "id": -4,
-        "url": "https://thinkcontest.com",
-        "title": "글로벌 클라우드 혁신 알고리즘 대회",
-        "category": "해커톤",
-        "host": "한국소프트웨어산업협회",
-        "deadline": "2026-11-15",
-        "d_day": "D-33",
-        "description": "클라우드 분산 처리 및 고성능 인프라 최적화 알고리즘 개발 경진대회",
-        "created_at": "2026-10-01T10:00:00Z"
-    }
-]
-
-
 def _calc_dday(deadline_str: Optional[str]) -> str:
     if not deadline_str:
         return "접수중"
@@ -137,10 +66,13 @@ async def crawl_target_url(url: str, custom_category: Optional[str] = None) -> D
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     }
 
+    from services.event_crawler import safe_fetch      # 사용자가 넣은 주소는 내부망으로 가지 못하게 검사하며 읽는다
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            resp = await client.get(clean_url, headers=headers)
+        async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+            resp = await safe_fetch(client, clean_url)
             html_text = resp.text
+    except PermissionError:
+        raise
     except Exception as e:
         # 크롤링 요청 실패 시 URL 기반 휴리스틱 데이터 생성
         title_from_url = clean_url.split("//")[-1].split("/")[0]
@@ -163,6 +95,8 @@ async def crawl_target_url(url: str, custom_category: Optional[str] = None) -> D
     og_title = parser.meta_tags.get("og:title")
     og_desc = parser.meta_tags.get("og:description")
     og_site = parser.meta_tags.get("og:site_name")
+    from services.event_crawler import normalize_image_url
+    image_url = normalize_image_url(parser.meta_tags.get("og:image") or parser.meta_tags.get("twitter:image"), clean_url)
 
     title = og_title or parser.title or "새로운 공모전 / 해커톤"
     title = re.sub(r"\s+", " ", title).strip()
@@ -207,18 +141,6 @@ async def crawl_target_url(url: str, custom_category: Optional[str] = None) -> D
         "host": host[:200],
         "deadline": deadline or None,
         "d_day": d_day,
-        "description": description[:500]
+        "description": description[:500],
+        "image_url": image_url,
     }
-
-
-async def crawl_all_configured_urls() -> List[Dict[str, Any]]:
-    """코드에 등록된 CONFIGURED_CRAWL_URLS 목록을 일괄 크롤링"""
-    results = []
-    for item in CONFIGURED_CRAWL_URLS:
-        try:
-            res = await crawl_target_url(item["url"], item.get("category"))
-            results.append(res)
-        except Exception:
-            pass
-    return results
-

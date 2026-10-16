@@ -101,6 +101,9 @@ TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
 class ProjectCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
 
+class ProjectRename(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
 class MemberBrief(BaseModel):
     id: int
     username: str
@@ -315,10 +318,41 @@ class CrawledEventResponse(BaseModel):
     d_day: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
+    source: str = "manual"
+    source_label: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    deadline_date: Optional[date] = None
+    starts_on: Optional[date] = None
+    is_new: bool = False
+    is_closed: bool = False
+    deadline_kind: str = "apply"          # apply = 접수 마감 / event = 행사일
+    image_url: Optional[str] = None       # 포스터 이미지 주소 (https)
 
     class Config:
         from_attributes = True
 
+
+class EventSourceStatus(BaseModel):
+    source: str
+    label: str
+    ok: Optional[bool] = None
+    found: int = 0
+    added: int = 0
+    updated: int = 0
+    error: Optional[str] = None
+    last_run: Optional[datetime] = None
+
+
+class EventCrawlStatus(BaseModel):
+    running: bool
+    last_run: Optional[datetime] = None
+    next_run: Optional[datetime] = None
+    interval_hours: int
+    enabled: bool
+    total: int
+    open_count: int
+    sources: List[EventSourceStatus] = Field(default_factory=list)
+    message: Optional[str] = None
 
 
 class StructureRequest(BaseModel):

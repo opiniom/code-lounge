@@ -67,6 +67,21 @@ def _add_missing_columns(sync_conn):
     user_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(users)"))}
     if user_cols and "ai_name" not in user_cols:
         sync_conn.execute(text("ALTER TABLE users ADD COLUMN ai_name VARCHAR(30)"))
+    if user_cols and "presence_pref" not in user_cols:
+        sync_conn.execute(text("ALTER TABLE users ADD COLUMN presence_pref VARCHAR(10) NOT NULL DEFAULT 'auto'"))
+    if user_cols and "last_seen_at" not in user_cols:
+        sync_conn.execute(text("ALTER TABLE users ADD COLUMN last_seen_at DATETIME"))
+    ce_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(crawled_events)"))}
+    if ce_cols:
+        for name, ddl in (
+            ("source", "VARCHAR(30) NOT NULL DEFAULT 'manual'"), ("ext_key", "VARCHAR(64)"), ("deadline_date", "DATE"),
+            ("starts_on", "DATE"), ("tags", "TEXT"), ("first_seen_at", "DATETIME"), ("last_seen_at", "DATETIME"),
+            ("image_url", "VARCHAR(500)"), ("image_checked_at", "DATETIME"),
+        ):
+            if name not in ce_cols:
+                sync_conn.execute(text(f"ALTER TABLE crawled_events ADD COLUMN {name} {ddl}"))
+        sync_conn.execute(text("UPDATE crawled_events SET first_seen_at = created_at WHERE first_seen_at IS NULL"))
+        sync_conn.execute(text("UPDATE crawled_events SET last_seen_at = created_at WHERE last_seen_at IS NULL"))
     ev_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(calendar_events)"))}
     if ev_cols and "meeting_doc_id" not in ev_cols:
         sync_conn.execute(text("ALTER TABLE calendar_events ADD COLUMN meeting_doc_id INTEGER"))

@@ -2,6 +2,9 @@ import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_DEFAULT_JWT_SECRET = "your-super-secret-jwt-key-for-local-development-change-in-prod-987654321"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore")
 
@@ -20,8 +23,25 @@ class Settings(BaseSettings):
     # 개발/테스트 전용: 이메일만으로 로그인하는 /api/auth/social 허용. 기본 꺼짐 (켜면 누구나 어떤 계정으로든 로그인 가능)
     ALLOW_DEV_LOGIN: bool = False
 
+    # 팀 통화방(WebRTC) 연결 서버. 같은 네트워크 밖(다른 집·카페 등)에서 연결하려면 TURN 중계 서버가 필요하다.
+    #  - STUN: 내 공인 주소를 알아내는 용도 (무료 공용 서버)
+    #  - TURN: 직접 연결이 막힌 경우 음성을 대신 전달 (직접 운영하는 coturn, Metered, Cloudflare Calls 등) — 계정/서버가 필요
+    STUN_URLS: str = "stun:stun.l.google.com:19302"
+    TURN_URLS: str = ""            # 쉼표 구분, 예: turn:turn.example.com:3478,turns:turn.example.com:5349?transport=tcp
+    TURN_USERNAME: str = ""        # 고정 계정 방식 (Metered 등)
+    TURN_CREDENTIAL: str = ""
+    TURN_SECRET: str = ""          # coturn 의 static-auth-secret 방식: 서버가 시간 제한 계정을 만들어 준다
+    TURN_TTL_SECONDS: int = 86400
+
+    # 이벤트(공모전·해커톤) 자동 수집
+    EVENT_CRAWL_ENABLED: bool = True
+    EVENT_CRAWL_INTERVAL_HOURS: int = 6
+    EVENT_SOURCES: str = "devevent,wevity,contestkorea"   # 쓸 출처 (쉼표 구분): devevent, wevity, contestkorea, feeds
+    EVENT_IMAGE_BATCH: int = 60                 # 한 번 수집할 때 포스터를 새로 찾아볼 최대 페이지 수 (0 이면 포스터 수집 끔)
+    EVENT_FEEDS: str = ""                       # 추가로 읽을 RSS/Atom 주소 (쉼표 구분)
+
     # JWT 인증 설정
-    JWT_SECRET_KEY: str = "your-super-secret-jwt-key-for-local-development-change-in-prod-987654321"
+    JWT_SECRET_KEY: str = _DEFAULT_JWT_SECRET   # 기본값이면 아래에서 서버별 무작위 키로 자동 교체됨
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30일 (접속할 때마다 /api/auth/refresh 로 연장)
     
@@ -58,3 +78,37 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 settings = Settings()
+
+
+def _ensure_private_jwt_secret():
+    """JWT 서명키가 코드에 공개된 기본값 그대로면, 서버마다 고유한 무작위 키를 만들어 data/.jwt_secret 에 저장해 쓴다.
+    (기본값을 아는 누구나 로그인 토큰을 위조할 수 있기 때문. 배포 환경에서는 JWT_SECRET_KEY 환경변수로 직접 지정하는 것을 권장)"""
+    import logging
+    import secrets
+    if settings.JWT_SECRET_KEY and settings.JWT_SECRET_KEY != _DEFAULT_JWT_SECRET and len(settings.JWT_SECRET_KEY) >= 16:
+        return   # 직접 지정한 키가 있으면 그대로 사용 (빈 값이거나 너무 짧으면 자동 생성)
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    path = os.path.join(data_dir, ".jwt_secret")
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+        else:
+            value = ""
+        if len(value) < 32:
+            value = secrets.token_hex(32)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(value)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+        settings.JWT_SECRET_KEY = value
+    except OSError:
+        # 저장할 수 없는 환경이면 이번 실행 동안만 쓰는 임시 키 (재시작하면 다시 로그인)
+        settings.JWT_SECRET_KEY = secrets.token_hex(32)
+        logging.getLogger(__name__).warning("JWT_SECRET_KEY 가 기본값이라 임시 키를 사용합니다. 환경변수로 직접 지정하세요.")
+
+
+_ensure_private_jwt_secret()

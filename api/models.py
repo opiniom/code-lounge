@@ -14,6 +14,8 @@ class User(Base):
     oauth_id = Column(String(255), nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     ai_name = Column(String(30), nullable=True)   # 채팅에서 AI 를 부를 때 쓰는 이름 (예: "미니" → "미니야 …")
+    presence_pref = Column(String(10), default="auto", nullable=False, server_default="auto")   # auto(접속하면 온라인) | away | dnd
+    last_seen_at = Column(DateTime, nullable=True)   # 마지막 접속 신호(하트비트). 오래되면 오프라인으로 본다
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # 1:N 관계 (사용자의 코드 실행 히스토리)
@@ -164,4 +166,131 @@ class CrawledEvent(Base):
     d_day = Column(String(20), nullable=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    # --- 자동 수집(크롤러)용 ---
+    source = Column(String(30), default="manual", nullable=False, index=True)   # devevent | wevity | feed | manual
+    ext_key = Column(String(64), nullable=True, index=True)                      # 출처+주소로 만든 고유키 (중복 방지)
+    deadline_date = Column(Date, nullable=True, index=True)                       # 접수 마감일(없으면 행사일) — 정렬/마감 처리용
+    starts_on = Column(Date, nullable=True)                                       # 행사 시작일
+    tags = Column(Text, nullable=True)                                            # JSON 배열
+    first_seen_at = Column(DateTime, default=datetime.utcnow, nullable=True)      # 처음 발견한 시각 (NEW 표시)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=True, index=True)  # 마지막으로 목록에서 확인한 시각
+    image_url = Column(String(500), nullable=True)                                # 포스터(og:image) 주소 — 서버는 내려받지 않고 브라우저가 직접 불러온다
+    image_checked_at = Column(DateTime, nullable=True)                            # 포스터를 찾아본 시각 (없을 때 매번 다시 찾지 않게)
 
+
+class EventCrawlRun(Base):
+    """이벤트 자동 수집 실행 기록 (출처별). 화면의 '마지막 수집'과 오류 안내에 쓴다."""
+    __tablename__ = "event_crawl_runs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    source = Column(String(30), nullable=False, index=True)
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    finished_at = Column(DateTime, nullable=True)
+    ok = Column(Boolean, default=False, nullable=False)
+    found = Column(Integer, default=0, nullable=False)
+    added = Column(Integer, default=0, nullable=False)
+    updated = Column(Integer, default=0, nullable=False)
+    error = Column(Text, nullable=True)
+    trigger = Column(String(20), default="schedule", nullable=False)   # schedule | manual
+
+
+class CallRoom(Base):
+    """프로젝트의 음성 통화방(디스코드의 음성 채널). '기본 통화방'은 저장하지 않고 프로젝트 이름을 그대로 따른다."""
+    __tablename__ = "call_rooms"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(40), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ======================================================================
+# 커뮤니티 (질문 · 팀원 모집 · 프로젝트 자랑 · 정보 공유 · 자유)
+# ======================================================================
+class CommunityPost(Base):
+    __tablename__ = "community_posts"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)   # NULL = 운영팀 글
+    category = Column(String(20), nullable=False, index=True)       # question | recruit | showcase | share | free
+    title = Column(String(150), nullable=False)
+    body = Column(Text, nullable=False)
+    tags = Column(Text, nullable=True)                              # JSON 배열
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)   # 모집·자랑 글이 가리키는 프로젝트
+    event_id = Column(Integer, ForeignKey("crawled_events.id", ondelete="SET NULL"), nullable=True)           # 공모전·해커톤 팀원 모집이면 그 이벤트
+    # 팀원 모집
+    recruit_roles = Column(Text, nullable=True)                     # JSON 배열 (예: ["프론트엔드","디자이너"])
+    recruit_slots = Column(Integer, nullable=True)
+    recruit_deadline = Column(Date, nullable=True)
+    status = Column(String(10), default="open", nullable=False)     # open | closed (모집 글의 모집 상태)
+    accepted_comment_id = Column(Integer, nullable=True)            # 질문 글에서 채택된 답변
+    # 집계 (목록을 빠르게 그리기 위해 저장해 둔다)
+    like_count = Column(Integer, default=0, nullable=False)
+    comment_count = Column(Integer, default=0, nullable=False)
+    bookmark_count = Column(Integer, default=0, nullable=False)
+    report_count = Column(Integer, default=0, nullable=False)
+    is_pinned = Column(Boolean, default=False, nullable=False)
+    is_hidden = Column(Boolean, default=False, nullable=False)      # 신고가 쌓이면 목록에서 가린다
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommunityComment(Base):
+    __tablename__ = "community_comments"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    parent_id = Column(Integer, nullable=True)                      # 답글이면 최상위 댓글 id (한 단계만)
+    body = Column(Text, nullable=False)
+    like_count = Column(Integer, default=0, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommunityLike(Base):
+    __tablename__ = "community_likes"
+    __table_args__ = (UniqueConstraint("user_id", "target_type", "target_id", name="uq_community_like"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_type = Column(String(10), nullable=False)                # post | comment
+    target_id = Column(Integer, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommunityBookmark(Base):
+    __tablename__ = "community_bookmarks"
+    __table_args__ = (UniqueConstraint("user_id", "post_id", name="uq_community_bookmark"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommunityApplication(Base):
+    """팀원 모집 글에 대한 지원"""
+    __tablename__ = "community_applications"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_community_application"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    post_id = Column(Integer, ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    status = Column(String(10), default="pending", nullable=False)  # pending | accepted | declined
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommunityReport(Base):
+    __tablename__ = "community_reports"
+    __table_args__ = (UniqueConstraint("user_id", "target_type", "target_id", name="uq_community_report"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_type = Column(String(10), nullable=False)
+    target_id = Column(Integer, nullable=False)
+    reason = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

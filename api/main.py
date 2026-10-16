@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -25,6 +26,9 @@ from routers.files import router as files_router
 from routers.invitations import router as invitations_router
 from routers.events import router as events_router
 from routers.notifications import router as notifications_router
+from routers.call import router as call_router
+from routers.community import router as community_router, seed_community
+from routers.presence import router as presence_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -52,7 +56,18 @@ ws_manager = ConnectionManager()
 async def lifespan(app: FastAPI):
     """서버 기동 시 DB 초기화 및 테이블 자동 생성"""
     await init_db()
-    yield
+    from database import async_session_maker
+    await seed_community(async_session_maker)          # 커뮤니티가 비어 있으면 이용 안내 글 하나
+    # 공모전·해커톤 정보를 서버가 켜져 있는 동안 주기적으로 자동 수집 (EVENT_CRAWL_ENABLED=false 로 끌 수 있음)
+    scheduler = None
+    if settings.EVENT_CRAWL_ENABLED:
+        from services.event_crawler import scheduler_loop
+        scheduler = asyncio.create_task(scheduler_loop())
+    try:
+        yield
+    finally:
+        if scheduler:
+            scheduler.cancel()
 
 app = FastAPI(
     title="Code Execution & Auth Backend API",
@@ -92,6 +107,9 @@ app.include_router(files_router)
 app.include_router(invitations_router)
 app.include_router(events_router)
 app.include_router(notifications_router)
+app.include_router(call_router)
+app.include_router(community_router)
+app.include_router(presence_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "code_lounge_ui"))

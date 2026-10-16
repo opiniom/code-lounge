@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync/ 외부 공유 스크립트 (macOS / Linux)
+# DureSync 외부 공유 스크립트 (macOS / Linux)
 #   ./share.sh   → 서버를 '공유 모드'로 켜고, 인터넷에서 열리는 임시 주소를 만들어 줍니다.
 #                  그 주소로 만든 초대 링크는 떨어져 있는 팀원도 열 수 있어요.
 #
