@@ -287,6 +287,8 @@ def detect_chat_rules(lines: List[Tuple[str, str]], reference: date) -> List[Dic
         title = re.sub(r"(제가|내가|저는|나는|할게요?|하겠습니다|하겠어요|해볼게요?|맡을게요?)", "", title).strip(" ,.")
         if len(title) < 2:
             first = re.split(r"[?.!\n]", prev_text)[0].strip()
+            first = re.sub(r"\s*(이거|이걸|이것|그거|이 부분)?\s*누가.*$", "", first).strip()     # "캐싱 누가 해주실 수 있어요" → "캐싱"
+            first = re.sub(r"\s*(해주실|해줄|해주세요|해주시).*$", "", first).strip()
             title = (first[:20].strip() or "맡은 작업")
         e = dict(e, title=title, assignee=author, source=text)
         out.append(e)
