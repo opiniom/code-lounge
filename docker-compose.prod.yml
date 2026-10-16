@@ -1,0 +1,40 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: duresync-app
+    restart: always
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - PUBLIC_MODE=false
+      - PUBLIC_BASE_URL=https://duresync.cloud
+    networks:
+      - duresync-net
+
+  caddy:
+    image: caddy:latest
+    container_name: duresync-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - duresync-net
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  duresync-net:
+    driver: bridge

@@ -1,0 +1,20 @@
+duresync.cloud, www.duresync.cloud {
+    # FastAPI 백엔드로 리버스 프록시 (웹소켓 자동 지원)
+    reverse_proxy app:8000
+
+    # gzip / zstd 압축
+    encode zstd gzip
+
+    # 보안 헤더
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+    }
+
+    # 로그 기록
+    log {
+        output stdout
+        format console
+    }
+}
