@@ -32,3 +32,12 @@ document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){ closeInviteModal(); closeAddEvent(); closeMemberDetail(); closeMdocDrawer(); closeComposeModal(); closeStatusEditor(); closeDayDetail(); closeSettings(); closeProfileModal(); closeMenus(); }
 });
 
+
+/* 메뉴바: 스크롤하면 .scrolled (유리 느낌 + 그림자) */
+(function(){
+  var bar = document.querySelector('.topbar');
+  if(!bar) return;
+  function upd(){ var on = (window.pageYOffset || document.documentElement.scrollTop || 0) > 4; if(on !== bar.classList.contains('scrolled')) bar.classList.toggle('scrolled', on); }
+  window.addEventListener('scroll', upd, { passive:true });
+  upd();
+})();

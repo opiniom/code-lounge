@@ -42,10 +42,14 @@ class PresenceMe(BaseModel):
 @router.post("/heartbeat", response_model=PresenceMe)
 async def heartbeat(body: HeartbeatBody, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """접속 중임을 알린다. status 를 함께 보내면 내 상태를 바꾼다. 항상 서버에 저장된 내 상태를 돌려준다."""
+    changed = bool(body.status) and body.status != (current_user.presence_pref or "auto")
     if body.status:
         current_user.presence_pref = body.status
     current_user.last_seen_at = datetime.utcnow()
     await db.commit()
+    if changed:   # 상태를 바꾼 순간 팀원 화면에 바로 반영
+        from services import live
+        await live.publish_presence(db, current_user.id)
     return PresenceMe(pref=current_user.presence_pref or "auto", status=effective_status(current_user.presence_pref, current_user.last_seen_at))
 
 
@@ -54,6 +58,9 @@ async def go_offline(current_user: User = Depends(get_current_user), db: AsyncSe
     """사이트를 닫을 때 호출 → 바로 오프라인으로 표시"""
     current_user.last_seen_at = None
     await db.commit()
+    from services import live
+    if not live.hub.is_online(current_user.id):
+        await live.publish_presence(db, current_user.id, "offline")
     return PresenceMe(pref=current_user.presence_pref or "auto", status="offline")
 
 
@@ -67,4 +74,5 @@ async def team_presence(current_user: User = Depends(get_current_user), db: Asyn
     owner_ids = select(Project.owner_id).where(Project.id.in_(select(project_ids.c.id)))
     rows = (await db.execute(select(User).where(or_(User.id.in_(member_ids), User.id.in_(owner_ids))))).scalars().all()
     now = datetime.utcnow()
-    return {str(u.id): effective_status(u.presence_pref, u.last_seen_at, now) for u in rows}
+    from services import live
+    return {str(u.id): effective_status(u.presence_pref, now if live.hub.is_online(u.id) else u.last_seen_at, now) for u in rows}

@@ -108,9 +108,14 @@ function renderEvents(){
     var msg = evtState.cat === 'saved' ? '저장한 이벤트가 없어요. 카드의 ☆ 를 눌러 저장해 보세요.'
       : (q ? '“' + escapeHtml(q) + '” 에 맞는 이벤트가 없어요.'
       : ((evtState.status && !evtState.status.last_run) ? '아직 수집 전이에요. 잠시 후 자동으로 채워지고, 바로 보려면 [지금 새로고침]을 눌러 보세요.' : '지금 접수 중인 이벤트가 없어요. [마감 포함]을 켜 보세요.'));
+    evtState.sig = null;
     grid.innerHTML = '<div class="evt-empty">' + msg + '</div>';
     return;
   }
+  // 1분마다 조용히 새로고침할 때, 내용이 그대로면 200장 카드를 다시 그리지 않는다 (깜빡임·끊김 방지)
+  var sig = evtState.cat + '|' + Object.keys(bm).sort().join(',') + '|' + list.map(function(e){ return e.id + ':' + (e.d_day || '') + ':' + (e.image_url ? 1 : 0) + ':' + (e.is_new ? 1 : 0); }).join(',');
+  if(sig === evtState.sig && grid.firstElementChild && !grid.querySelector('.evt-empty')) return;
+  evtState.sig = sig;
   grid.innerHTML = list.map(function(ev, i){ return evtCardHtml(ev, i, bm); }).join('');
 }
 function renderCrawlStatus(){
@@ -334,7 +339,7 @@ function checkAppVersion(){
   }).catch(function(){});
 }
 checkAppVersion();
-setInterval(checkAppVersion, 15000);
+setInterval(checkAppVersion, 60000);
 document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkAppVersion(); });
 var projCreateGuard = {name:null, at:0, busy:false};
 function addProjectFromPrompt(name, row){

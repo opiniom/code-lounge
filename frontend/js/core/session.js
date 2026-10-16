@@ -44,6 +44,7 @@ function projFromServer(p){
   return pr;
 }
 function startRealSession(){
+  setTimeout(liveConnect, 400);                     // 로그인한 상태에서 실시간 연결 시작
   document.querySelector('.app').classList.remove('guest-mode');
   myAiName = (currentUser && currentUser.ai_name) || '';
   updateChatPlaceholder();

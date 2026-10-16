@@ -27,6 +27,7 @@ function pstRender(){
   var t = document.getElementById('pstSrvText'); if(t) t.textContent = PST.server === null ? '서버 확인 중' : (PST.server ? '서버 연결됨' : '서버에 연결할 수 없어요');
   var av = document.getElementById('avatarBtn'); if(av) av.dataset.pst = PST.server === false ? 'offline' : pstOwn();
   ntRender();
+  if(typeof chatRenderPresence === 'function') chatRenderPresence();
 }
 function pstToggle(e){
   if(e) e.stopPropagation();
@@ -61,14 +62,14 @@ async function pstLoadTeam(){
   if(!authToken) return;
   try {
     var res = await fetch(API_BASE + '/api/presence/team', { headers:{'Authorization':'Bearer ' + authToken} });
-    if(res.ok){ PST.team = await res.json(); if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader(); renderDureOrbit(); }
+    if(res.ok){ PST.team = await res.json(); if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader(); renderDureOrbit(); if(typeof chatRenderPresence === 'function') chatRenderPresence(); }
   } catch(e){}
 }
 function pstOf(userId){
   if(currentUser && String(currentUser.id) === String(userId)) return PST.server === false ? 'offline' : pstOwn();
   return PST.team[String(userId)] || 'offline';
 }
-function pstTick(){ if(!authToken) return; pstBeat().then(pstLoadTeam); }
+function pstTick(){ if(!authToken) return; liveConnect(); pstBeat().then(function(){ if(!LIVE.ok) pstLoadTeam(); }); }
 function pstOffline(){
   if(!authToken) return;
   try { fetch(API_BASE + '/api/presence/offline', { method:'POST', keepalive:true, headers:{'Authorization':'Bearer ' + authToken} }); } catch(e){}

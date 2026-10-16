@@ -100,7 +100,8 @@ async function loadNotifications(announce){
 }
 function ntStartPolling(){
   if(NT.timer) return;
-  NT.timer = setInterval(function(){ if(!document.hidden && authToken) loadNotifications(true); }, 20000);
+  var ntTick = 0;
+  NT.timer = setInterval(function(){ ntTick++; if(!document.hidden && authToken && (!LIVE.ok || ntTick % 3 === 0)) loadNotifications(true); }, 20000);   // 실시간 연결이 있으면 가끔만
   document.addEventListener('visibilitychange', function(){ if(!document.hidden && authToken) loadNotifications(true); });
 }
 async function ntMark(id){

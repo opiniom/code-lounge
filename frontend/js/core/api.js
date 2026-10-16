@@ -244,7 +244,7 @@ renderFileTree();
 renderProjRow();
 initResizers();
 checkBackendHealth();
-setInterval(checkBackendHealth, 15000);
+setInterval(function(){ if(!document.hidden) checkBackendHealth(); }, 60000);   // 서버 상태 확인은 화면이 보일 때만, 1분마다
 initWebSocket();
 // 자동 로그인 검증 및 OAuth 콜백 토큰 수신
 async function checkAutoLogin() {

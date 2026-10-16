@@ -56,6 +56,8 @@ ws_manager = ConnectionManager()
 async def lifespan(app: FastAPI):
     """서버 기동 시 DB 초기화 및 테이블 자동 생성"""
     await init_db()
+    from services import live as live_hub
+    live_hub.install()                                  # 저장되는 순간 화면으로 바로 알려주기 (WebSocket /ws/live)
     from database import async_session_maker
     await seed_community(async_session_maker)          # 커뮤니티가 비어 있으면 이용 안내 글 하나
     # 공모전·해커톤 정보를 서버가 켜져 있는 동안 주기적으로 자동 수집 (EVENT_CRAWL_ENABLED=false 로 끌 수 있음)
@@ -322,6 +324,44 @@ async def execute_code(
     })
 
     return response
+
+@app.websocket("/ws/live")
+async def live_socket(websocket: WebSocket):
+    """로그인한 사용자 화면으로 실시간 변경(알림·채팅·일정·회의록·팀원 상태)을 밀어준다. 주소: /ws/live?token=JWT"""
+    from sqlalchemy import select
+    from database import async_session_maker
+    from models import User
+    from services.auth_service import decode_access_token
+    from services import live
+    payload = decode_access_token(websocket.query_params.get("token", "") or "")
+    uid = int(payload["sub"]) if payload and str(payload.get("sub", "")).isdigit() else None
+    user = None
+    if uid:
+        async with async_session_maker() as db:
+            user = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+    if not user or not user.is_active:
+        await websocket.close(code=4401)
+        return
+    became_online = await live.hub.connect(uid, websocket)
+    if became_online:
+        async with async_session_maker() as db:
+            u = (await db.execute(select(User).where(User.id == uid))).scalar_one()
+            u.last_seen_at = datetime.utcnow()
+            await db.commit()
+            await live.publish_presence(db, uid)
+    try:
+        while True:
+            msg = await websocket.receive_text()
+            if msg == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        if live.hub.disconnect(uid, websocket):
+            live.hub.schedule_offline(uid)
+
 
 @app.websocket("/ws/events")
 async def websocket_endpoint(websocket: WebSocket):

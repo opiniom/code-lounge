@@ -101,7 +101,7 @@ function expireSession(){
   mockLogout('expired');
 }
 function mockLogout(reason){
-  pstOffline(); PST.team = {};
+  liveDisconnect(); pstOffline(); PST.team = {};
   calProjectsLoaded = true;
   wsResetForSessionChange();
   stopChat();

@@ -1,0 +1,29 @@
+/* ---- 상단 메뉴바: 스크롤을 내려도 화면 위에 붙어 있고, 내리면 살짝 유리처럼 바뀐다 ---- */
+.topbar{
+  position:sticky; top:0; z-index:40;
+  transition:background .25s ease, box-shadow .25s ease, border-color .25s ease, backdrop-filter .25s ease;
+}
+.topbar.scrolled{
+  background:color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom-color:var(--border-strong);
+  box-shadow:0 10px 30px -18px rgba(0,0,0,.55);
+}
+/* 메뉴바가 붙어 있는 동안 화면 안의 고정 영역(캘린더·워크스페이스 상단 바 등)이 가려지지 않게 */
+.view .ws-projectbar{position:relative;}
+
+/* ---- 채팅방: 팀원 접속 상태 ---- */
+.chat-pstrip{display:flex; align-items:center; gap:4px; margin-top:6px; flex-wrap:wrap;}
+.chat-pstrip[hidden]{display:none;}
+.chat-pav{position:relative; width:22px; height:22px; border-radius:50%; color:#fff; font-size:10px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; transition:opacity .2s;}
+.chat-pav[data-pst="offline"]{opacity:.5;}
+.chat-pav::after, .msg-row .mavatar[data-pst]::after{content:''; position:absolute; right:-2px; bottom:-2px; width:9px; height:9px; border-radius:50%; border:2px solid var(--bg-elevated); box-sizing:border-box; background:#94A3B8;}
+.chat-pav[data-pst="online"]::after, .msg-row .mavatar[data-pst="online"]::after{background:#22C55E;}
+.chat-pav[data-pst="away"]::after, .msg-row .mavatar[data-pst="away"]::after{background:#F59E0B;}
+.chat-pav[data-pst="dnd"]::after, .msg-row .mavatar[data-pst="dnd"]::after{background:#EF4444;}
+.msg-row .mavatar{position:relative;}
+.chat-pmore{font-size:11px; color:var(--text-faint); padding:0 4px;}
+#chatMembers{transition:color .2s;}
+
+/* ---- 이벤트 카드 200장: 보이는 것만 그리고, 나타나는 애니메이션 지연은 앞쪽 몇 장까지만 ---- */
+.pcard{animation-delay:calc(min(var(--i, 0), 10) * 35ms); content-visibility:auto; contain-intrinsic-size:auto 430px;}

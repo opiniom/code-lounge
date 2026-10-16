@@ -15,6 +15,7 @@
     "css/events.css",
     "css/editor.css",
     "css/polish.css",
+    "css/shell.css",
     "css/widgets.css",
     "css/presence.css",
     "css/guest.css"
@@ -38,6 +39,7 @@
     "js/pages/notes.js",
     "js/pages/calendar.js",
     "js/core/session.js",
+    "js/core/live.js",
     "js/pages/community.js",
     "js/pages/admin.js"
   ]

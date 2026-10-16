@@ -117,9 +117,33 @@ function renderChatHeader(){
   var cur = calProjectById(chatProject);
   document.getElementById('chatAvatar').textContent = (cur.title || '팀').slice(0, 1);
   var names = (cur.members || []).map(function(mm){ return mm.username; });
-  members.textContent = (names.length ? names.join(', ')+' · '+names.length+'명' : '나 혼자')+' · 어디서든 이어서 대화해요';
+  members.textContent = (names.length ? names.length + '명' : '나 혼자') + ' · 어디서든 이어서 대화해요';
+  chatRenderPresence();
   invite.hidden = !cur.isOwner;
   var rn = document.getElementById('chatRenameBtn'); if(rn) rn.hidden = !cur.isOwner;
+}
+/* 채팅방 팀원 접속 상태: 머리말에 팀원 아바타(상태 점) + "N명 접속 중", 말풍선 아바타의 점도 같이 갱신 */
+function chatRenderPresence(){
+  var box = document.getElementById('chatPresence'), label = document.getElementById('chatMembers');
+  if(!box || !label) return;
+  var cur = (calApiMode && chatProject) ? calProjectById(chatProject) : null;
+  if(!cur){ box.hidden = true; box.innerHTML = ''; return; }
+  var members = (cur.members && cur.members.length) ? cur.members : (currentUser ? [{ id:currentUser.id, username:myProfile.name || '나' }] : []);
+  var rank = { online:0, dnd:1, away:2, offline:3 }, on = 0;
+  var list = members.map(function(m){ var st = pstOf(m.id); if(st !== 'offline') on++; return { m:m, st:st }; })
+    .sort(function(a, b){ return rank[a.st] - rank[b.st]; });
+  box.innerHTML = '';
+  list.slice(0, 8).forEach(function(x){
+    var me = currentUser && x.m.id === currentUser.id;
+    var a = document.createElement('span'); a.className = 'chat-pav'; a.dataset.pst = x.st;
+    a.style.background = me ? '#06B6D4' : chatColor(x.m.username); a.textContent = String(x.m.username || '?').slice(0, 1);
+    a.title = x.m.username + (me ? ' (나)' : '') + ' · ' + PST_META[x.st].label;
+    box.appendChild(a);
+  });
+  if(list.length > 8){ var more = document.createElement('span'); more.className = 'chat-pmore'; more.textContent = '+' + (list.length - 8); box.appendChild(more); }
+  box.hidden = false;
+  label.textContent = on + '명 접속 중 · 총 ' + members.length + '명';
+  document.querySelectorAll('#chatPanel .mavatar[data-uid]').forEach(function(av){ av.dataset.pst = pstOf(av.dataset.uid); });
 }
 function switchChatProject(id){
   chatProject = id; chatMsgs = []; chatSig = '';
@@ -175,7 +199,8 @@ function startChat(){
   chatMsgs = []; chatSig = ''; chatNoteSig = null;
   loadChat(true);
   if(chatTimer) clearInterval(chatTimer);
-  chatTimer = setInterval(function(){ if(!document.hidden) loadChat(false); }, 3000);
+  var chatTick = 0;
+  chatTimer = setInterval(function(){ chatTick++; if(!document.hidden && (!LIVE.ok || chatTick % 8 === 0)) loadChat(false); }, 3000);   // 실시간 연결이 있으면 가끔만 확인
 }
 function stopChat(){
   if(typeof leaveCall === 'function') leaveCall(true);
@@ -267,6 +292,7 @@ function buildMsgRow(m){
   } else {
     av.style.background = mine ? '#06B6D4' : chatColor(m.author);
     av.textContent = (mine ? '나' : m.author).slice(0, 1);
+    if(m.user_id != null){ av.dataset.uid = m.user_id; av.dataset.pst = pstOf(m.user_id); }
   }
   var col = document.createElement('div'); col.className = 'msg-col';
   var nm = document.createElement('span'); nm.className = 'msg-name'; nm.textContent = isAi ? ((m.meta && m.meta.ai_name) || 'Dure AI') : (mine ? '나' : m.author);
