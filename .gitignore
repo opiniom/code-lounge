@@ -27,3 +27,8 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+
+# 로컬 실행 환경
+.venv/
+.claude/
+*.pyc

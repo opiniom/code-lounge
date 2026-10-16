@@ -1,3 +1,26 @@
+# sync/ — 팀 프로젝트 AI 워크스페이스
+
+프로젝트 단위로 **워크스페이스(코드) · 회의록 · 캘린더 · 팀 채팅**을 한 곳에서 쓰고, 회의록과 채팅에서 AI가 일정(누가/언제까지)을 찾아 캘린더에 올려주는 협업 플랫폼입니다.
+
+## ▶ 바로 실행하기
+
+```bash
+git clone https://github.com/opiniom/code-lounge.git
+cd code-lounge
+./run.sh          # Windows 는 run.bat 더블클릭
+```
+
+실행되면 브라우저가 자동으로 열립니다. 직접 열려면:
+
+**http://localhost:8000/app**
+
+- 처음 실행하면 `.env` 가 자동으로 만들어집니다. 키가 없어도 **게스트로 둘러보기**와 규칙 기반 일정 분석이 동작해요.
+- 구글/네이버 로그인, Gemini AI 분석을 쓰려면 `.env` 에 키를 넣으세요 (`docs/social_login_setup.md` 참고). `.env` 는 git 에 올라가지 않습니다.
+- 서버 API 문서: http://localhost:8000/docs
+- 발표 자료: `presentation.html` (브라우저에서 바로 열기)
+
+---
+
 # 올인원 백엔드: 자체 DB, JWT 인증, 코드 실행 샌드박스 & Cloudflare Tunnel
 
 개인 PC 환경에서 **자체 데이터베이스(SQLAlchemy + SQLite/PostgreSQL)**, **JWT 사용자 인증/인가**, **Python & Java 격리 샌드박스**, **실시간 웹소켓 Hub**를 직접 구축하고, **Cloudflare Tunnel**을 통해 외부 Vercel 프론트엔드(Next.js)와 완벽하게 통신할 수 있는 올인원 백엔드 시스템입니다.

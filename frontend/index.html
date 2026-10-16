@@ -2908,7 +2908,8 @@ function projNext(){
 var appBuild = null;
 function checkAppVersion(){
   if (document.hidden) return;
-  fetch(API_BASE + '/api/version', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(v){
+  var base = (typeof API_BASE === 'string') ? API_BASE : (function(){ try { return localStorage.getItem('sync_api_base') || 'http://localhost:8000'; } catch(e){ return 'http://localhost:8000'; } })();
+  fetch(base + '/api/version', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(v){
     if (!v || !v.build) return;
     var tag = document.getElementById('buildTag');
     if (appBuild === null) { appBuild = v.build; }
