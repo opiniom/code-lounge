@@ -23,7 +23,8 @@
     "css/sysadmin.css",
     "css/account.css",
     "css/compat.css",
-    "css/mobile.css"
+    "css/mobile.css",
+    "css/responsive.css"
   ],
   "js": [
     "js/core/theme.js",
