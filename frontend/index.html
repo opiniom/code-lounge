@@ -720,14 +720,14 @@
       <div class="cm-field"><label>제목</label><input type="text" id="cmEdTitleInput" maxlength="120" placeholder="제목을 입력하세요" autocomplete="off"></div>
       <div class="cm-recruit-box" id="cmEdRecruit" hidden>
         <div class="cm-field"><label>모집할 내 프로젝트 <small>(지원자를 수락하면 이 프로젝트 팀원이 돼요)</small></label><select id="cmEdProject"></select></div>
-        <div class="cm-field"><label>찾는 역할 <small>(Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdRoles"><input type="text" id="cmEdRoleInput" maxlength="20" placeholder="예: 프론트엔드" autocomplete="off"></div><div class="cm-suggest" id="cmEdRoleSuggest"></div></div>
+        <div class="cm-field"><label>찾는 역할 <small>(Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdRoles"><input type="text" id="cmEdRoleInput" maxlength="20" placeholder="역할 입력 후 Enter" autocomplete="off"></div><div class="cm-suggest" id="cmEdRoleSuggest"></div></div>
         <div class="cm-row2"><div class="cm-field"><label>모집 인원</label><input type="number" id="cmEdSlots" min="1" max="20" value="1"></div><div class="cm-field"><label>모집 마감일 <small>(선택)</small></label><input type="date" id="cmEdDeadline"></div></div>
       </div>
       <div class="cm-field" id="cmEdShowcase" hidden><label>자랑할 프로젝트 <small>(선택)</small></label><select id="cmEdShowProject"></select></div>
       <div class="cm-field"><div class="cm-body-head"><label>내용</label><span><button type="button" class="cm-link" id="cmEdPrevBtn" onclick="cmTogglePreview()">미리보기</button> <small id="cmEdCount">0 / 10000</small></span></div>
         <textarea id="cmEdBody" rows="9" maxlength="10000" placeholder="내용을 입력하세요. **굵게**, `코드`, ```코드블록```, - 목록, 링크(https://…)를 쓸 수 있어요" oninput="cmEdCount()"></textarea>
         <div class="cm-preview" id="cmEdPreview" hidden></div></div>
-      <div class="cm-field"><label>태그 <small>(최대 5개, Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdTags"><input type="text" id="cmEdTagInput" maxlength="20" placeholder="예: React, 캡스톤" autocomplete="off"></div></div>
+      <div class="cm-field"><label>태그 <small>(최대 5개, Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdTags"><input type="text" id="cmEdTagInput" maxlength="20" placeholder="태그 입력 후 Enter" autocomplete="off"></div></div>
       <div class="cm-ed-foot"><span class="cm-ed-note" id="cmEdNote"></span><button class="btn ghost" onclick="cmCloseEditor()">취소</button><button class="btn primary" id="cmEdSubmit" onclick="cmSubmitEditor()">올리기</button></div>
     </div>
   </div>

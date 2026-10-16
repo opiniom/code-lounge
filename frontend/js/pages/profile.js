@@ -139,7 +139,7 @@ function pfEntryForm(p){
   var f = pfEl('div', 'pf-form');
   var ta = pfEl('textarea'); ta.rows = 4; ta.maxLength = 2000; ta.placeholder = '이 프로젝트에서 맡은 역할과 한 일을 적어 보세요. (예: 어떤 기능을 만들었는지, 어떤 문제를 해결했는지)'; ta.value = p.summary || '';
   f.appendChild(pfEl('label', null, '내가 한 일')); f.appendChild(ta);
-  f.appendChild(pfEl('label', null, '사용 기술 (Enter로 추가)')); var ci = pfChipInput(p.tech, 12, '예: Python, FastAPI'); f.appendChild(ci);
+  f.appendChild(pfEl('label', null, '사용 기술 (Enter로 추가)')); var ci = pfChipInput(p.tech, 12, '기술 이름 입력 후 Enter'); f.appendChild(ci);
   var row = pfEl('div', 'pf-prow'); var ok = pfEl('button', 'btn primary', '저장'); var no = pfEl('button', 'btn ghost', '취소');
   ok.onclick = async function(){ ok.disabled = true; try { await apiFetch('/api/profile/me/projects/' + p.project_id, { method:'PUT', body:JSON.stringify({ summary:ta.value, tech:ci.getValues() }) }); PF.editProj = null; pushToast('✅', '포트폴리오에 저장했어요', p.title, { duration:2200 }); pfRefresh(); } catch(e){ ok.disabled = false; pushToast('⚠️', '저장하지 못했어요', e.message); } };
   no.onclick = function(){ PF.editProj = null; pfRefresh(); }; row.appendChild(ok); row.appendChild(no); f.appendChild(row); return f;
@@ -164,7 +164,7 @@ function pfDetailFields(p){
   f.appendChild(pfEl('label', null, '한 줄 소개')); var hl = pfEl('input'); hl.type = 'text'; hl.maxLength = 120; hl.value = p.headline || ''; hl.placeholder = '나를 한 줄로 소개해 보세요'; f.appendChild(hl);
   f.appendChild(pfEl('label', null, '자기소개')); var bio = pfEl('textarea'); bio.rows = 4; bio.maxLength = 2000; bio.value = p.bio || ''; bio.placeholder = '관심 분야, 강점, 목표 등을 자유롭게 적어 주세요'; f.appendChild(bio);
   f.appendChild(pfEl('div', 'pf-sec', '기술 · 링크'));
-  f.appendChild(pfEl('label', null, '기술 스택 (Enter로 추가, 최대 20개)')); var sk = pfChipInput(p.skills, 20, '예: React, Python'); f.appendChild(sk);
+  f.appendChild(pfEl('label', null, '기술 스택 (Enter로 추가, 최대 20개)')); var sk = pfChipInput(p.skills, 20, '기술 이름 입력 후 Enter'); f.appendChild(sk);
   f.appendChild(pfEl('label', null, '링크 (GitHub·블로그 등, 최대 6개)')); var lk = pfLinksEditor(p.links); f.appendChild(lk);
   f.getValues = function(){ return { headline:hl.value, bio:bio.value, skills:sk.getValues(), links:lk.getValues() }; };
   return f;
