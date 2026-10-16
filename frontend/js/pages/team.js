@@ -303,11 +303,28 @@ async function changeMemberRole(projectId, userId, newRole){
   }
 }
 
+/* 브라우저 기본 confirm() 대신 화면 안의 확인 창 (일부 환경에서 기본 창이 막혀 버튼이 안 눌린 것처럼 보이던 문제 방지) */
+function appConfirm(o){
+  return new Promise(function(resolve){
+    var bd = document.createElement('div'); bd.className = 'modal-backdrop open'; bd.style.zIndex = 120;
+    bd.innerHTML = '<div class="share-modal cf-box" role="alertdialog" aria-modal="true"><div class="cf-ic"></div><h3></h3><p></p><div class="cf-row"><button type="button" class="btn ghost cf-no">취소</button><button type="button" class="btn primary cf-ok"></button></div></div>';
+    bd.querySelector('.cf-ic').textContent = o.icon || '⚠️'; bd.querySelector('h3').textContent = o.title || '확인'; bd.querySelector('p').textContent = o.text || '';
+    var ok = bd.querySelector('.cf-ok'); ok.textContent = o.ok || '확인'; if(o.danger) ok.classList.add('danger');
+    var done = function(v){ document.removeEventListener('keydown', onKey, true); bd.remove(); resolve(v); };
+    var onKey = function(e){ if(e.key === 'Escape'){ e.stopPropagation(); done(false); } };
+    document.addEventListener('keydown', onKey, true);
+    bd.addEventListener('click', function(e){ if(e.target === bd) done(false); });
+    bd.querySelector('.cf-no').onclick = function(){ done(false); }; ok.onclick = function(){ done(true); };
+    document.body.appendChild(bd); setTimeout(function(){ ok.focus(); }, 30);
+  });
+}
 async function kickMember(projectId, userId){
-  if(!confirm('정말 이 팀원을 프로젝트에서 내보내시겠습니까?')) return;
+  var cur = calProjectById('p' + projectId), who = cur && (cur.members || []).filter(function(m){ return m.id === userId; })[0];
+  var yes = await appConfirm({ icon:'👋', title:(who ? who.username + '님을 ' : '') + '내보낼까요?', text:'이 프로젝트의 파일·채팅·일정에 더 이상 접근할 수 없게 돼요. 다시 초대하면 돌아올 수 있어요.', ok:'내보내기', danger:true });
+  if(!yes) return;
   try {
     await apiFetch('/api/projects/' + projectId + '/members/' + userId, { method: 'DELETE' });
-    pushToast('👋', '팀원 내보내기', '팀원이 프로젝트에서 제외되었습니다.');
+    pushToast('👋', '팀원을 내보냈어요', (who ? who.username + '님이 ' : '팀원이 ') + '프로젝트에서 제외되었어요.');
     await loadCalProjects();
     renderTeamPage();
   } catch(e){
@@ -316,7 +333,8 @@ async function kickMember(projectId, userId){
 }
 
 async function leaveProject(projectId, userId){
-  if(!confirm('이 프로젝트에서 탈퇴하시겠습니까?')) return;
+  var yes = await appConfirm({ icon:'🚪', title:'이 프로젝트에서 탈퇴할까요?', text:'탈퇴하면 이 프로젝트의 파일·채팅·일정에 접근할 수 없어요. 다시 들어오려면 초대를 받아야 해요.', ok:'탈퇴하기', danger:true });
+  if(!yes) return;
   try {
     await apiFetch('/api/projects/' + projectId + '/members/' + userId, { method: 'DELETE' });
     pushToast('👋', '탈퇴 완료', '프로젝트에서 탈퇴했습니다.');

@@ -189,12 +189,12 @@ function renderFileTree() {
   treeEl.appendChild(buildBranch(root));
 }
 
-/* ---- 워크스페이스: 파일 데이터 및 더미 템플릿 ---- */
+/* ---- 워크스페이스: 파일 데이터 / 새 프로젝트 시작 파일 ---- */
 var files = {};
 var currentFileKey = null;
 var openedTabs = [];
 
-function initProjectDummyFiles(proj, force) {
+function initProjectStarterFiles(proj, force) {
   var title = (proj && proj.title) ? proj.title : (document.getElementById('wsCrumbName') ? document.getElementById('wsCrumbName').textContent : '');
   {
     files = {
@@ -521,7 +521,7 @@ function renderWsEmpty(){
   var hasFiles = Object.keys(files).length > 0;
   var noProject = calApiMode && !myProjects.length;
   var title = document.getElementById('wsEmptyTitle'), desc = document.getElementById('wsEmptyDesc'), icon = document.getElementById('wsEmptyIcon');
-  var starter = document.getElementById('wsStarterBtn'), dummy = document.getElementById('wsDummyBtn'), newProj = document.getElementById('wsNewProjBtn');
+  var starter = document.getElementById('wsStarterBtn'), newProj = document.getElementById('wsNewProjBtn');
   var acts = document.getElementById('wsEmptyActions');
   var shell = document.querySelector('.ws-shell');
   var resizerV = document.getElementById('wsResizerSidebar');
@@ -544,7 +544,7 @@ function renderWsEmpty(){
     icon.textContent = wsLoading ? '⏳' : '📂';
     title.textContent = wsLoading ? '파일을 불러오는 중이에요…' : '아직 파일이 없어요';
     desc.textContent = wsLoading ? '' : '이 프로젝트의 첫 파일을 만들어보세요. 만든 파일은 자동 저장되고 팀원과 함께 볼 수 있어요.';
-    Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b === dummy || b === newProj || wsLoading); });
+    Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b === newProj || wsLoading); });
     if (starter) starter.hidden = wsLoading;
   } else {
     icon.textContent = '📁'; title.textContent = '열린 폴더가 없습니다';

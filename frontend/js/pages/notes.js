@@ -399,7 +399,7 @@ function buildDocEditHtml(doc){
     "<div class='mdoc-edit-note'><span>🤖</span><span><b>저장하면 AI가 회의록을 다시 분석해요.</b> 날짜나 기간(예: 9월 20일부터 22일까지)을 적으면 캘린더 일정이 새 내용으로 다시 만들어져요.</span></div>"+
     buildEditSection('sec-other', '💬', '논의 내용', 'editOthers', doc.others, '예: 검색 필터 기능부터 먼저 논의')+
     buildEditSection('sec-decision', '✅', '결정 사항', 'editDecisions', doc.decisions, '예: UI 디자인 시안은 이번 주 안에 확정하기로 함')+
-    buildEditSection('sec-action', '🔧', '액션 아이템', 'editActions', doc.actions, '예: 민재가 API 문서 정리 금요일까지 담당')+
+    buildEditSection('sec-action', '🔧', '액션 아이템', 'editActions', doc.actions, '담당자와 할 일을 적어 주세요')+
     "<div class='mdoc-edit-footer'><button type='button' class='btn ghost' onclick='cancelEditDoc()'>취소</button><button type='button' class='btn primary' onclick='saveEditDoc()'>저장하고 캘린더 다시 분석</button></div>"+
     "</div>"
   );

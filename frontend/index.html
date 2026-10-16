@@ -170,10 +170,10 @@
           <p class="hh-rotor"><span class="rot-label">한곳에서</span><span class="rot"><i>팀 채팅</i><i>음성 통화</i><i>일정 관리</i><i>회의록 정리</i><i>코드 작성</i></span></p>
 
           <div class="prompt-box">
-            <textarea id="promptInput" rows="1" maxlength="120" aria-label="프로젝트 이름" placeholder="프로젝트 이름을 입력하세요  ·  예) 캡스톤 · AI 추천 시스템" oninput="autoGrow(this)" onkeydown="handlePromptKeydown(event)"></textarea>
+            <textarea id="promptInput" rows="1" maxlength="120" aria-label="프로젝트 이름" placeholder="프로젝트 이름을 입력하세요" oninput="autoGrow(this)" onkeydown="handlePromptKeydown(event)"></textarea>
             <div class="prompt-actions">
               <div class="left">
-                <button type="button" class="pill-btn" onclick="homeSuggestName()" title="프로젝트 이름이 막막할 때"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>이름 추천</button>
+                <button type="button" class="pill-btn" onclick="homeAddEvent()" title="캘린더에 일정 바로 추가"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M9 3.5v4M15 3.5v4M12 13v4M10 15h4"/></svg>일정 추가</button>
                 <button type="button" class="pill-btn" id="homeJoinBtn" onclick="homeToggleJoin()" title="팀원에게 받은 초대 링크로 참여"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>초대 링크로 참여</button>
                 <button type="button" class="pill-btn" onclick="homeRecruit()" title="커뮤니티에 팀원 모집 글 쓰기"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8v6M14 11h6"/></svg>팀원 구하기</button>
               </div>
@@ -293,7 +293,6 @@
           <button class="btn primary" id="wsStarterBtn" onclick="wsStarter()">🐍 Python으로 시작하기</button>
           <button class="btn" onclick="promptNewFile()">＋ 새 파일</button>
           <button class="btn" onclick="triggerOpenFolder()">📂 내 컴퓨터 폴더 가져오기</button>
-          <button class="btn ghost" id="wsDummyBtn" onclick="initProjectDummyFiles(null, true)">예제 파일 보기</button>
           <button class="btn primary" id="wsNewProjBtn" onclick="openNewProjectModal()" hidden>＋ 새 프로젝트 만들기</button>
         </div>
       </div>
@@ -451,7 +450,7 @@
         <div class="mh"><h3>새 회의록 작성</h3><button class="icon-btn" onclick="closeComposeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
         <div class="form-row"><label>프로젝트 *</label><select id="noteProject" onchange="buildAttendeePicker(this.value)"></select></div>
         <div class="form-grid2">
-          <div class="form-row"><label>회의 제목 *</label><input type="text" id="noteTitleInput" placeholder="예: 캡스톤 정기 회의"></div>
+          <div class="form-row"><label>회의 제목 *</label><input type="text" id="noteTitleInput" placeholder="회의 제목"></div>
           <div class="form-row"><label>날짜 *</label><input type="date" id="noteDateInput"></div>
         </div>
         <div class="form-row">
@@ -479,7 +478,7 @@
               <button type="button" onclick="slashInsert('check')">☑ 체크리스트</button>
               <button type="button" onclick="slashInsert('hr')">— 구분선</button>
             </div>
-            <div class="note-editor" id="noteEditor" contenteditable="true" data-placeholder="회의 내용을 자유롭게 적어보세요. 예: '민재가 API 문서 정리 금요일까지 담당하기로 함' — AI가 결정사항·액션아이템을 알아서 분류해요."></div>
+            <div class="note-editor" id="noteEditor" contenteditable="true" data-placeholder="회의 내용을 자유롭게 적어보세요."></div>
           </div>
         </div>
 
@@ -845,7 +844,7 @@
     <div class="share-modal">
       <div class="mh"><h3>새 프로젝트</h3><button class="icon-btn" onclick="closeNewProjectModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p style="font-size:12px; color:var(--text-faint); line-height:1.6;">프로젝트를 만들면 워크스페이스 파일, 회의록, 캘린더, 팀 채팅이 이 프로젝트 단위로 나뉘어요.</p>
-      <div class="form-row"><label>프로젝트 이름</label><input type="text" id="newProjectName" placeholder="예: 캡스톤 · AI 리테일 추천" onkeydown="if(isEnter(event))submitNewProject()"></div>
+      <div class="form-row"><label>프로젝트 이름</label><input type="text" id="newProjectName" placeholder="프로젝트 이름" onkeydown="if(isEnter(event))submitNewProject()"></div>
       <button class="btn primary" onclick="submitNewProject()">만들기</button>
     </div>
   </div>
@@ -966,11 +965,11 @@
   <div class="modal-backdrop" id="profileModal" onclick="if(event.target===this)closeProfileModal()">
     <div class="share-modal">
       <div class="mh"><h3>프로필 설정</h3><button class="icon-btn" onclick="closeProfileModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <div class="form-row"><label>이름</label><input type="text" id="profileNameInput" placeholder="예: 배찬"></div>
-      <div class="form-row"><label>역할 / 소개</label><input type="text" id="profileRoleInput" placeholder="예: 프론트엔드 · 캡스톤 프로젝트"></div>
+      <div class="form-row"><label>이름</label><input type="text" id="profileNameInput" placeholder="이름"></div>
+      <div class="form-row"><label>역할 / 소개</label><input type="text" id="profileRoleInput" placeholder="역할 / 소개"></div>
       <div class="form-row">
         <label>AI 이름 (부를 때 쓰는 이름)</label>
-        <input type="text" id="profileAiNameInput" maxlength="12" placeholder="예: 미니 → '미니야 이번 주 일정 알려줘'">
+        <input type="text" id="profileAiNameInput" maxlength="12" placeholder="AI를 부를 이름">
         <p id="aiNameHint" style="font-size:11px; color:var(--text-faint); line-height:1.5; margin-top:2px;">채팅에서 <b>이름+야</b> 또는 <b>@이름</b>으로 AI를 불러요. 공백·특수문자 없이 한글/영문/숫자 2~12자. 비우면 "AI"예요.</p>
       </div>
       <div class="form-row">

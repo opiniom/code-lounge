@@ -39,3 +39,9 @@
 .chat-jump{position:absolute; left:50%; bottom:76px; transform:translateX(-50%); z-index:5; border:none; padding:7px 14px; border-radius:999px; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px -8px rgba(59,130,246,.7); animation:typingIn .2s ease both;}
 .chat-jump[hidden]{display:none;}
 @media (prefers-reduced-motion:reduce){ .typing-row .typing-dots span{animation:none; opacity:.8;} }
+
+/* ---- 화면 안 확인 창 ---- */
+.cf-box{max-width:360px; text-align:center; align-items:center; gap:10px; animation:wgIn .22s cubic-bezier(.2,.9,.3,1) both;}
+.cf-ic{font-size:30px;} .cf-box h3{margin:0; font-size:17px; letter-spacing:-.03em;} .cf-box p{margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;}
+.cf-row{display:flex; gap:8px; width:100%; margin-top:8px;} .cf-row .btn{flex:1; justify-content:center;}
+.cf-ok.danger{background:#EF4444; border-color:#EF4444; color:#fff;} .cf-ok.danger:hover{filter:brightness(1.08);}

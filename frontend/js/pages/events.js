@@ -227,13 +227,7 @@ document.addEventListener('compositionstart', function(){ imeComposing = true; }
 document.addEventListener('compositionend', function(){ setTimeout(function(){ imeComposing = false; }, 0); }, true);
 // 조합 중이라는 신호가 하나라도 있으면 Enter 를 제출로 보지 않는다 (브라우저/OS 마다 isComposing 값이 제각각이라 3가지를 모두 확인)
 function isEnter(e){ return e.key==='Enter' && !e.isComposing && e.keyCode!==229 && !imeComposing; }
-var HOME_NAME_IDEAS = ['캡스톤 · AI 추천 시스템','알고리즘 스터디 자동화 봇','학회 홈페이지 리뉴얼','해커톤 · 실시간 협업 보드','졸업작품 · 모바일 앱 MVP','사이드 프로젝트 · 가계부 서비스','공모전 · 데이터 시각화 대시보드','오픈소스 기여 스터디','동아리 출석 · 일정 관리 앱','코딩테스트 풀이 아카이브','팀 회고 · 회의록 자동 정리 도구','중고 거래 캠퍼스 플랫폼'];
-var homeNameIdx = -1;
-function homeSuggestName(){
-  var input = document.getElementById('promptInput'); if(!input) return;
-  var n; do { n = Math.floor(Math.random() * HOME_NAME_IDEAS.length); } while(n === homeNameIdx && HOME_NAME_IDEAS.length > 1);
-  homeNameIdx = n; input.value = HOME_NAME_IDEAS[n]; autoGrow(input); input.focus(); input.select();
-}
+function homeAddEvent(){ goView('calendar'); setTimeout(function(){ if(typeof openAddEvent === 'function') openAddEvent(); }, 250); }
 function homeToggleJoin(force){
   var row = document.getElementById('homeJoinRow'), btn = document.getElementById('homeJoinBtn'); if(!row) return;
   var open = (typeof force === 'boolean') ? force : row.hidden;
@@ -408,7 +402,7 @@ function openWorkspace(id){
   var crumb = document.getElementById('wsCrumbName');
   if (crumb) crumb.textContent = proj.title;
 
-  initProjectDummyFiles(proj, false);
+  initProjectStarterFiles(proj, false);
   proj.isNew = false;
   renderWsSelector();
 
