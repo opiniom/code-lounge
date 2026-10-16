@@ -58,15 +58,9 @@ function mpTab(tab){
   if(!calApiMode){ none('로그인하면 내 활동을 볼 수 있어요.'); return; }
   if(tab === 'followers' || tab === 'following'){
     var f = MP.follows || { followers:[], following:[] }; rows = tab === 'followers' ? f.followers : f.following;
-    if(tab === 'following'){
-      var sb = mpEl('div', 'pf-search'), inp = mpEl('input'); inp.type = 'search'; inp.placeholder = '이름으로 사람 찾기 (2글자 이상)'; inp.value = PF.q || ''; sb.appendChild(inp); list.appendChild(sb);
-      var res = mpEl('div', 'pf-results'); list.appendChild(res); var tmr = null;
-      var showRes = function(){ res.innerHTML = ''; (PF.results || []).forEach(function(x){ res.appendChild(pfPerson({ id:x.id, name:x.name, headline:x.headline, i_follow:x.i_follow })); }); if(PF.q && PF.q.length >= 2 && !(PF.results || []).length) res.appendChild(mpEl('div', 'mp-none', '검색 결과가 없어요')); };
-      inp.oninput = function(){ clearTimeout(tmr); PF.q = inp.value.trim(); tmr = setTimeout(async function(){ if(PF.q.length < 2){ PF.results = []; showRes(); return; } try { PF.results = await apiFetch('/api/profile/search?q=' + encodeURIComponent(PF.q)); } catch(e){ PF.results = []; } showRes(); }, 300); };
-      showRes();
-    }
+    if(tab === 'following') pfEmailSearch(list);
     rows.forEach(function(x){ list.appendChild(pfPerson(x)); });
-    if(!rows.length) list.appendChild(mpEl('div', 'mp-none', tab === 'followers' ? '아직 팔로워가 없어요. 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '아직 팔로우한 사람이 없어요. 위 검색창이나 커뮤니티 글의 작성자 옆 버튼으로 팔로우해 보세요.'));
+    if(!rows.length) list.appendChild(mpEl('div', 'mp-none', tab === 'followers' ? '아직 팔로워가 없어요. 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '아직 팔로우한 사람이 없어요. 위 이메일 검색이나 커뮤니티 글의 작성자 옆 버튼으로 팔로우해 보세요.'));
   } else if(tab === 'projects'){
     rows = myProjects.slice();
     rows.forEach(function(p){

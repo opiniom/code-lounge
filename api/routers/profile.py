@@ -132,18 +132,30 @@ async def _payload(db: AsyncSession, viewer: User, target: User) -> dict:
     }
 
 
+_EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,200}\.[^@\s]{2,}$")
+_search_hits: dict = {}
+
+
 @router.get("/search")
-async def search_people(q: str = Query("", max_length=40), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """이름으로 사람 찾기 (이메일은 보여주지 않는다). 2글자 이상."""
-    q = q.strip()
-    if len(q) < 2:
+async def search_people(email: str = Query("", max_length=160), current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """이메일 주소로 사람 찾기. 이름·부분 검색은 하지 않는다(이름은 겹치고, 이메일 목록을 긁어 가는 것도 막기 위해).
+    주소 전체가 정확히 일치하는 한 명만 돌려주고, 이메일 자체는 응답에 담지 않는다. 1분에 20번까지."""
+    import time
+    now = time.time()
+    hits = [t for t in _search_hits.get(current_user.id, []) if now - t < 60]
+    if len(hits) >= 20:
+        raise HTTPException(status_code=429, detail="검색을 너무 자주 했어요. 잠시 후 다시 해 주세요.")
+    hits.append(now); _search_hits[current_user.id] = hits
+    email = email.strip().lower()
+    if not _EMAIL.match(email):
+        raise HTTPException(status_code=400, detail="이메일 주소 전체를 입력해 주세요. (예: name@gmail.com)")
+    u = (await db.execute(select(User).where(func.lower(User.email) == email, User.id != current_user.id, User.is_active == True))).scalar_one_or_none()  # noqa: E712
+    if u is None or (u.email or "").endswith("@guest.sync.local"):
         return []
-    rows = (await db.execute(select(User).where(User.username.like(f"%{q}%"), User.id != current_user.id, User.is_active == True).limit(12))).scalars().all()  # noqa: E712
-    ids = [u.id for u in rows]
-    profs = {p.user_id: p for p in (await db.execute(select(UserProfile).where(UserProfile.user_id.in_(ids or [-1])))).scalars().all()}
-    mine = {r for r in (await db.execute(select(Follow.followee_id).where(Follow.follower_id == current_user.id))).scalars().all()}
-    return [{"id": u.id, "name": u.username, "headline": (profs[u.id].headline if u.id in profs else "") or "", "i_follow": u.id in mine}
-            for u in rows if not (u.email or "").endswith("@guest.sync.local")]
+    prof = (await db.execute(select(UserProfile).where(UserProfile.user_id == u.id))).scalar_one_or_none()
+    mine = (await db.execute(select(Follow.id).where(Follow.follower_id == current_user.id, Follow.followee_id == u.id))).scalar_one_or_none() is not None
+    theirs = (await db.execute(select(Follow.id).where(Follow.follower_id == u.id, Follow.followee_id == current_user.id))).scalar_one_or_none() is not None
+    return [{"id": u.id, "name": u.username, "headline": (prof.headline if prof else "") or "", "i_follow": mine, "follows_me": theirs}]
 
 
 @router.get("/me")

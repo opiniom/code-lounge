@@ -72,3 +72,5 @@
 .pf-modal .pf-detail{display:flex; flex-direction:column; gap:8px; margin:6px 0 10px;} .pf-modal .pf-sec{font-family:var(--font-brand); font-size:13px; font-weight:800; margin-top:8px; padding-top:12px; border-top:1px solid var(--border);}
 .pf-modal label{font-size:12.5px; font-weight:700;} .pf-modal .pf-detail input, .pf-modal .pf-detail textarea{width:100%; padding:10px 13px; border:1px solid var(--border-strong); border-radius:12px; background:var(--surface); color:var(--text); font:inherit; font-size:13.5px; outline:none;}
 .pf-modal .pf-detail input:focus, .pf-modal .pf-detail textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);} .pf-modal-tip{font-size:12.5px; color:var(--text-faint); margin:4px 0 10px;}
+
+.pf-search{display:flex; gap:8px;} .pf-search input{flex:1; min-width:0;} .pf-search .btn{flex:0 0 auto; padding:0 18px;}

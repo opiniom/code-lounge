@@ -179,16 +179,31 @@ function pfPerson(x){
   r.onclick = function(){ openProfile(x.id); };
   var b = pfFollowBtn(x.id, x.i_follow); var bb = b.onclick; b.onclick = function(e){ e.stopPropagation(); bb(); }; r.appendChild(b); return r;
 }
+/* 이메일로 사람 찾기: 주소 전체를 입력하고 Enter(또는 찾기). 이름은 겹치기 쉬워서 이메일만 쓴다 */
+function pfEmailSearch(parent){
+  var sb = pfEl('div', 'pf-search'), inp = pfEl('input'), go = pfEl('button', 'btn primary', '찾기');
+  inp.type = 'email'; inp.placeholder = '상대방 이메일 주소로 찾기 (예: name@gmail.com)'; inp.value = PF.q || ''; inp.autocomplete = 'off'; inp.spellcheck = false; inp.maxLength = 160;
+  sb.appendChild(inp); sb.appendChild(go); parent.appendChild(sb);
+  var res = pfEl('div', 'pf-results'); parent.appendChild(res);
+  var draw = function(){
+    res.innerHTML = '';
+    if(PF.sMsg) res.appendChild(pfEl('div', 'pf-hidden', PF.sMsg));
+    (PF.results || []).forEach(function(x){ res.appendChild(pfPerson({ id:x.id, name:x.name, headline:x.headline, i_follow:x.i_follow })); });
+  };
+  var run = async function(){
+    PF.q = inp.value.trim().toLowerCase(); PF.sMsg = ''; PF.results = [];
+    if(!PF.q){ draw(); return; }
+    go.disabled = true;
+    try { PF.results = await apiFetch('/api/profile/search?email=' + encodeURIComponent(PF.q)); if(!PF.results.length) PF.sMsg = '이 이메일로 가입한 사용자를 찾지 못했어요. 주소를 다시 확인해 주세요.'; }
+    catch(e){ PF.sMsg = e.message || '검색하지 못했어요.'; }
+    go.disabled = false; draw();
+  };
+  go.onclick = run; inp.onkeydown = function(e){ if(isEnter(e)){ e.preventDefault(); run(); } };
+  draw();
+}
 function pfFollowLists(root){
   var f = PF.follows || { followers:[], following:[] }, list = PF.tab === 'followers' ? f.followers : f.following;
-  if(PF.tab === 'following'){
-    var sb = pfEl('div', 'pf-search'); var inp = pfEl('input'); inp.type = 'search'; inp.placeholder = '이름으로 사람 찾기 (2글자 이상)'; inp.value = PF.q || ''; sb.appendChild(inp); root.appendChild(sb);
-    var res = pfEl('div', 'pf-results'); root.appendChild(res);
-    var t = null;
-    var showRes = function(){ res.innerHTML = ''; (PF.results || []).forEach(function(x){ res.appendChild(pfPerson({ id:x.id, name:x.name, headline:x.headline, i_follow:x.i_follow })); }); if(PF.q && PF.q.length >= 2 && !(PF.results || []).length) res.appendChild(pfEl('div', 'pf-hidden', '검색 결과가 없어요')); };
-    inp.oninput = function(){ clearTimeout(t); PF.q = inp.value.trim(); t = setTimeout(async function(){ if(PF.q.length < 2){ PF.results = []; showRes(); return; } try { PF.results = await apiFetch('/api/profile/search?q=' + encodeURIComponent(PF.q)); } catch(e){ PF.results = []; } showRes(); }, 300); };
-    showRes();
-  }
+  if(PF.tab === 'following') pfEmailSearch(root);
   if(!list.length){ var e = pfEl('div', 'pf-empty'); e.innerHTML = '<b></b><span></span>'; e.querySelector('b').textContent = PF.tab === 'followers' ? '아직 팔로워가 없어요' : '아직 팔로우한 사람이 없어요'; e.querySelector('span').textContent = PF.tab === 'followers' ? '내 프로필을 채우고 커뮤니티에 글을 써 보세요.' : '위 검색창이나 커뮤니티 글의 작성자 이름을 눌러 팔로우해 보세요.'; root.appendChild(e); return; }
   var box = pfEl('div', 'pf-people'); list.forEach(function(x){ box.appendChild(pfPerson(x)); }); root.appendChild(box);
 }
