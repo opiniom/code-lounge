@@ -166,7 +166,10 @@ setTimeout(wgRefreshLive, 600); setInterval(function(){ if(!document.hidden) wgR
 
 
 /* ---- 홈 상단 '두레' 궤도: 내 팀원들이 둘레에 모인다 (이름 첫 글자 + 접속 상태) ---- */
-var DURE_SLOTS = [0, 60, 120, 180, 300];      // 240° 자리는 AI
+/* 팀원 최대 6명 + AI 1개 = 7자리를 둘레에 고르게 놓는다 (4번째 자리는 AI) */
+var DURE_COUNT = 7, DURE_AI_INDEX = 4;
+var DURE_ANGLES = []; for(var _i = 0; _i < DURE_COUNT; _i++) DURE_ANGLES.push(Math.round(_i * 360 / DURE_COUNT * 100) / 100);
+var DURE_SLOTS = DURE_ANGLES.filter(function(_a, i){ return i !== DURE_AI_INDEX; });
 var dureSig = '';
 function dureTeammates(){
   var seen = {}, list = [];
@@ -218,7 +221,7 @@ function renderDureOrbit(){
       box.appendChild(dureNode(angle, null, '+', calApiMode ? '팀원 초대' : '로그인하고 팀원 초대', { cls:'dn-plus' + (i === visible ? '' : ' ghost'), click:invite }));
     }
   });
-  var ai = dureNode(240, null, 'AI', '두레 AI — 채팅에서 "두레야"라고 불러보세요', { cls:'dn-ai' }); box.appendChild(ai);
+  var ai = dureNode(DURE_ANGLES[DURE_AI_INDEX], null, 'AI', '두레 AI — 채팅에서 "두레야"라고 불러보세요', { cls:'dn-ai' }); box.appendChild(ai);
   // 둘레에 떠 있는 말풍선: 진짜 숫자만 보여준다
   if(!calApiMode) dureChip('dureChip1', '👋 로그인하면 팀원이 여기 모여요', function(){ openLogin(); });
   else if(team.length <= 1) dureChip('dureChip1', '＋ 친구·팀원을 초대해 보세요', invite);
