@@ -178,6 +178,28 @@
   width:100%; height:100%; background:transparent; border:none; outline:none; resize:none;
   color:var(--vscode-term-text); font-family:'JetBrains Mono', 'D2Coding', monospace; font-size:12.5px;
 }
+.ws-run-btn.interactive{
+  background:linear-gradient(135deg, #6366f1, #06b6d4) !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,0.2) !important;
+}
+.ws-run-btn.interactive:hover{
+  filter:brightness(1.1);
+}
+.ws-run-btn.stop{
+  background:#ef4444 !important;
+  color:#fff !important;
+  border:1px solid #dc2626 !important;
+}
+.ws-run-btn.stop:hover{
+  background:#dc2626 !important;
+}
+#termBodyInteractive .xterm{
+  height:100%;
+}
+#termBodyInteractive .xterm-viewport{
+  background-color:transparent !important;
+}
 
 .auth-form-box{display:flex; flex-direction:column; gap:10px; margin:14px 0 10px 0;}
 .auth-input-field{display:flex; flex-direction:column; gap:4px; text-align:left;}

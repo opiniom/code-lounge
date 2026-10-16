@@ -1118,6 +1118,9 @@ function initResizers() {
 function clearTerminal() {
   var out = document.getElementById('termOutputText');
   if (out) out.innerHTML = '';
+  if (xtermInstance) {
+    xtermInstance.clear();
+  }
   var statusChip = document.getElementById('termStatusChip');
   if (statusChip) statusChip.style.display = 'none';
   var execTime = document.getElementById('termExecTime');
@@ -1125,17 +1128,196 @@ function clearTerminal() {
 }
 
 function setTerminalTab(tab) {
-  ['output', 'stdin', 'history'].forEach(function(t) {
+  ['interactive', 'output', 'stdin', 'history'].forEach(function(t) {
     var btn = document.getElementById('termTab' + t.charAt(0).toUpperCase() + t.slice(1));
     var body = document.getElementById('termBody' + t.charAt(0).toUpperCase() + t.slice(1));
     if (btn) btn.classList.toggle('active', t === tab);
-    if (body) body.style.display = (t === tab) ? 'block' : 'none';
+    if (body) {
+      if (t === tab) {
+        body.style.display = (t === 'interactive') ? 'block' : 'block';
+      } else {
+        body.style.display = 'none';
+      }
+    }
   });
+  if (tab === 'interactive') {
+    initXtermIfNeeded();
+    if (xtermFitAddon) {
+      setTimeout(function(){ try { xtermFitAddon.fit(); } catch(e){} }, 50);
+    }
+  }
   if (tab === 'history') loadSubmissions();
 }
 
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* =========================================================
+   실시간 대화형 터미널 (Live Interactive Terminal / PTY)
+   ========================================================= */
+var activeTermSocket = null;
+var xtermInstance = null;
+var xtermFitAddon = null;
+
+function initXtermIfNeeded() {
+  if (xtermInstance) return;
+  var container = document.getElementById('termXtermContainer');
+  if (!container || !window.Terminal) return;
+
+  xtermInstance = new Terminal({
+    cursorBlink: true,
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', 'D2Coding', 'Cascadia Code', Consolas, monospace",
+    theme: {
+      background: '#0c1017',
+      foreground: '#e6edf3',
+      cursor: '#58a6ff',
+      black: '#484f58',
+      red: '#ff7b72',
+      green: '#3fb950',
+      yellow: '#d29922',
+      blue: '#58a6ff',
+      magenta: '#bc8cff',
+      cyan: '#39c5cf',
+      white: '#b1bac4'
+    }
+  });
+
+  if (window.FitAddon && window.FitAddon.FitAddon) {
+    xtermFitAddon = new window.FitAddon.FitAddon();
+    xtermInstance.loadAddon(xtermFitAddon);
+  }
+
+  xtermInstance.open(container);
+  if (xtermFitAddon) {
+    setTimeout(function(){ try { xtermFitAddon.fit(); } catch(e){} }, 60);
+  }
+
+  // 브라우저에서 키 입력 시 WebSocket을 통해 파이썬 stdin으로 실시간 전송
+  xtermInstance.onData(function(data) {
+    if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
+      activeTermSocket.send(JSON.stringify({ action: 'input', data: data }));
+    }
+  });
+}
+
+window.addEventListener('resize', function(){
+  if (xtermFitAddon) {
+    try { xtermFitAddon.fit(); } catch(e){}
+  }
+});
+
+function stopInteractiveCode() {
+  if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
+    activeTermSocket.send(JSON.stringify({ action: 'stop' }));
+  }
+}
+
+async function runInteractiveCode() {
+  if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
+  var code = '';
+  if (window.monaco && monacoEditor) {
+    code = monacoEditor.getValue().trim();
+  } else if (currentFileKey && files[currentFileKey]) {
+    code = (files[currentFileKey].raw || '').trim();
+  }
+  if (!code) {
+    pushToast('⚠️', '코드 없음', '실행할 코드를 입력해주세요.');
+    return;
+  }
+
+  var lang = getFileLanguage(currentFileKey);
+  var validLangs = ['python', 'java', 'csharp', 'cpp', 'c'];
+  if (!validLangs.includes(lang)) {
+    lang = 'python';
+  }
+
+  // 터미널 패널 열기 및 대화형 탭 활성화
+  var termPanel = document.getElementById('wsTerminalPanel');
+  if (termPanel) termPanel.classList.remove('collapsed');
+  setTerminalTab('interactive');
+  initXtermIfNeeded();
+
+  if (xtermInstance) {
+    xtermInstance.clear();
+    xtermInstance.write('\x1b[36m// [⚡ 실시간 대화형 실행 시작]\x1b[0m\r\n\x1b[90m// 키보드로 직접 값을 입력하고 Enter를 누르세요.\x1b[0m\r\n\r\n');
+  }
+
+  var runInteractiveBtn = document.getElementById('wsRunInteractiveBtn');
+  var runBtn = document.getElementById('wsRunBtn');
+  var stopBtn = document.getElementById('wsStopBtn');
+  var statusChip = document.getElementById('termStatusChip');
+  var execTime = document.getElementById('termExecTime');
+
+  if (runInteractiveBtn) runInteractiveBtn.disabled = true;
+  if (runBtn) runBtn.disabled = true;
+  if (stopBtn) stopBtn.style.display = 'inline-flex';
+  if (statusChip) {
+    statusChip.style.display = 'inline-block';
+    statusChip.className = 'term-status-chip running';
+    statusChip.textContent = 'Interactive...';
+  }
+  if (execTime) {
+    execTime.style.display = 'inline-block';
+    execTime.textContent = '대화형 실행중';
+  }
+
+  // 기존 소켓 정리
+  if (activeTermSocket) {
+    try { activeTermSocket.close(); } catch(e){}
+    activeTermSocket = null;
+  }
+
+  var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  var wsUrl = proto + '//' + location.host + '/ws/terminal';
+
+  var ws = new WebSocket(wsUrl);
+  activeTermSocket = ws;
+
+  ws.onopen = function() {
+    ws.send(JSON.stringify({
+      action: 'start',
+      language: lang,
+      source_code: code
+    }));
+  };
+
+  ws.onmessage = function(ev) {
+    try {
+      var msg = JSON.parse(ev.data);
+      if (msg.type === 'stdout' || msg.type === 'stderr') {
+        if (xtermInstance) xtermInstance.write(msg.data);
+      } else if (msg.type === 'exit') {
+        if (msg.data && xtermInstance) xtermInstance.write(msg.data);
+        finishRun(msg.code);
+      }
+    } catch(e) {
+      if (xtermInstance) xtermInstance.write(ev.data);
+    }
+  };
+
+  ws.onerror = function() {
+    if (xtermInstance) xtermInstance.write('\r\n\x1b[31m[WebSocket 연결 오류가 발생했습니다]\x1b[0m\r\n');
+    finishRun(-1);
+  };
+
+  ws.onclose = function() {
+    finishRun(0);
+  };
+
+  function finishRun(code) {
+    if (runInteractiveBtn) runInteractiveBtn.disabled = false;
+    if (runBtn) runBtn.disabled = false;
+    if (stopBtn) stopBtn.style.display = 'none';
+    if (statusChip) {
+      var ok = (code === 0);
+      statusChip.className = 'term-status-chip ' + (ok ? 'success' : 'error');
+      statusChip.textContent = ok ? 'Accepted' : 'Exited (' + code + ')';
+    }
+    if (execTime) execTime.textContent = '종료됨';
+    activeTermSocket = null;
+  }
 }
 
