@@ -61,7 +61,7 @@ async function pstLoadTeam(){
   if(!authToken) return;
   try {
     var res = await fetch(API_BASE + '/api/presence/team', { headers:{'Authorization':'Bearer ' + authToken} });
-    if(res.ok){ PST.team = await res.json(); if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader(); }
+    if(res.ok){ PST.team = await res.json(); if(typeof renderWsHeader === 'function' && calApiMode) renderWsHeader(); renderDureOrbit(); }
   } catch(e){}
 }
 function pstOf(userId){

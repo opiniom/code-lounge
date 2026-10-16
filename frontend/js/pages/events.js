@@ -307,6 +307,7 @@ function renderProjRow(){
     document.getElementById('projNextBtn').disabled = projPageIndex>=totalPages2-1;
   }
   if(calReady) syncCalProjects();
+  renderDureOrbit();
 }
 function projPrev(){ if(projPageIndex>0){ projPageIndex--; renderProjRow(); } }
 function projNext(){

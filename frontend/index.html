@@ -150,19 +150,12 @@
         <div class="home-hero-left">
           <div class="dure-stage">
             <div class="dure-ring">
-              <div class="dure-orbit">
-                <div class="dn" style="--a:0deg;   --c:#3B82F6;"><span>지</span></div>
-                <div class="dn" style="--a:60deg;  --c:#8B5CF6;"><span>민</span></div>
-                <div class="dn" style="--a:120deg; --c:#EC4899;"><span>하</span></div>
-                <div class="dn" style="--a:180deg; --c:#06B6D4;"><span>나</span></div>
-                <div class="dn dn-ai" style="--a:240deg;"><span>AI</span></div>
-                <div class="dn dn-plus" style="--a:300deg;" role="button" tabindex="0" title="팀원 초대" onclick="openInviteFromHero()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openInviteFromHero();}"><span>+</span></div>
-              </div>
+              <div class="dure-orbit" id="dureOrbit"></div>
               <button type="button" class="dure-core" onclick="openInviteFromHero()" aria-label="팀원 초대" title="팀원 초대"><span class="bm dure-core-mark" role="img" aria-hidden="true"></span><span class="dure-core-tip">＋ 팀원 초대</span></button>
             </div>
-            <span class="dure-chip c1" aria-hidden="true">💬 AI가 일정을 잡았어요</span>
-            <span class="dure-chip c2" aria-hidden="true">📞 3명 통화 중</span>
-            <span class="dure-chip c3" aria-hidden="true">📝 회의록 정리 완료</span>
+            <span class="dure-chip c1" id="dureChip1" hidden></span>
+            <span class="dure-chip c2" id="dureChip2" hidden></span>
+            <span class="dure-chip c3" id="dureChip3" hidden></span>
           </div>
           <div class="guest-banner" id="guestBanner"><span class="gb-ic">👋</span><span class="gb-tx"><b>게스트로 둘러보는 중이에요</b><small>로그인하면 내 프로젝트·팀 채팅·AI가 열려요</small></span><button type="button" onclick="openLogin()">로그인</button></div>
           <span class="hh-eyebrow">두레 · together, since forever</span>

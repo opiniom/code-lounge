@@ -261,3 +261,12 @@
 .proj-page-label{font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint);}
 .meta-file{font-size:11px; color:var(--text-faint); font-family:var(--font-mono); margin-top:3px;}
 
+
+/* 궤도 위 팀원 · 비어 있는 자리 · 말풍선 */
+.dn span{position:relative;}
+.dn span[data-pst]::after{content:''; position:absolute; right:-1px; bottom:-1px; width:30%; height:30%; border-radius:50%; border:2px solid var(--bg); background:#94A3B8;}
+.dn span[data-pst="online"]::after{background:#22C55E;} .dn span[data-pst="away"]::after{background:#F59E0B;} .dn span[data-pst="dnd"]::after{background:#EF4444;}
+.dn-plus{cursor:pointer;} .dn-plus span{border:1.5px dashed var(--border-strong); box-shadow:0 0 0 3px var(--bg); transition:transform .2s, color .2s, border-color .2s;}
+.dn-plus:hover span, .dn-plus:focus-visible span{color:var(--accent-ink); border-color:var(--accent); transform:scale(1.1);} .dn-plus:focus-visible{outline:none;}
+.dn-plus.ghost{opacity:.45;} .dn-plus.ghost:hover{opacity:1;}
+.dure-chip[hidden]{display:none;} .dure-chip.click{cursor:pointer; transition:border-color .15s, color .15s;} .dure-chip.click:hover{border-color:var(--accent); color:var(--text);}

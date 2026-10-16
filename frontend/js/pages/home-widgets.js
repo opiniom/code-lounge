@@ -160,7 +160,69 @@ function wgLiveNotes(){
     box.appendChild(wgRow(md, 'var(--accent-2)', d.title + ' · 결정 ' + (d.decisions || []).length + ' · 할 일 ' + (d.actions || []).length, function(){ goView('notes'); }));
   });
 }
-function wgRefreshLive(){ wgLiveToday(); wgLiveEvents(); wgLiveCommunity(); wgLiveNotes(); }
+function wgRefreshLive(){ wgLiveToday(); wgLiveEvents(); wgLiveCommunity(); wgLiveNotes(); renderDureOrbit(); }
 loadWidgetPrefs();
 setTimeout(wgRefreshLive, 600); setInterval(function(){ if(!document.hidden) wgRefreshLive(); }, 30000);
 
+
+/* ---- 홈 상단 '두레' 궤도: 내 팀원들이 둘레에 모인다 (이름 첫 글자 + 접속 상태) ---- */
+var DURE_SLOTS = [0, 60, 120, 180, 300];      // 240° 자리는 AI
+var dureSig = '';
+function dureTeammates(){
+  var seen = {}, list = [];
+  if(!calApiMode || !currentUser) return list;
+  list.push({ id:currentUser.id, name:myProfile.name || currentUser.username || '나', me:true });
+  seen[currentUser.id] = 1;
+  myProjects.forEach(function(p){ (p.members || []).forEach(function(m){
+    if(m && m.id != null && !seen[m.id]){ seen[m.id] = 1; list.push({ id:m.id, name:m.username || '팀원', me:false }); }
+  }); });
+  var rank = { online:0, dnd:1, away:2, offline:3 };
+  var others = list.slice(1).sort(function(a, b){ return rank[pstOf(a.id)] - rank[pstOf(b.id)]; });
+  return [list[0]].concat(others);
+}
+function dureNode(angle, color, label, title, extra){
+  var d = document.createElement('div'); d.className = 'dn' + (extra && extra.cls ? ' ' + extra.cls : ''); d.style.setProperty('--a', angle + 'deg');
+  if(color) d.style.setProperty('--c', color);
+  var sp = document.createElement('span'); sp.textContent = label; d.appendChild(sp);
+  if(title) d.title = title;
+  if(extra && extra.pst) sp.dataset.pst = extra.pst;
+  if(extra && extra.click){ d.setAttribute('role', 'button'); d.tabIndex = 0; d.onclick = extra.click; d.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); extra.click(); } }; }
+  return d;
+}
+function dureChip(id, text, onclick){
+  var c = document.getElementById(id); if(!c) return;
+  if(!text){ c.hidden = true; c.onclick = null; c.classList.remove('click'); return; }
+  c.hidden = false; c.textContent = text; c.classList.toggle('click', !!onclick); c.onclick = onclick || null;
+}
+function renderDureOrbit(){
+  var box = document.getElementById('dureOrbit'); if(!box) return;
+  if(typeof CAL_TODAY === 'undefined' || !CAL_TODAY || !Array.isArray(calendarEvents)) return;   // 화면 코드가 다 불러와지기 전에는 건너뜀
+  var team = dureTeammates();
+  var today = CAL_TODAY.y + '-' + pad2(CAL_TODAY.m) + '-' + pad2(CAL_TODAY.d);
+  var todayN = calApiMode ? calendarEvents.filter(function(e){ return e.start <= today && (e.end || e.start) >= today; }).length : 0;
+  var notesN = calApiMode ? (meetingDocs || []).length : 0;
+  var online = team.filter(function(t){ return pstOf(t.id) === 'online' || pstOf(t.id) === 'dnd' || pstOf(t.id) === 'away'; }).length;
+  var sig = [team.map(function(t){ return t.id + ':' + pstOf(t.id); }).join(','), calApiMode ? 1 : 0, todayN, notesN].join('|');
+  if(sig === dureSig) return; dureSig = sig;
+  box.innerHTML = '';
+  var invite = function(){ openInviteFromHero(); };
+  var visible = team.length > DURE_SLOTS.length ? DURE_SLOTS.length - 1 : team.length;
+  DURE_SLOTS.forEach(function(angle, i){
+    if(i < visible){
+      var t = team[i], st = pstOf(t.id);
+      box.appendChild(dureNode(angle, chatColor(t.name), String(t.name).slice(0, 1), t.name + (t.me ? ' (나)' : '') + ' · ' + PST_META[st].label, { pst:st }));
+    } else if(i === visible && team.length > DURE_SLOTS.length){
+      var rest = team.slice(visible).map(function(t){ return t.name; });
+      box.appendChild(dureNode(angle, '#64748B', '+' + rest.length, rest.join(', '), {}));
+    } else {
+      box.appendChild(dureNode(angle, null, '+', calApiMode ? '팀원 초대' : '로그인하고 팀원 초대', { cls:'dn-plus' + (i === visible ? '' : ' ghost'), click:invite }));
+    }
+  });
+  var ai = dureNode(240, null, 'AI', '두레 AI — 채팅에서 "두레야"라고 불러보세요', { cls:'dn-ai' }); box.appendChild(ai);
+  // 둘레에 떠 있는 말풍선: 진짜 숫자만 보여준다
+  if(!calApiMode) dureChip('dureChip1', '👋 로그인하면 팀원이 여기 모여요', function(){ openLogin(); });
+  else if(team.length <= 1) dureChip('dureChip1', '＋ 친구·팀원을 초대해 보세요', invite);
+  else dureChip('dureChip1', '🟢 팀원 ' + online + '/' + team.length + '명 접속 중', null);
+  dureChip('dureChip2', todayN ? '📅 오늘 일정 ' + todayN + '개' : '', function(){ goView('calendar'); });
+  dureChip('dureChip3', notesN ? '📝 회의록 ' + notesN + '개' : '', function(){ goView('notes'); });
+}
