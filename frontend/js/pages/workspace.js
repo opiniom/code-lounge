@@ -621,7 +621,7 @@ function renderWsEmpty(){
   var hasFiles = Object.keys(files).length > 0;
   var noProject = calApiMode && !myProjects.length;
   var title = document.getElementById('wsEmptyTitle'), desc = document.getElementById('wsEmptyDesc'), icon = document.getElementById('wsEmptyIcon');
-  var starter = document.getElementById('wsStarterBtn'), newProj = document.getElementById('wsNewProjBtn');
+  var newProj = document.getElementById('wsNewProjBtn');
   var acts = document.getElementById('wsEmptyActions');
   var shell = document.querySelector('.ws-shell');
   var resizerV = document.getElementById('wsResizerSidebar');
@@ -645,7 +645,6 @@ function renderWsEmpty(){
     title.textContent = wsLoading ? '파일을 불러오는 중이에요…' : '아직 파일이 없어요';
     desc.textContent = wsLoading ? '' : '이 프로젝트의 첫 파일을 만들어보세요. 만든 파일은 자동 저장되고 팀원과 함께 볼 수 있어요.';
     Array.prototype.forEach.call(acts.children, function(b){ b.hidden = (b === newProj || wsLoading); });
-    if (starter) starter.hidden = wsLoading;
   } else {
     icon.textContent = '📁'; title.textContent = '열린 폴더가 없습니다';
     desc.textContent = '내 컴퓨터의 폴더를 열거나 새 파일을 만들어 시작해보세요. (로그인하면 파일이 저장되고 팀원과 공유돼요)';
@@ -869,12 +868,6 @@ function wsDeleteDir(dir){
       .then(function(){ wsDropLocal(keys); pushToast('🗑️', '폴더를 삭제했어요', dir + ' · 파일 ' + keys.filter(function(k){ return !/\.gitkeep$/.test(k); }).length + '개'); })
       .catch(function(e){ pushToast('⚠️', '삭제하지 못했어요', e.message); renderFileTree(); });
   } else { wsDropLocal(keys); }
-}
-function wsStarter(){
-  var title = (calProjectById(wsProject) || { title: '프로젝트' }).title;
-  var main = '# ' + title + '\n\ndef main():\n    print("Hello, ' + title.replace(/"/g, '') + '!")\n\n\nif __name__ == "__main__":\n    main()\n';
-  var readme = '# ' + title + '\n\n프로젝트 설명을 적어보세요.\n\n## 실행\n\n```bash\npython main.py\n```\n';
-  wsCreateFile('README.md', readme).then(function(){ return wsCreateFile('main.py', main); });
 }
 function wsImportEntries(entries, skipped, rootName){
   var sid = wsServerId();
