@@ -73,113 +73,26 @@ async function wsRunSupported() {
   } catch(e){}
   return null;
 }
-/* 실행하지 않고 이유만 터미널에 알려 준다 */
-function wsRunNotice(title, detail) {
+/* 실행하지 않고 이유만 실행 콘솔에 알려 준다. actions = [{label, fn}] 이면 바로 고칠 수 있는 버튼도 붙인다 */
+function wsRunNotice(title, detail, actions) {
   var termPanel = document.getElementById('wsTerminalPanel'); if (termPanel) termPanel.classList.remove('collapsed');
-  setTerminalTab('output');
-  var chip = document.getElementById('termStatusChip'), t = document.getElementById('termExecTime'), out = document.getElementById('termOutputText');
+  setTerminalTab('interactive');
+  var chip = document.getElementById('termStatusChip'), t = document.getElementById('termExecTime'), log = document.getElementById('termLiveLog');
   if (chip) { chip.style.display = 'inline-block'; chip.className = 'term-status-chip error'; chip.textContent = '실행 안 함'; }
   if (t) t.style.display = 'none';
-  if (out) out.innerHTML = '<div class="term-err">// ' + escapeHtml(title) + '</div>\n<span class="term-dim">' + escapeHtml(detail) + '</span>';
+  if (log) {
+    log.innerHTML = '<div class="term-err">// ' + escapeHtml(title) + '</div><div class="term-dim" style="white-space:pre-wrap;">' + escapeHtml(detail || '') + '</div>';
+    if (actions && actions.length) {
+      var row = document.createElement('div'); row.className = 'term-fixes';
+      actions.forEach(function(a) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'term-fix-btn'; b.textContent = a.label;
+        b.onclick = function() { a.fn(); }; row.appendChild(b);
+      });
+      log.appendChild(row);
+    }
+  }
   pushToast('ℹ️', title, '');
 }
-async function runCurrentCode() {
-  if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
-  var code = '';
-  if (window.monaco && monacoEditor) {
-    code = monacoEditor.getValue().trim();
-  } else if (currentFileKey && files[currentFileKey]) {
-    code = (files[currentFileKey].raw || '').trim();
-  }
-  if (!code) {
-    pushToast('⚠️', '코드 없음', '실행할 코드를 입력해주세요.');
-    return;
-  }
-  // 파일 확장자로 실행 언어를 정한다. 실행할 수 없는 파일(.md .txt .json …)을 몰래 Python 으로 돌리지 않는다
-  var fobj = currentFileKey && files[currentFileKey];
-  var lang = wsRunLang(currentFileKey);
-  var supported = await wsRunSupported();
-  if (!lang) {
-    var ex = fobj ? wsExt(fobj.path || fobj.tab) : '';
-    wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','rb','php','pl','sh','go','rs'].map(function(e){ return '.' + e; }).join(' '));
-    return;
-  }
-  if (supported && supported.indexOf(lang) < 0) {
-    wsRunNotice(WS_RUN_LABEL[lang] + ' 실행 환경이 이 서버에 없어요', '이 서버에서 지금 실행할 수 있는 언어: ' + (supported.map(function(l){ return WS_RUN_LABEL[l] || l; }).join(', ') || '없음') + '\n(서버에 ' + WS_RUN_LABEL[lang] + ' 를 설치하면 실행할 수 있어요)');
-    return;
-  }
-  var stdin = document.getElementById('termStdinText').value;
-  var runBtn = document.getElementById('wsRunBtn');
-  var termPanel = document.getElementById('wsTerminalPanel');
-  if (termPanel) termPanel.classList.remove('collapsed');
-
-  setTerminalTab('output');
-  var statusChip = document.getElementById('termStatusChip');
-  var execTime = document.getElementById('termExecTime');
-  var outPre = document.getElementById('termOutputText');
-
-  statusChip.style.display = 'inline-block';
-  statusChip.className = 'term-status-chip running';
-  statusChip.textContent = 'Running...';
-  execTime.style.display = 'inline-block';
-  execTime.textContent = '실행중';
-  outPre.innerHTML = '<span class="term-dim">// 샌드박스 엔진에서 격리 실행 중입니다...</span>';
-  if (runBtn) runBtn.disabled = true;
-
-  try {
-    var headers = { 'Content-Type': 'application/json' };
-    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-
-    var res = await fetch(API_BASE + '/api/run', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({
-        source_code: code,
-        language: lang,
-        stdin: stdin,
-        cpu_time_limit: 5.0
-      })
-    });
-    var result = await res.json();
-    if (!res.ok) throw new Error(result.detail || '실행 요청 실패');
-
-    var isOk = (result.status === 'Accepted');
-    if (result.error && !result.stdout && !result.stderr && !result.compile_output) { statusChip.className = 'term-status-chip error'; statusChip.textContent = result.status; execTime.textContent = result.execution_time != null ? result.execution_time + 's' : '-'; outPre.innerHTML = '<div class="term-err">// ' + escapeHtml(result.error) + '</div>'; return; }
-    statusChip.className = 'term-status-chip ' + (isOk ? 'success' : 'error');
-    statusChip.textContent = result.status;
-    execTime.textContent = (result.execution_time !== null ? result.execution_time : 0) + 's';
-
-    var html = '';
-    if (result.error) { html += '<div class="term-err">// ' + escapeHtml(result.error) + '</div>\n'; }
-    if (result.compile_output) {
-      html += '<div class="term-err">// [컴파일 에러]\n' + escapeHtml(result.compile_output) + '</div>\n';
-    }
-    if (result.stderr) {
-      html += '<div class="term-err">// [표준 에러]\n' + escapeHtml(result.stderr) + '</div>\n';
-    }
-    if (result.stdout) {
-      html += escapeHtml(result.stdout);
-    }
-    if (!html) {
-      html = '<span class="term-dim">(출력 결과 없음 · 종료 코드: ' + result.exit_code + ')</span>';
-    }
-    outPre.innerHTML = html;
-
-    if (result.submission_id) {
-      pushToast('💾', '실행 저장됨', 'DB submissions 테이블에 기록되었습니다 (ID: #' + result.submission_id + ')');
-      loadSubmissions();
-    }
-  } catch(err) {
-    statusChip.className = 'term-status-chip error';
-    statusChip.textContent = 'Error';
-    execTime.textContent = '-';
-    var offline = (err instanceof TypeError);      // 네트워크 자체가 안 될 때만 '서버 확인' 안내를 붙인다
-    outPre.innerHTML = '<span class="term-err">// ' + (offline ? '서버에 연결할 수 없어요. 인터넷 연결이나 서버 상태를 확인해 주세요.' : escapeHtml(err.message)) + '</span>';
-  } finally {
-    if (runBtn) runBtn.disabled = false;
-  }
-}
-
 
 async function loadSubmissions() {
   if (!authToken) return;
@@ -222,9 +135,9 @@ function restoreSub(codeEnc, lang, stdoutEnc, status) {
       files[currentFileKey].raw = code;
     }
   }
-  setTerminalTab('output');
-  var outPre = document.getElementById('termOutputText');
-  if (outPre) outPre.textContent = stdout || '(이전 출력 없음)';
+  setTerminalTab('interactive');
+  var outLog = document.getElementById('termLiveLog');
+  if (outLog) outLog.textContent = stdout || '(이전 출력 없음)';
   var sc = document.getElementById('termStatusChip');
   if (sc) {
     sc.style.display = 'inline-block';

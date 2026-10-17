@@ -8,7 +8,7 @@
 /* 짧은 글자가 들어가는 버튼·칩·입력칸은 글자 단위로 쪼개지지 않게 원래대로 */
 button, input, select, textarea, .btn, .chip, .pill-btn, .tabnav, .mnav-page, .scale-opt, .wd-tag, .sa-chip{overflow-wrap:normal;}
 /* 코드·터미널·편집기는 그대로 (자체 가로 스크롤) */
-.monaco-editor, .monaco-container, pre, code, kbd, .term-out, #termOutputText{overflow-wrap:normal;}
+.monaco-editor, .monaco-container, pre, code, kbd, .term-out{overflow-wrap:normal;}
 img, video, canvas{max-width:100%;}
 
 /* 2) 위쪽 바: 모바일 배치(≤820px)와 데스크톱 배치 사이(821~1100px)에서도 알림·프로필 버튼이 항상 보이게 */

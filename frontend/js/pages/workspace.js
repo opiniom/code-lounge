@@ -344,6 +344,12 @@ function updateEditorStatusBar() {
       if (sbPos) sbPos.textContent = 'Ln ' + pos.lineNumber + ', Col ' + pos.column;
     }
   }
+  var warn = document.getElementById('sbNameWarn');
+  if (warn) {
+    var iss = currentFileKey ? wsJavaNameIssue(currentFileKey) : null;
+    warn.hidden = !iss;
+    if (iss) { warn.textContent = '⚠ 파일명 ≠ 클래스명'; warn.title = '파일 ' + iss.stem + '.java 와 public 클래스 ' + iss.cls + ' 가 달라요. 눌러서 맞추기'; }
+  }
   var badge = document.getElementById('sbLangBadge');
   if (badge && currentFileKey) {
     var lang = getFileLanguage(currentFileKey), run = wsRunLang(currentFileKey);
@@ -407,6 +413,7 @@ function initMonacoEditor() {
         files[currentFileKey].raw = monacoEditor.getValue();
         wsMarkDirty(currentFileKey);
         if (typeof wsPresTyped === 'function') wsPresTyped();
+        pvAutoRefresh();
       }
       updateEditorStatusBar();
     });
@@ -424,7 +431,7 @@ function initMonacoEditor() {
     });
     // 단축키: Ctrl+Enter 또는 Cmd+Enter로 실행
     monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
-      runCurrentCode();
+      runCode();
     });
 
     updateEditorStatusBar();
@@ -699,6 +706,13 @@ function wsOpenKey(key){
   renderWsEmpty(); renderFileTree(); renderTabs(); renderFileContent(key);
   try { localStorage.setItem('sync_ws_last_' + (wsProject || ''), files[key].path); } catch (e) {}
 }
+/* 빈 새 파일에 넣어 줄 기본 내용: 자바는 파일 이름과 같은 클래스, HTML 은 기본 뼈대 */
+function wsTemplateFor(path){
+  var base = String(path || '').split('/').pop(), ext = wsExt(base), stem = base.replace(/\.[^.]+$/, '');
+  if (ext === 'java' && /^[A-Za-z_$][\w$]*$/.test(stem)) return 'public class ' + stem + ' {\n    public static void main(String[] args) {\n        System.out.println("Hello, ' + stem + '!");\n    }\n}\n';
+  if (ext === 'html' || ext === 'htm') return '<!DOCTYPE html>\n<html lang="ko">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>' + stem + '</title>\n</head>\n<body>\n  <h1>안녕하세요!</h1>\n</body>\n</html>\n';
+  return '';
+}
 function wsCreateFile(name, content, opts){
   opts = opts || {};
   var v = wsValidatePath(name);
@@ -712,7 +726,7 @@ function wsCreateFile(name, content, opts){
     var pre = parts.slice(0, i).join('/');
     if (files[wsKey(pre)]) { pushToast('⚠️', "'" + pre + "' 는 파일이라 폴더로 쓸 수 없어요", name); return Promise.resolve(false); }
   }
-  var f = wsMakeFile({ path: name, content: content || '', updated_at: null, updated_by: null });
+  var f = wsMakeFile({ path: name, content: content == null ? wsTemplateFor(name) : content, updated_at: null, updated_by: null });
   function added(){ files[key] = f; if (!opts.silent) wsOpenKey(key); else { renderWsEmpty(); renderFileTree(); } return true; }
   if (!wsUseServer()) return Promise.resolve(added());
   // 서버가 저장을 받아준 뒤에만 화면에 올린다 → 서버가 거부해도 '지워지지도 않는 유령 파일'이 남지 않는다
@@ -732,25 +746,38 @@ function wsRenameFile(key, newPath){
   wsRenaming = null;
   var f = files[key];
   var nv = wsValidatePath(newPath);
-  if (f && String(newPath || '').trim() && !nv.ok) { pushToast('⚠️', '이름을 확인해 주세요', nv.err); renderFileTree(); return; }
+  if (f && String(newPath || '').trim() && !nv.ok) { pushToast('⚠️', '이름을 확인해 주세요', nv.err); renderFileTree(); return Promise.resolve(false); }
   newPath = nv.ok ? nv.path : '';
-  if (!f || !newPath || newPath === f.path) { renderFileTree(); return; }
-  if (files[wsKey(newPath)]) { pushToast('⚠️', '같은 이름의 파일이 이미 있어요', newPath); renderFileTree(); return; }
+  if (!f || !newPath || newPath === f.path) { renderFileTree(); return Promise.resolve(false); }
+  if (files[wsKey(newPath)]) { pushToast('⚠️', '같은 이름의 파일이 이미 있어요', newPath); renderFileTree(); return Promise.resolve(false); }
   function applyLocal(row){
     var nk = wsKey(newPath), ext = (newPath.split('.').pop() || '').toLowerCase();
+    var oldStem = wsFileBase(f).replace(/\.java$/i, ''), wasJava = wsExt(f.path || f.tab) === 'java';
     f.tab = newPath; f.path = newPath; f.dot = getDotColorForExt(ext); f.lang = getLangForExt(ext);
     if (row) { f.baseUpdatedAt = row.updated_at; f.updatedBy = row.updated_by; }
     delete files[key]; files[nk] = f;
     openedTabs = openedTabs.map(function(k){ return k === key ? nk : k; });
     if (currentFileKey === key) currentFileKey = nk;
+    // 자바: 파일 이름을 바꾸면 public 클래스 이름도 같이 바꾼다 (파일 이름 ↔ 클래스 이름 연동)
+    var newStem = newPath.split('/').pop().replace(/\.java$/i, '');
+    if (wasJava && ext === 'java' && newStem !== oldStem && /^[A-Za-z_$][\w$]*$/.test(newStem)) {
+      var m = WS_JAVA_PUB.exec(wsStripComments(f.raw || ''));
+      if (m && m[1] === oldStem) {
+        f.raw = wsRenameJavaClass(f.raw, oldStem, newStem);
+        wsMarkDirty(nk);
+        pushToast('🔗', '클래스 이름도 같이 바꿨어요', oldStem + ' → ' + newStem);
+      }
+    }
     renderFileTree(); renderTabs(); if (currentFileKey === nk) renderFileContent(nk, true);
+    return true;
   }
   if (wsUseServer() && !f.dirty) {
-    apiFetch('/api/projects/' + wsServerId() + '/files/rename', { method: 'POST', body: JSON.stringify({ from_path: f.path, to_path: newPath }) })
-      .then(applyLocal).catch(function(e){ pushToast('⚠️', '이름을 바꾸지 못했어요', e.message); renderFileTree(); });
+    return apiFetch('/api/projects/' + wsServerId() + '/files/rename', { method: 'POST', body: JSON.stringify({ from_path: f.path, to_path: newPath }) })
+      .then(applyLocal).catch(function(e){ pushToast('⚠️', '이름을 바꾸지 못했어요', e.message); renderFileTree(); return false; });
   } else if (wsUseServer()) {
-    pushToast('ℹ️', '저장 후에 이름을 바꿀 수 있어요', '변경 내용을 먼저 저장하는 중이에요'); wsSave(key).then(function(){ renderFileTree(); });
-  } else { applyLocal(null); }
+    pushToast('ℹ️', '저장 후에 이름을 바꿀 수 있어요', '변경 내용을 먼저 저장하는 중이에요');
+    return Promise.resolve(wsSave(key)).then(function(){ if (files[key] && files[key].dirty) { renderFileTree(); return false; } return wsRenameFile(key, newPath); });
+  } else { return Promise.resolve(applyLocal(null)); }
 }
 function wsDropLocal(keys){
   keys.forEach(function(key){
@@ -1116,8 +1143,6 @@ function initResizers() {
 }
 
 function clearTerminal() {
-  var out = document.getElementById('termOutputText');
-  if (out) out.innerHTML = '';
   var live = document.getElementById('termLiveLog');
   if (live) live.innerHTML = '<div style="color:#6e7681;">// 터미널이 초기화되었습니다.</div>';
   var statusChip = document.getElementById('termStatusChip');
@@ -1127,13 +1152,13 @@ function clearTerminal() {
 }
 
 function setTerminalTab(tab) {
-  ['interactive', 'output', 'stdin', 'history'].forEach(function(t) {
+  ['interactive', 'preview', 'history'].forEach(function(t) {
     var btn = document.getElementById('termTab' + t.charAt(0).toUpperCase() + t.slice(1));
     var body = document.getElementById('termBody' + t.charAt(0).toUpperCase() + t.slice(1));
     if (btn) btn.classList.toggle('active', t === tab);
     if (body) {
       if (t === tab) {
-        body.style.display = (t === 'interactive') ? 'flex' : 'block';
+        body.style.display = (t === 'interactive' || t === 'preview') ? 'flex' : 'block';
       } else {
         body.style.display = 'none';
       }
@@ -1143,6 +1168,10 @@ function setTerminalTab(tab) {
     focusLiveInput();
   }
   if (tab === 'history') loadSubmissions();
+  var panel = document.getElementById('wsTerminalPanel');
+  if (panel) panel.classList.toggle('pv-tall', tab === 'preview');          // 미리보기는 화면이 커야 해서 터미널을 키워 준다
+  if (tab === 'preview') { pvFit(); setTimeout(pvFit, 80); }
+  if (window.monaco && monacoEditor) setTimeout(function() { monacoEditor.layout(); }, 60);
 }
 
 function escapeHtml(str) {
@@ -1195,7 +1224,7 @@ function submitLiveInput(e) {
     appendLiveOutput(val + '\n', false);
     activeTermSocket.send(JSON.stringify({ action: 'input', data: val + '\n' }));
   } else {
-    appendLiveOutput('\n[실행 중인 대화형 프로세스가 없습니다]\n', true);
+    appendLiveOutput('\n[실행 중인 프로그램이 없어요. 먼저 ▶ 실행을 눌러 주세요]\n', true);
   }
   inp.focus();
 }
@@ -1206,26 +1235,98 @@ function stopInteractiveCode() {
   }
 }
 
-async function runInteractiveCode() {
+/* ---------- 파일 이름 ↔ 코드 이름 연동 (자바: public 클래스 이름 = 파일 이름) ---------- */
+var WS_JAVA_PUB = /\bpublic\s+(?:final\s+|abstract\s+|strictfp\s+)*(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)/;
+function wsStripComments(code) { return String(code || '').replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''); }
+function wsFileBase(f) { return String((f && (f.path || f.tab)) || '').split('/').pop(); }
+/* 열린 자바 파일의 이름과 public 클래스 이름이 다르면 {cls, stem} 을 돌려준다 */
+function wsJavaNameIssue(key) {
+  var f = key && files[key];
+  if (!f || wsExt(f.path || f.tab) !== 'java') return null;
+  var raw = (window.monaco && monacoEditor && key === currentFileKey) ? monacoEditor.getValue() : (f.raw || '');
+  var m = WS_JAVA_PUB.exec(wsStripComments(raw));
+  var stem = wsFileBase(f).replace(/\.java$/i, '');
+  return (m && m[1] !== stem) ? { cls: m[1], stem: stem } : null;
+}
+/* 문자열·주석 안은 건드리지 않고 클래스 이름만 바꾼다 */
+function wsRenameJavaClass(code, from, to) {
+  var re = new RegExp('\\b' + from.replace(/\$/g, '\\$') + '\\b', 'g');
+  return String(code).split(/("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\/.*|\/\*[\s\S]*?\*\/)/).map(function(part, i) { return i % 2 ? part : part.replace(re, to); }).join('');
+}
+/* 파일 이름을 코드(public 클래스)에 맞춘다 */
+function wsFixNameFromClass(key) {
+  var iss = wsJavaNameIssue(key); if (!iss) return Promise.resolve();
+  var f = files[key], dir = wsDirOf(f.path);
+  return Promise.resolve(wsRenameFile(key, (dir ? dir + '/' : '') + iss.cls + '.java'));
+}
+/* 코드(public 클래스) 이름을 파일 이름에 맞춘다 */
+function wsFixClassFromName(key) {
+  var iss = wsJavaNameIssue(key); if (!iss) return;
+  if (!/^[A-Za-z_$][\w$]*$/.test(iss.stem)) { pushToast('⚠️', '클래스 이름으로 쓸 수 없는 파일 이름이에요', iss.stem + ' → 영문자·숫자·_ 만 쓸 수 있고 숫자로 시작할 수 없어요'); return; }
+  var f = files[key], next = wsRenameJavaClass(window.monaco && monacoEditor && key === currentFileKey ? monacoEditor.getValue() : f.raw, iss.cls, iss.stem);
+  if (window.monaco && monacoEditor && key === currentFileKey) {
+    var model = monacoEditor.getModel();
+    monacoEditor.executeEdits('name-sync', [{ range: model.getFullModelRange(), text: next }]);      // 되돌리기(Ctrl+Z) 가능
+  } else { f.raw = next; wsMarkDirty(key); }
+  pushToast('🔗', '클래스 이름을 파일에 맞췄어요', iss.cls + ' → ' + iss.stem);
+}
+function wsNameFixButtons(key, andRun) {
+  var iss = wsJavaNameIssue(key), go = andRun ? ' 바꾸고 실행' : ' 바꾸기';
+  return [
+    { label: '파일 이름을 ' + iss.cls + '.java 로' + go, fn: function() { wsFixNameFromClass(key).then(function() { if (andRun) runCode(); else wsRunNoticeClear(); }); } },
+    { label: '클래스 이름을 ' + iss.stem + ' 로' + go, fn: function() { wsFixClassFromName(key); if (andRun) runCode(); else wsRunNoticeClear(); } }
+  ];
+}
+function wsRunNoticeClear() { var log = document.getElementById('termLiveLog'); if (log && log.querySelector('.term-fixes')) log.innerHTML = '<div style="color:#3fb950;">// 이름을 맞췄어요.</div>'; var chip = document.getElementById('termStatusChip'); if (chip) chip.style.display = 'none'; }
+/* 상태바의 ⚠ 를 누르면: 어느 쪽에 맞출지 묻는다 */
+function wsNameWarnClick() {
+  var iss = wsJavaNameIssue(currentFileKey); if (!iss) return;
+  wsRunNotice('파일 이름과 클래스 이름이 달라요', '파일: ' + wsFileBase(files[currentFileKey]) + '\npublic 클래스: ' + iss.cls + '\n\n자바는 public 클래스 이름과 파일 이름이 같아야 실행돼요. 어느 쪽에 맞출까요?', wsNameFixButtons(currentFileKey, false));
+}
+var wsRunning = false;
+async function runCode() {
+  if (wsRunning) { pushToast('ℹ️', '이미 실행 중이에요', '끝날 때까지 기다리거나 ■ 중지를 눌러 주세요.'); return; }
   if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
+  var fobj = currentFileKey && files[currentFileKey];
+  if (!fobj) { pushToast('⚠️', '열린 파일이 없어요', '왼쪽 탐색기에서 실행할 파일을 열어 주세요.'); return; }
   var code = '';
   if (window.monaco && monacoEditor) {
     code = monacoEditor.getValue().trim();
-  } else if (currentFileKey && files[currentFileKey]) {
-    code = (files[currentFileKey].raw || '').trim();
+  } else {
+    code = (fobj.raw || '').trim();
   }
   if (!code) {
     pushToast('⚠️', '코드 없음', '실행할 코드를 입력해주세요.');
     return;
   }
 
-  // 파일 확장자로 실행 언어를 정한다. 코드가 아닌 파일(.md .txt …)이나 이 서버에 없는 언어는 '배치 실행' 쪽이 이유를 알려 준다 (몰래 Python 으로 돌리지 않는다).
-  // 대화형 실행은 로그인한 사용자만 쓸 수 있어서(서버가 확인), 로그인 전에는 배치 실행으로 돌린다.
+  // 화면(웹) 파일은 서버에서 돌리지 않고 결과 미리보기로 보여 준다
+  var pv = pvTargetFor(currentFileKey);
+  if (pv) { pvShow(pv); return; }
+
+  // 파일 확장자로 실행 언어를 정한다. 코드가 아닌 파일(.md .txt …)이나 이 서버에 없는 언어는 이유를 알려 준다 (몰래 Python 으로 돌리지 않는다).
   var lang = wsRunLang(currentFileKey);
+  if (!lang) {
+    var ex = wsExt(fobj.path || fobj.tab);
+    wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','rb','php','pl','sh','go','rs','html'].map(function(e){ return '.' + e; }).join(' '));
+    return;
+  }
   var supportedLangs = await wsRunSupported();
-  if (!authToken || !lang || (supportedLangs && supportedLangs.indexOf(lang) < 0)) {
-    if (!authToken && lang) pushToast('ℹ️', '로그인하면 대화형 실행을 쓸 수 있어요', '지금은 배치 실행으로 실행해요.');
-    return runCurrentCode();
+  if (supportedLangs && supportedLangs.indexOf(lang) < 0) {
+    wsRunNotice(WS_RUN_LABEL[lang] + ' 실행 환경이 이 서버에 없어요', '이 서버에서 지금 실행할 수 있는 언어: ' + (supportedLangs.map(function(l){ return WS_RUN_LABEL[l] || l; }).join(', ') || '없음') + '\n(서버에 ' + WS_RUN_LABEL[lang] + ' 를 설치하면 실행할 수 있어요)');
+    return;
+  }
+  if (!authToken) {
+    wsRunNotice('로그인하면 코드를 실행할 수 있어요', '코드 실행은 로그인한 사용자만 쓸 수 있어요.');
+    return;
+  }
+  // 자바: 파일 이름과 public 클래스 이름이 다르면 실행하지 않고 어느 쪽을 맞출지 묻는다
+  var nameIssue = wsJavaNameIssue(currentFileKey);
+  if (nameIssue) {
+    wsRunNotice('파일 이름과 클래스 이름이 달라요',
+      '파일: ' + wsFileBase(fobj) + '\npublic 클래스: ' + nameIssue.cls + '\n\n자바는 public 클래스 이름과 파일 이름이 같아야 실행돼요. 어느 쪽에 맞출까요?',
+      wsNameFixButtons(currentFileKey, true));
+    return;
   }
 
   // 터미널 패널 열기 및 대화형 탭 활성화
@@ -1235,27 +1336,26 @@ async function runInteractiveCode() {
 
   var log = document.getElementById('termLiveLog');
   if (log) {
-    log.innerHTML = '<div style="color:#06b6d4; font-weight:600;">// [⚡ 실시간 대화형 콘솔 실행 시작]</div><div style="color:#8b949e; margin-bottom:8px;">// 하단 INPUT 입력창에 값을 입력하고 Enter를 누르시면 실시간 전달됩니다.</div>';
+    log.innerHTML = '<div style="color:#06b6d4; font-weight:600;">// ▶ ' + escapeHtml(wsFileBase(fobj)) + ' 실행</div><div style="color:#8b949e; margin-bottom:8px;">// 프로그램이 입력을 기다리면 아래 INPUT 칸에 값을 넣고 Enter 를 누르세요.</div>';
   }
   focusLiveInput();
 
-  var runInteractiveBtn = document.getElementById('wsRunInteractiveBtn');
   var runBtn = document.getElementById('wsRunBtn');
   var stopBtn = document.getElementById('wsStopBtn');
   var statusChip = document.getElementById('termStatusChip');
   var execTime = document.getElementById('termExecTime');
 
-  if (runInteractiveBtn) runInteractiveBtn.disabled = true;
+  wsRunning = true;
   if (runBtn) runBtn.disabled = true;
   if (stopBtn) stopBtn.style.display = 'inline-flex';
   if (statusChip) {
     statusChip.style.display = 'inline-block';
     statusChip.className = 'term-status-chip running';
-    statusChip.textContent = 'Interactive...';
+    statusChip.textContent = '실행 중';
   }
   if (execTime) {
     execTime.style.display = 'inline-block';
-    execTime.textContent = '대화형 실행중';
+    execTime.textContent = fobj.path || fobj.tab;
   }
 
   // 기존 소켓 정리
@@ -1274,6 +1374,7 @@ async function runInteractiveCode() {
     ws.send(JSON.stringify({
       action: 'start',
       language: lang,
+      file_name: fobj.path || fobj.tab,
       source_code: code
     }));
     focusLiveInput();
@@ -1307,16 +1408,150 @@ async function runInteractiveCode() {
   var finished = false;
   function finishRun(code) {
     if (finished) return; finished = true;          // 종료 메시지 뒤에 연결이 닫혀도 결과 표시를 덮어쓰지 않는다
-    if (runInteractiveBtn) runInteractiveBtn.disabled = false;
+    wsRunning = false;
     if (runBtn) runBtn.disabled = false;
     if (stopBtn) stopBtn.style.display = 'none';
     if (statusChip) {
       var ok = (code === 0);
       statusChip.className = 'term-status-chip ' + (ok ? 'success' : 'error');
-      statusChip.textContent = ok ? 'Accepted' : 'Exited (' + code + ')';
+      statusChip.textContent = ok ? '정상 종료' : '종료 (코드 ' + code + ')';
     }
     if (execTime) execTime.textContent = '종료됨';
     activeTermSocket = null;
   }
 }
 
+
+
+/* =========================================================
+   결과 미리보기 · 기기 크기 시뮬레이션
+   HTML 파일에서 ▶ 실행 → 같은 폴더의 CSS/JS 를 합쳐서 격리된 창(iframe, 앱의 로그인·저장소에는 접근 불가)에 띄운다.
+   모바일·태블릿·PC 크기로 바꿔 보고, 미리보기 안의 console.log / 오류는 '실행 콘솔'에도 나온다.
+   ========================================================= */
+var PV_DEVICES = { phone: { w: 390, h: 844, label: '모바일' }, tablet: { w: 820, h: 1180, label: '태블릿' }, desktop: { w: 1280, h: 800, label: 'PC' }, fit: null };
+var pvState = { key: null, dev: 'phone', landscape: false, timer: null };
+try { var _pvd = localStorage.getItem('sync_pv_dev'); if (_pvd && PV_DEVICES.hasOwnProperty(_pvd)) pvState.dev = _pvd; } catch (e) {}
+
+function pvIsHtml(path) { var e = wsExt(path); return e === 'html' || e === 'htm'; }
+/* 경로 합치기: 'a/b' + '../c.css' → 'a/c.css' */
+function pvResolve(baseDir, rel) {
+  var r = String(rel || '').split('#')[0].split('?')[0];
+  if (!r || /^([a-z]+:)?\/\//i.test(r) || /^(data|blob|mailto|javascript):/i.test(r)) return null;
+  var parts = (r.charAt(0) === '/' ? '' : baseDir).split('/').filter(Boolean);
+  r.replace(/^\//, '').split('/').forEach(function(seg) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); });
+  return parts.join('/');
+}
+function pvFileRaw(path) { var f = files[wsKey(path)]; return f ? (window.monaco && monacoEditor && wsKey(path) === currentFileKey ? monacoEditor.getValue() : (f.raw || '')) : null; }
+/* 어떤 파일에서 ▶ 를 눌러도 화면(HTML) 파일을 찾는다: HTML 은 자기 자신, CSS 와 브라우저용 JS 는 그것을 쓰는 HTML */
+function pvTargetFor(key) {
+  var f = files[key]; if (!f) return null;
+  var path = f.path || f.tab, ext = wsExt(path);
+  if (pvIsHtml(path)) return key;
+  var isStyle = ext === 'css';
+  var raw = (window.monaco && monacoEditor && key === currentFileKey) ? monacoEditor.getValue() : (f.raw || '');
+  var isBrowserJs = (ext === 'js' || ext === 'mjs') && /\b(document|window|localStorage|addEventListener|alert)\b/.test(raw);
+  if (!isStyle && !isBrowserJs) return null;
+  var found = null;
+  Object.keys(files).some(function(k) {
+    var hf = files[k]; if (!pvIsHtml(hf.path || hf.tab)) return false;
+    var dir = wsDirOf(hf.path), html = pvFileRaw(hf.path) || '', re = /(?:href|src)\s*=\s*["']([^"']+)["']/gi, m;
+    while ((m = re.exec(html))) { if (pvResolve(dir, m[1]) === path) { found = k; return true; } }
+    return false;
+  });
+  return found || (isStyle ? '__none__' : null);
+}
+function pvBridgeScript() {
+  return '<script>(function(){function s(t,a){try{parent.postMessage({__pv:1,t:t,m:Array.prototype.map.call(a,function(x){try{return typeof x==="string"?x:JSON.stringify(x)}catch(e){return String(x)}}).join(" ")},"*")}catch(e){}}' +
+    '["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){s(k,arguments);try{o.apply(console,arguments)}catch(e){}}});' +
+    'addEventListener("error",function(e){s("error",[(e.message||"오류")+" ("+(e.lineno||0)+":"+(e.colno||0)+")"])});' +
+    'addEventListener("unhandledrejection",function(e){s("error",["처리되지 않은 오류: "+(e.reason&&e.reason.message||e.reason)])});})();<\/script>';
+}
+/* 같은 프로젝트의 CSS·JS 파일을 HTML 안으로 합쳐서, 링크가 끊기지 않는 한 장짜리 문서로 만든다 */
+function pvBuildDoc(key) {
+  var f = files[key], dir = wsDirOf(f.path), html = pvFileRaw(f.path) || '';
+  html = html.replace(/<link\b[^>]*>/gi, function(tag) {
+    if (!/rel\s*=\s*["']?stylesheet/i.test(tag)) return tag;
+    var h = /href\s*=\s*["']([^"']+)["']/i.exec(tag), p = h && pvResolve(dir, h[1]), css = p ? pvFileRaw(p) : null;
+    return css == null ? tag : '<style data-src="' + escapeHtml(p) + '">\n' + css.replace(/<\/style/gi, '<\\/style') + '\n</style>';
+  });
+  html = html.replace(/<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi, function(tag, a1, src, a2) {
+    var p = pvResolve(dir, src), js = p ? pvFileRaw(p) : null;
+    return js == null ? tag : '<script' + a1 + a2 + ' data-src="' + escapeHtml(p) + '">\n' + js.replace(/<\/script/gi, '<\\/script') + '\n<\/script>';
+  });
+  var bridge = pvBridgeScript();
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, function(m) { return m + bridge; });
+  return bridge + html;
+}
+function pvRender() {
+  var frame = document.getElementById('pvFrame'), key = pvState.key;
+  if (!frame || !key || !files[key]) return;
+  var empty = document.getElementById('pvEmpty'), wrap = document.getElementById('pvWrap');
+  if (empty) empty.hidden = true; if (wrap) wrap.hidden = false;
+  pvFit(); void frame.offsetWidth;                       // 기기 크기를 먼저 확정해 둬야 화면 안의 코드가 새 창 너비를 본다
+  pvState.n = (pvState.n || 0) + 1; var n = pvState.n;
+  requestAnimationFrame(function() {
+    if (n !== pvState.n || !files[key]) return;
+    frame.srcdoc = pvBuildDoc(key) + '<!-- ' + n + ' -->';   // 내용이 같아도 반드시 새로 불러오게 번호를 붙인다
+  });
+}
+function pvShow(key) {
+  if (key === '__none__') { wsRunNotice('이 CSS 를 쓰는 HTML 파일이 없어요', 'HTML 파일에서 <link rel="stylesheet" href="이_파일.css"> 로 연결하면 ▶ 실행으로 결과를 볼 수 있어요.'); return; }
+  pvState.key = key;
+  var termPanel = document.getElementById('wsTerminalPanel'); if (termPanel) termPanel.classList.remove('collapsed');
+  setTerminalTab('preview');
+  var chip = document.getElementById('termStatusChip'), t = document.getElementById('termExecTime');
+  if (chip) { chip.style.display = 'inline-block'; chip.className = 'term-status-chip success'; chip.textContent = '미리보기'; }
+  if (t) { t.style.display = 'inline-block'; t.textContent = files[key].path; }
+  pvRender();
+}
+function pvReload() { if (pvState.key && files[pvState.key]) pvRender(); }
+/* 미리보기 중인 HTML·CSS·JS 를 고치면 잠깐 뒤 자동으로 다시 그린다 */
+function pvAutoRefresh() {
+  if (!pvState.key) return;
+  var body = document.getElementById('termBodyPreview');
+  if (!body || body.style.display === 'none') return;
+  clearTimeout(pvState.timer);
+  pvState.timer = setTimeout(pvReload, 700);
+}
+function pvSetDevice(dev) {
+  if (!PV_DEVICES.hasOwnProperty(dev)) return;
+  pvState.dev = dev; if (dev === 'fit' || dev === 'desktop') pvState.landscape = false;
+  try { localStorage.setItem('sync_pv_dev', dev); } catch (e) {}
+  pvFit(); pvReload();           // 기기 크기가 바뀌면 화면을 다시 불러와서 그 크기 기준으로 다시 그리게 한다 (창 너비를 읽는 코드도 새 값을 본다)
+}
+function pvRotate() { if (pvState.dev === 'phone' || pvState.dev === 'tablet') { pvState.landscape = !pvState.landscape; pvFit(); pvReload(); } }
+/* 기기 크기에 맞게 틀을 잡고, 미리보기 칸보다 크면 비율을 줄여서 통째로 보여 준다 */
+function pvFit() {
+  var stage = document.getElementById('pvStage'), wrap = document.getElementById('pvWrap'), inner = document.getElementById('pvInner'), size = document.getElementById('pvSize');
+  document.querySelectorAll('#termBodyPreview .pv-dev').forEach(function(b) { b.classList.toggle('active', b.dataset.dev === pvState.dev); });
+  var rot = document.getElementById('pvRotate'); if (rot) rot.style.display = (pvState.dev === 'phone' || pvState.dev === 'tablet') ? '' : 'none';
+  if (!stage || !wrap || !inner) return;
+  wrap.dataset.dev = pvState.dev;
+  var d = PV_DEVICES[pvState.dev];
+  if (!d) { wrap.style.width = ''; wrap.style.height = ''; inner.style.width = ''; inner.style.height = ''; inner.style.transform = ''; if (size) size.textContent = '창 크기'; return; }
+  var w = pvState.landscape ? d.h : d.w, h = pvState.landscape ? d.w : d.h;
+  var cs = getComputedStyle(stage), aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 24, ah = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 24;
+  var sc = (aw > 40 && ah > 40) ? Math.min(1, aw / w, Math.max(ah / h, 0.5)) : 1;     // 폭에 맞추되 너무 작아지면 세로로 스크롤
+  inner.style.width = w + 'px'; inner.style.height = h + 'px'; inner.style.transform = 'scale(' + sc + ')';
+  wrap.style.width = Math.round(w * sc) + 'px'; wrap.style.height = Math.round(h * sc) + 'px';
+  if (size) size.textContent = w + ' × ' + h + (sc < 0.995 ? ' · ' + Math.round(sc * 100) + '%' : '');
+}
+function pvOpenTab() {
+  if (!pvState.key || !files[pvState.key]) return;
+  try {
+    var url = URL.createObjectURL(new Blob([pvBuildDoc(pvState.key)], { type: 'text/html' }));
+    var w = window.open(url, '_blank', 'noopener'); setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    if (!w) pushToast('ℹ️', '새 탭이 막혔어요', '브라우저의 팝업 차단을 풀어 주세요.');
+  } catch (e) {}
+}
+window.addEventListener('message', function(ev) {
+  var frame = document.getElementById('pvFrame'), d = ev.data;
+  if (!frame || ev.source !== frame.contentWindow || !d || d.__pv !== 1) return;     // 미리보기 창에서 온 메시지만
+  var tag = d.t === 'error' ? '\x1b[31m[미리보기 오류] ' : d.t === 'warn' ? '\x1b[33m[미리보기] ' : '\x1b[90m[미리보기] ';
+  appendLiveOutput(tag + String(d.m).slice(0, 2000) + '\x1b[0m\n', false);
+});
+(function() {
+  var stage = document.getElementById('pvStage');
+  if (stage && window.ResizeObserver) new ResizeObserver(function() { pvFit(); }).observe(stage);
+  window.addEventListener('resize', function() { pvFit(); });
+})();

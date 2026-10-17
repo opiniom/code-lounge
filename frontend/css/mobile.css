@@ -129,6 +129,7 @@
   .editor-head-bar{overflow-x:auto; scrollbar-width:none;} .editor-head-bar::-webkit-scrollbar{display:none;}
   .editor-actions{flex:0 0 auto;}
   .ws-terminal{height:34dvh !important; min-height:120px;}
+  .ws-terminal.pv-tall:not(.maximized){height:54dvh !important; min-height:240px;}
   .ws-term-meta{display:none;}
   .editor-statusbar{flex-wrap:nowrap; overflow:hidden; font-size:10.5px; gap:8px;} .editor-statusbar > div{white-space:nowrap; gap:8px;} .editor-statusbar .sb-right > span:not(.sb-badge), #sbLines{display:none;}
 

@@ -53,7 +53,7 @@ async def session(port, token, steps, timeout=20):
     return got, closed
 txt = lambda got: "".join((m.get("data") or "") for m in got)
 exits = lambda got: [m for m in got if m.get("type") == "exit"]
-START = lambda lang, code: ("send", {"action": "start", "language": lang, "source_code": code})
+START = lambda lang, code, name=None: ("send", dict({"action": "start", "language": lang, "source_code": code}, **({"file_name": name} if name else {})))
 async def main():
     # --- 인증
     got, closed = await session(P1, None, [("wait_exit", 5)]); chk("로그인 없이는 거부 + 안내 + 연결 종료(4401)", "로그인" in txt(got) and closed == 4401, (txt(got)[:60], closed))
@@ -74,6 +74,25 @@ async def main():
     got, _ = await session(P1, T, [START("c", "int main(){ nope(); }"), ("wait_exit", 20)]); chk("컴파일 에러는 메시지와 함께 종료", "컴파일 에러" in txt(got) and exits(got) and exits(got)[-1].get("code") != 0, txt(got)[:80])
     got, _ = await session(P1, T, [START("cobol", "x"), ("wait_exit", 5)]); chk("모르는 언어는 안내 + 종료", "실행할 수 없어요" in txt(got) and exits(got), txt(got)[:100])
     got, _ = await session(P1, T, [START("markdown", "# 글"), ("wait_exit", 5)]); chk("코드가 아닌 언어도 실행하지 않음(Python 으로 몰래 돌리지 않음)", "실행할 수 없어요" in txt(got), txt(got)[:100])
+    # --- 파일 이름 ↔ 코드 이름 연동
+    JB = "public class Zeta { public static void main(String[] a){ System.out.println(\"zeta-ok\"); } }"
+    got, _ = await session(P1, T, [START("java", JB, "src/Test.java"), ("wait_exit", 10)]); e = exits(got)
+    chk("자바: 파일 이름(Test.java)과 public 클래스(Zeta)가 다르면 실행하지 않고 이유를 알려 줌", "zeta-ok" not in txt(got) and "class Zeta is public" in txt(got) and "Test" in txt(got) and e and e[-1].get("code") == 1, txt(got)[:160])
+    got, _ = await session(P1, T, [START("java", JB, "Zeta.java"), ("wait_exit", 20)]); chk("자바: 파일 이름과 클래스 이름이 같으면 실행", "zeta-ok" in txt(got), txt(got)[:120])
+    got, _ = await session(P1, T, [START("java", "class Hello { public static void main(String[] a){ System.out.println(\"nonpub-ok\"); } }", "Anything.java"), ("wait_exit", 20)])
+    chk("자바: public 클래스가 없으면 파일 이름은 아무거나 괜찮음(자바 규칙 그대로)", "nonpub-ok" in txt(got), txt(got)[:120])
+    got, _ = await session(P1, T, [START("java", JB), ("wait_exit", 20)]); chk("파일 이름을 안 보내면 예전처럼 코드 기준으로 실행", "zeta-ok" in txt(got), txt(got)[:120])
+    got, _ = await session(P1, T, [START("python", "raise ValueError('boom')", "calc.py"), ("wait_exit", 10)]); chk("파이썬 오류 메시지에 내 파일 이름(calc.py)이 나옴", "calc.py" in txt(got) and "main.py" not in txt(got), txt(got)[:160])
+    got, _ = await session(P1, T, [START("python", "print(__file__.split('/')[-1])", "random.py"), ("wait_exit", 10)]); chk("표준 모듈과 같은 이름(random.py)은 기본 이름으로 안전하게 실행", "main.py" in txt(got), txt(got)[:100])
+    got, _ = await session(P1, T, [START("python", "print('safe')", "../../etc/x y; rm.py"), ("wait_exit", 10)]); chk("이상한 파일 이름(경로·공백·기호)은 무시하고 안전하게 실행", "safe" in txt(got), txt(got)[:100])
+    got, _ = await session(P1, T, [START("ruby", "puts 'rb-ok'", "x'; system('id'); '.rb"), ("wait_exit", 10)]); chk("루비: 파일 이름으로 명령을 끼워 넣을 수 없음", "uid=" not in txt(got), txt(got)[:100])
+    # --- 실행 이력 저장
+    got, _ = await session(P1, T, [START("python", "print('hist-ok')", "h.py"), ("wait_exit", 10)])
+    got, _ = await session(P1, T, [START("python", "import sys; sys.exit(3)", "h2.py"), ("wait_exit", 10)])
+    await asyncio.sleep(0.5)
+    rows = sqlite3.connect(DB).execute("select language,status,stdout,exit_code,user_id from submissions order by id").fetchall()
+    chk("실행할 때마다 실행 이력(submissions)에 남음(성공·실패 모두)", any(r[1] == "Accepted" and "hist-ok" in (r[2] or "") and r[4] == 1 for r in rows) and any(r[1] == "Runtime Error" and r[3] == 3 for r in rows), rows[-3:])
+    chk("이름이 어긋나 막힌 자바 실행도 컴파일 에러로 이력에 남음", any(r[1] == "Compilation Error" for r in rows), [r[1] for r in rows])
     # --- 제한
     t0 = time.time(); got, _ = await session(P1, T, [START("python", "while True: pass"), ("wait_exit", 20)]); e = exits(got)
     chk("무한 반복은 최대 시간(여기선 6초)에 강제 종료 + 안내", e and "넘겨서 중단" in (e[-1].get("data") or "") and time.time() - t0 < 15, (time.time() - t0, e[-1:] if e else None))

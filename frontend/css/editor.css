@@ -178,14 +178,6 @@
   width:100%; height:100%; background:transparent; border:none; outline:none; resize:none;
   color:var(--vscode-term-text); font-family:'JetBrains Mono', 'D2Coding', monospace; font-size:12.5px;
 }
-.ws-run-btn.interactive{
-  background:linear-gradient(135deg, #6366f1, #06b6d4) !important;
-  color:#fff !important;
-  border:1px solid rgba(255,255,255,0.2) !important;
-}
-.ws-run-btn.interactive:hover{
-  filter:brightness(1.1);
-}
 .ws-run-btn.stop{
   background:#ef4444 !important;
   color:#fff !important;
@@ -219,3 +211,46 @@
 
 .editor-statusbar .sb-live{color:#F59E0B; font-weight:600; animation:sbPulse 1.6s ease-in-out infinite;} .editor-statusbar .sb-live[hidden]{display:none;}
 @keyframes sbPulse{0%,100%{opacity:1;} 50%{opacity:.55;}}
+
+/* ---- 실행 콘솔: 안내·바로 고치기 버튼 ---- */
+#termLiveLog .term-err{color:#ff7b72;}
+#termLiveLog .term-dim{color:#8b949e;}
+.term-fixes{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+.term-fix-btn{background:#1f6feb; color:#fff; border:none; border-radius:6px; padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer; min-height:34px; text-align:left;}
+.term-fix-btn:hover{filter:brightness(1.12);}
+.sb-warn{color:#f0b429; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;}
+.sb-warn[hidden]{display:none;}
+
+/* ---- 결과 미리보기 (HTML 실행 결과를 기기 크기별로 시뮬레이션) ---- */
+.ws-term-body.ws-pv{padding:0; flex-direction:column; height:calc(100% - 34px); background:#0c1017; overflow:hidden;}
+.pv-bar{display:flex; align-items:center; gap:6px; padding:6px 10px; border-bottom:1px solid #30363d; background:#161b22; flex:0 0 auto; flex-wrap:wrap;}
+.pv-devices{display:inline-flex; gap:2px; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:2px;}
+.pv-dev{display:inline-flex; align-items:center; gap:5px; background:transparent; color:#8b949e; border:none; border-radius:6px; padding:5px 9px; font-size:11.5px; font-weight:600; cursor:pointer; min-height:28px;}
+.pv-dev:hover{color:#e6edf3;}
+.pv-dev.active{background:#238636; color:#fff;}
+.pv-size{color:#8b949e; font-size:11px; font-family:var(--font-mono);}
+.pv-spacer{flex:1 1 auto;}
+.pv-btn{display:inline-flex; align-items:center; justify-content:center; width:30px; height:28px; background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; cursor:pointer;}
+.pv-btn:hover{color:#fff; border-color:#6e7681;}
+.pv-stage{flex:1 1 auto; min-height:0; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:12px; background:
+  repeating-conic-gradient(#10151d 0% 25%, #0c1017 0% 50%) 0 0/20px 20px;}
+.pv-empty{align-self:center; margin:auto; text-align:center; color:#8b949e; font-size:12.5px; line-height:1.7; padding:16px;}
+.pv-empty b{color:#e6edf3;}
+.pv-frame-wrap{flex:0 0 auto; position:relative; margin:0 auto;}
+.pv-frame-inner{transform-origin:0 0; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 0 0 1px #30363d, 0 8px 28px rgba(0,0,0,.45);}
+.pv-frame-wrap[data-dev="phone"] .pv-frame-inner{border-radius:26px; box-shadow:0 0 0 7px #1c2128, 0 0 0 8px #3d444d, 0 10px 30px rgba(0,0,0,.5);}
+.pv-frame-wrap[data-dev="tablet"] .pv-frame-inner{border-radius:18px; box-shadow:0 0 0 9px #1c2128, 0 0 0 10px #3d444d, 0 10px 30px rgba(0,0,0,.5);}
+.pv-frame-wrap[data-dev="fit"], .pv-frame-wrap[data-dev="fit"] .pv-frame-inner{width:100%; height:100%;}
+.pv-frame-inner iframe{display:block; width:100%; height:100%; border:0; background:#fff;}
+@media (max-width:640px){
+  .pv-dev span{display:none;}
+  .pv-dev{padding:5px 10px;}
+  .pv-size{display:none;}
+}
+.ws-terminal.pv-tall:not(.maximized){height:min(64%, 620px) !important; min-height:260px;}
+.ws-term-meta #termExecTime{max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.editor-statusbar .sb-left{min-width:0; flex:1 1 auto; overflow:hidden; white-space:nowrap;}
+.sb-warn{white-space:nowrap; font-weight:600;}
+.ws-term-meta .icon-btn{background:transparent; color:#8b949e; border:1px solid transparent; width:28px; height:28px; padding:0 !important; display:inline-flex; align-items:center; justify-content:center;}
+.ws-term-meta .icon-btn:hover{color:#fff; background:rgba(255,255,255,.08);}
+.pv-bar{padding-right:46px;}

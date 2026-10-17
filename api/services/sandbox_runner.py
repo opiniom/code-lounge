@@ -194,6 +194,39 @@ def java_layout(code: str) -> Tuple[str, str]:
     return (pub.group(1) if pub else main_cls) + ".java", (f"{pkg}.{main_cls}" if pkg else main_cls)
 
 
+_PY_STD = set(getattr(sys, "stdlib_module_names", ())) or {"random", "math", "json", "os", "sys", "re", "time", "string", "typing", "collections", "itertools", "functools", "datetime", "queue",
+                                                           "heapq", "bisect", "copy", "io", "csv", "statistics", "fractions", "decimal", "threading", "socket", "types", "test", "code", "email", "select"}
+_ENTRY_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,60}$")
+_ENTRY_EXT = {"python": (".py",), "javascript": (".js", ".mjs", ".cjs"), "typescript": (".ts",), "ruby": (".rb",), "php": (".php",), "perl": (".pl",),
+              "bash": (".sh", ".bash"), "c": (".c",), "cpp": (".cpp", ".cc", ".cxx"), "csharp": (".cs",), "go": (".go",), "rust": (".rs",)}
+
+
+def entry_name(lang: str, requested: Optional[str], default: str) -> str:
+    """사용자가 연 파일의 진짜 이름(폴더 제외)을 실행 파일 이름으로 쓴다 → 오류 메시지·트레이스백에 내 파일 이름이 그대로 나온다.
+    이름이 이상하거나(경로 문자·공백 등) 확장자가 언어와 안 맞거나 실행에 방해되면 기본 이름을 쓴다."""
+    name = (requested or "").replace("\\", "/").split("/")[-1].strip()
+    if not name or not _ENTRY_RE.match(name) or ".." in name or not name.lower().endswith(_ENTRY_EXT.get(lang, ())):
+        return default
+    stem = name.rsplit(".", 1)[0]
+    if lang == "python" and stem in _PY_STD:   # random.py 처럼 표준 모듈과 같은 이름이면 자기 자신을 import 하게 된다
+        return default
+    if lang == "go" and (name.endswith("_test.go") or stem.startswith("_")):
+        return default
+    if lang in ("c", "cpp", "rust", "go", "csharp") and stem in ("prog", "Program") and name != default:
+        return default                                    # 실행 파일 이름(prog / Program.exe)과 겹치면 덮어쓴다
+    return name
+
+
+def java_class_mismatch(code: str, file_name: Optional[str]) -> Optional[Tuple[str, str]]:
+    """자바는 public 클래스 이름 = 파일 이름이어야 한다. 어긋나면 (public 클래스, 파일 이름 줄기) 를 돌려준다."""
+    stem = (file_name or "").replace("\\", "/").split("/")[-1]
+    if not stem.lower().endswith(".java"):
+        return None
+    stem = stem[:-5]
+    pub = re.search(r"\bpublic\s+(?:final\s+|abstract\s+|strictfp\s+)*(?:class|interface|enum|record)\s+(\w+)", re.sub(r"//.*|/\*.*?\*/", "", code, flags=re.S))
+    return (pub.group(1), stem) if pub and pub.group(1) != stem else None
+
+
 class LocalSandboxRunner:
     def is_available(self) -> bool:
         return os.path.exists(PYTHON_EXEC)

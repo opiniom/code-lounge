@@ -373,13 +373,9 @@
             <button class="btn ghost" id="wsSidebarToggleBtn" onclick="toggleSidebar()" title="파일 탐색기 토글" style="padding:5px 8px; font-size:11.5px;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM9 3v18"/></svg>
             </button>
-            <button class="ws-run-btn interactive" id="wsRunInteractiveBtn" onclick="runInteractiveCode()" title="키보드 입력(input)이 가능한 실시간 대화형 실행">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              <span>대화형 실행</span>
-            </button>
-            <button class="ws-run-btn" id="wsRunBtn" onclick="runCurrentCode()" title="일괄 배치 실행 (Ctrl+Enter)">
+            <button class="ws-run-btn" id="wsRunBtn" onclick="runCode()" title="실행 (Ctrl+Enter) · 실행 중에도 키보드 입력(input)을 바로 넣을 수 있어요">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              <span>배치 실행</span>
+              <span>실행</span>
             </button>
             <button class="ws-run-btn stop" id="wsStopBtn" onclick="stopInteractiveCode()" title="실행 중인 프로세스 강제 중지" style="display:none;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
@@ -410,6 +406,7 @@
           <div class="sb-left">
             <span class="sb-save" id="sbSave"></span>
             <span class="sb-live" id="sbLive" hidden></span>
+            <span class="sb-warn" id="sbNameWarn" hidden onclick="wsNameWarnClick()" title="자바는 public 클래스 이름과 파일 이름이 같아야 해요"></span>
             <span id="sbPos">Ln 1, Col 1</span>
             <span id="sbLines">1 lines</span>
             <span>UTF-8</span>
@@ -427,10 +424,9 @@
         <div class="ws-terminal" id="wsTerminalPanel">
           <div class="ws-term-header">
             <div class="ws-term-tabs">
-              <button class="ws-term-tab active" id="termTabInteractive" onclick="setTerminalTab('interactive')">⚡ 대화형 터미널 (Live)</button>
-              <button class="ws-term-tab" id="termTabOutput" onclick="setTerminalTab('output')">배치 출력 (Output)</button>
-              <button class="ws-term-tab" id="termTabStdin" onclick="setTerminalTab('stdin')">표준 입력 (Stdin)</button>
-              <button class="ws-term-tab" id="termTabHistory" onclick="setTerminalTab('history')">실행 이력 (Submissions)</button>
+              <button class="ws-term-tab active" id="termTabInteractive" onclick="setTerminalTab('interactive')">실행 콘솔</button>
+              <button class="ws-term-tab" id="termTabPreview" onclick="setTerminalTab('preview')">미리보기</button>
+              <button class="ws-term-tab" id="termTabHistory" onclick="setTerminalTab('history')">실행 이력</button>
             </div>
             <div class="ws-term-meta">
               <span class="term-status-chip" id="termStatusChip" style="display:none;">Ready</span>
@@ -451,7 +447,7 @@
           <div class="ws-term-body" id="termBodyInteractive" style="display:flex; flex-direction:column; padding:0; height:calc(100% - 34px); background:#0c1017; font-family:'JetBrains Mono','D2Coding',Consolas,monospace;">
             <!-- 실시간 출력 영역 -->
             <div id="termLiveLog" onclick="focusLiveInput()" style="flex:1 1 auto; overflow-y:auto; padding:10px 14px; font-size:12.5px; line-height:1.6; color:#e6edf3; user-select:text; white-space:pre-wrap; word-break:break-all;">
-              <div style="color:#6e7681;">// [대화형 실행]을 누르면 실시간 콘솔이 시작되며, 아래 입력창을 통해 키보드로 직접 값을 입력할 수 있습니다.</div>
+              <div style="color:#6e7681;">// [실행]을 누르면 결과가 여기에 실시간으로 나와요. 프로그램이 입력(input)을 기다리면 아래 입력창에 값을 넣고 Enter 를 누르세요.</div>
             </div>
             <!-- 실시간 키보드 입력 프롬프트 바 -->
             <form id="termLiveInputForm" onsubmit="submitLiveInput(event)" style="display:flex; align-items:center; gap:8px; background:#161b22; border-top:1px solid #30363d; padding:6px 12px; flex:0 0 auto;">
@@ -464,15 +460,29 @@
             </form>
           </div>
 
-          <!-- 터미널 탭 본문 1: 출력 콘솔 -->
-          <div class="ws-term-body" id="termBodyOutput" style="display:none;">
-            <div class="term-dim">// [배치 실행] 버튼으로 입출력을 일괄 실행할 때 표시됩니다.</div>
-            <pre id="termOutputText"></pre>
-          </div>
-
-          <!-- 터미널 탭 본문 2: 표준 입력(stdin) -->
-          <div class="ws-term-body" id="termBodyStdin" style="display:none;">
-            <textarea class="ws-term-stdin" id="termStdinText" placeholder="프로그램 실행 시 표준 입력(stdin)으로 전달할 텍스트를 입력하세요 (예: Scanner, input() 입력값)"></textarea>
+          <!-- 터미널 탭 본문: 결과 미리보기 (HTML 파일 실행 결과를 기기 크기별로 시뮬레이션) -->
+          <div class="ws-term-body ws-pv" id="termBodyPreview" style="display:none;">
+            <div class="pv-bar">
+              <div class="pv-devices" role="group" aria-label="기기 크기">
+                <button type="button" class="pv-dev" data-dev="phone" onclick="pvSetDevice('phone')" title="모바일 (390×844)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><span>모바일</span></button>
+                <button type="button" class="pv-dev" data-dev="tablet" onclick="pvSetDevice('tablet')" title="태블릿 (820×1180)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M11 18h2"/></svg><span>태블릿</span></button>
+                <button type="button" class="pv-dev" data-dev="desktop" onclick="pvSetDevice('desktop')" title="PC (1280×800)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>PC</span></button>
+                <button type="button" class="pv-dev" data-dev="fit" onclick="pvSetDevice('fit')" title="창 크기에 맞춤"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>꽉 채움</span></button>
+              </div>
+              <span class="pv-size" id="pvSize"></span>
+              <span class="pv-spacer"></span>
+              <button type="button" class="pv-btn" id="pvRotate" onclick="pvRotate()" title="가로/세로 돌리기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
+              <button type="button" class="pv-btn" onclick="pvReload()" title="다시 불러오기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg></button>
+              <button type="button" class="pv-btn" onclick="pvOpenTab()" title="새 탭에서 열기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>
+            </div>
+            <div class="pv-stage" id="pvStage">
+              <div class="pv-empty" id="pvEmpty">HTML 파일(.html)을 열고 <b>실행</b>을 누르면<br>여기서 결과를 모바일·태블릿·PC 크기로 확인할 수 있어요.</div>
+              <div class="pv-frame-wrap" id="pvWrap" hidden>
+                <div class="pv-frame-inner" id="pvInner">
+                  <iframe id="pvFrame" title="실행 결과 미리보기" sandbox="allow-scripts allow-forms allow-modals allow-popups" referrerpolicy="no-referrer"></iframe>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 터미널 탭 본문 3: 실행 이력(submissions) -->
