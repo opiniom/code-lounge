@@ -397,6 +397,12 @@ function initMonacoEditor() {
       guides: { bracketPairs: true, indentation: true },
       renderLineHighlight: 'all',
       overviewRulerBorder: false,
+      snippetSuggestions: 'top',                                   // sout · fori 같은 줄임말을 목록 맨 위에
+      tabCompletion: 'on',                                         // 줄임말을 치고 Tab → 바로 펼치기 (IntelliJ 처럼)
+      quickSuggestions: { other: true, comments: false, strings: false },
+      suggestOnTriggerCharacters: true,
+      acceptSuggestionOnEnter: 'on',
+      autoClosingBrackets: 'always', autoClosingQuotes: 'always', autoIndent: 'full', formatOnPaste: true,
       scrollbar: {
         verticalScrollbarSize: 10,
         horizontalScrollbarSize: 10
@@ -404,6 +410,7 @@ function initMonacoEditor() {
     });
 
     monacoLoaded = true;
+    wsRegisterSnippets(); wsQuickKeysInit();
     if (typeof wsPresHookEditor === 'function') wsPresHookEditor();
 
     // 실시간 코드 변경 동기화
@@ -709,8 +716,27 @@ function wsOpenKey(key){
 /* 빈 새 파일에 넣어 줄 기본 내용: 자바는 파일 이름과 같은 클래스, HTML 은 기본 뼈대 */
 function wsTemplateFor(path){
   var base = String(path || '').split('/').pop(), ext = wsExt(base), stem = base.replace(/\.[^.]+$/, '');
-  if (ext === 'java' && /^[A-Za-z_$][\w$]*$/.test(stem)) return 'public class ' + stem + ' {\n    public static void main(String[] args) {\n        System.out.println("Hello, ' + stem + '!");\n    }\n}\n';
-  if (ext === 'html' || ext === 'htm') return '<!DOCTYPE html>\n<html lang="ko">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>' + stem + '</title>\n</head>\n<body>\n  <h1>안녕하세요!</h1>\n</body>\n</html>\n';
+  var hello = 'Hello, World!';
+  switch (ext) {
+    case 'java': return /^[A-Za-z_$][\w$]*$/.test(stem) ? 'public class ' + stem + ' {\n    public static void main(String[] args) {\n        System.out.println("' + hello + '");\n    }\n}\n' : '';
+    case 'py': return 'print("' + hello + '")\n';
+    case 'js': case 'mjs': case 'cjs': return 'console.log("' + hello + '");\n';
+    case 'ts': return 'const message: string = "' + hello + '";\nconsole.log(message);\n';
+    case 'c': return '#include <stdio.h>\n\nint main(void) {\n    printf("' + hello + '\\n");\n    return 0;\n}\n';
+    case 'cpp': case 'cc': case 'cxx': return '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "' + hello + '" << endl;\n    return 0;\n}\n';
+    case 'cs': return 'using System;\n\nclass Program\n{\n    static void Main(string[] args)\n    {\n        Console.WriteLine("' + hello + '");\n    }\n}\n';
+    case 'go': return 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("' + hello + '")\n}\n';
+    case 'rs': return 'fn main() {\n    println!("' + hello + '");\n}\n';
+    case 'rb': return 'puts "' + hello + '"\n';
+    case 'php': return '<?php\n\necho "' + hello + '\\n";\n';
+    case 'pl': return 'use strict;\nuse warnings;\n\nprint "' + hello + '\\n";\n';
+    case 'sh': case 'bash': return '#!/bin/bash\n\necho "' + hello + '"\n';
+    case 'html': case 'htm': return '<!DOCTYPE html>\n<html lang="ko">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>' + stem + '</title>\n</head>\n<body>\n  <h1>안녕하세요!</h1>\n</body>\n</html>\n';
+    case 'css': return '* {\n  box-sizing: border-box;\n}\n\nbody {\n  margin: 0;\n  font-family: sans-serif;\n}\n';
+    case 'md': return '# ' + stem + '\n\n';
+    case 'json': return '{\n  \n}\n';
+    case 'sql': return '-- ' + stem + '\nSELECT 1;\n';
+  }
   return '';
 }
 function wsCreateFile(name, content, opts){
@@ -1555,3 +1581,249 @@ window.addEventListener('message', function(ev) {
   if (stage && window.ResizeObserver) new ResizeObserver(function() { pvFit(); }).observe(stage);
   window.addEventListener('resize', function() { pvFit(); });
 })();
+
+
+/* =========================================================
+   코드 조각(스니펫) 자동완성 — IntelliJ·VS Code 처럼 줄임말을 치면 코드가 펼쳐진다
+   예) 자바: sout → System.out.println();  psvm → main 메서드  fori → for 반복문
+   줄임말을 치면 목록에 맨 위로 뜨고, Enter 또는 Tab 으로 펼친 뒤 Tab 으로 다음 칸으로 이동한다.
+   본문의 ${1:x} 는 Tab 으로 차례로 이동하는 칸, $0 은 마지막 커서 위치, {{CLASS}} 는 현재 파일 이름(확장자 뺀 것).
+   ========================================================= */
+var WS_SNIPPETS = {
+  java: [
+    ['main', 'main 메서드', 'public static void main(String[] args) {\n\t$0\n}'],
+    ['psvm', 'main 메서드 (IntelliJ)', 'public static void main(String[] args) {\n\t$0\n}'],
+    ['sout', 'System.out.println()', 'System.out.println($1);$0'],
+    ['sysout', 'System.out.println()', 'System.out.println($1);$0'],
+    ['soutv', '변수 이름과 값을 출력', 'System.out.println("${1:x} = " + ${1:x});$0'],
+    ['souf', 'System.out.printf()', 'System.out.printf("${1:%d}%n", ${2:x});$0'],
+    ['serr', 'System.err.println()', 'System.err.println($1);$0'],
+    ['fori', 'for (int i …) 반복문', 'for (int ${1:i} = 0; ${1:i} < ${2:n}; ${1:i}++) {\n\t$0\n}'],
+    ['foreach', 'for-each 반복문', 'for (${1:String} ${2:item} : ${3:items}) {\n\t$0\n}'],
+    ['iter', 'for-each 반복문', 'for (${1:String} ${2:item} : ${3:items}) {\n\t$0\n}'],
+    ['while', 'while 반복문', 'while (${1:condition}) {\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}'],
+    ['ife', 'if - else 문', 'if (${1:condition}) {\n\t$2\n} else {\n\t$0\n}'],
+    ['switch', 'switch 문', 'switch (${1:value}) {\n\tcase ${2:1}:\n\t\t$0\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}'],
+    ['try', 'try - catch', 'try {\n\t$1\n} catch (${2:Exception} e) {\n\te.printStackTrace();\n}$0'],
+    ['scan', 'Scanner 로 입력 받기', 'java.util.Scanner ${1:sc} = new java.util.Scanner(System.in);$0'],
+    ['br', 'BufferedReader 로 입력 받기', 'java.io.BufferedReader ${1:br} = new java.io.BufferedReader(new java.io.InputStreamReader(System.in));$0'],
+    ['list', 'ArrayList 만들기', 'java.util.List<${1:Integer}> ${2:list} = new java.util.ArrayList<>();$0'],
+    ['map', 'HashMap 만들기', 'java.util.Map<${1:String}, ${2:Integer}> ${3:map} = new java.util.HashMap<>();$0'],
+    ['class', 'public 클래스 (파일 이름과 같게)', 'public class {{CLASS}} {\n\t$0\n}'],
+    ['thr', 'throw new', 'throw new ${1:IllegalArgumentException}("$2");$0']
+  ],
+  python: [
+    ['pr', 'print()', 'print($1)$0'],
+    ['main', 'if __name__ == "__main__"', 'def main():\n\t$0\n\n\nif __name__ == "__main__":\n\tmain()'],
+    ['ifmain', 'if __name__ == "__main__"', 'if __name__ == "__main__":\n\t$0'],
+    ['def', '함수 정의', 'def ${1:name}(${2:args}):\n\t${0:pass}'],
+    ['class', '클래스 정의', 'class ${1:Name}:\n\tdef __init__(self${2:, args}):\n\t\t${0:pass}'],
+    ['for', 'for 반복문', 'for ${1:item} in ${2:items}:\n\t$0'],
+    ['fori', 'for i in range(n)', 'for ${1:i} in range(${2:n}):\n\t$0'],
+    ['while', 'while 반복문', 'while ${1:condition}:\n\t$0'],
+    ['if', 'if 문', 'if ${1:condition}:\n\t$0'],
+    ['ife', 'if - else 문', 'if ${1:condition}:\n\t$2\nelse:\n\t$0'],
+    ['try', 'try - except', 'try:\n\t$1\nexcept ${2:Exception} as e:\n\t${0:print(e)}'],
+    ['with', '파일 열기 (with open)', 'with open(${1:"file.txt"}, ${2:"r"}, encoding="utf-8") as ${3:f}:\n\t$0'],
+    ['inp', '입력 받기 (문자열)', '${1:x} = input(${2:"입력: "})$0'],
+    ['inpi', '입력 받기 (정수)', '${1:n} = int(input(${2:"입력: "}))$0'],
+    ['inpl', '입력 받기 (공백으로 나뉜 숫자들)', '${1:nums} = list(map(int, input().split()))$0'],
+    ['lc', '리스트 컴프리헨션', '[${1:x} for ${1:x} in ${2:items}]$0'],
+    ['lam', 'lambda', 'lambda ${1:x}: ${2:x}$0']
+  ],
+  javascript: [
+    ['log', 'console.log()', 'console.log($1);$0'],
+    ['clg', 'console.log()', 'console.log($1);$0'],
+    ['logv', '변수 이름과 값을 출력', 'console.log("${1:x}:", ${1:x});$0'],
+    ['fn', '함수', 'function ${1:name}(${2:args}) {\n\t$0\n}'],
+    ['afn', '화살표 함수', 'const ${1:name} = (${2:args}) => {\n\t$0\n};'],
+    ['for', 'for 반복문', 'for (let ${1:i} = 0; ${1:i} < ${2:n}; ${1:i}++) {\n\t$0\n}'],
+    ['forof', 'for…of 반복문', 'for (const ${1:item} of ${2:items}) {\n\t$0\n}'],
+    ['foreach', 'forEach', '${1:items}.forEach((${2:item}) => {\n\t$0\n});'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}'],
+    ['ife', 'if - else 문', 'if (${1:condition}) {\n\t$2\n} else {\n\t$0\n}'],
+    ['try', 'try - catch', 'try {\n\t$1\n} catch (${2:err}) {\n\t${0:console.error(err);}\n}'],
+    ['fetch', 'fetch 요청', 'const ${1:res} = await fetch(${2:url});\nconst ${3:data} = await ${1:res}.json();$0'],
+    ['timeout', 'setTimeout', 'setTimeout(() => {\n\t$0\n}, ${1:1000});'],
+    ['qs', 'document.querySelector', 'document.querySelector(${1:".selector"})$0'],
+    ['ael', 'addEventListener', '${1:el}.addEventListener(${2:"click"}, (${3:e}) => {\n\t$0\n});'],
+    ['rl', 'readline 으로 입력 받기 (Node)', 'const readline = require("readline");\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout });\nrl.question(${1:"입력: "}, (${2:answer}) => {\n\t$0\n\trl.close();\n});']
+  ],
+  c: [
+    ['main', 'main 함수', '#include <stdio.h>\n\nint main(void) {\n\t$0\n\treturn 0;\n}'],
+    ['inc', '#include <stdio.h>', '#include <${1:stdio.h}>$0'],
+    ['printf', 'printf()', 'printf("${1:%d}\\n"${2:, x});$0'],
+    ['scanf', 'scanf()', 'scanf("${1:%d}", &${2:x});$0'],
+    ['for', 'for 반복문', 'for (int ${1:i} = 0; ${1:i} < ${2:n}; ${1:i}++) {\n\t$0\n}'],
+    ['while', 'while 반복문', 'while (${1:condition}) {\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}'],
+    ['ife', 'if - else 문', 'if (${1:condition}) {\n\t$2\n} else {\n\t$0\n}'],
+    ['struct', '구조체', 'typedef struct {\n\t$0\n} ${1:Name};']
+  ],
+  cpp: [
+    ['main', 'main 함수 (iostream)', '#include <iostream>\nusing namespace std;\n\nint main() {\n\t$0\n\treturn 0;\n}'],
+    ['inc', '#include', '#include <${1:iostream}>$0'],
+    ['cout', 'cout 출력', 'cout << ${1:"Hello"} << endl;$0'],
+    ['cin', 'cin 입력', 'cin >> ${1:x};$0'],
+    ['for', 'for 반복문', 'for (int ${1:i} = 0; ${1:i} < ${2:n}; ${1:i}++) {\n\t$0\n}'],
+    ['forr', '범위 기반 for', 'for (auto& ${1:x} : ${2:v}) {\n\t$0\n}'],
+    ['while', 'while 반복문', 'while (${1:condition}) {\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}'],
+    ['ife', 'if - else 문', 'if (${1:condition}) {\n\t$2\n} else {\n\t$0\n}'],
+    ['vec', 'vector', 'vector<${1:int}> ${2:v};$0'],
+    ['class', '클래스', 'class ${1:Name} {\npublic:\n\t${1:Name}() {}\n\t$0\n};']
+  ],
+  csharp: [
+    ['main', 'Main 메서드', 'static void Main(string[] args)\n{\n\t$0\n}'],
+    ['cw', 'Console.WriteLine()', 'Console.WriteLine($1);$0'],
+    ['cr', 'Console.ReadLine()', 'var ${1:line} = Console.ReadLine();$0'],
+    ['for', 'for 반복문', 'for (int ${1:i} = 0; ${1:i} < ${2:n}; ${1:i}++)\n{\n\t$0\n}'],
+    ['foreach', 'foreach 반복문', 'foreach (var ${1:item} in ${2:items})\n{\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition})\n{\n\t$0\n}'],
+    ['ife', 'if - else 문', 'if (${1:condition})\n{\n\t$2\n}\nelse\n{\n\t$0\n}'],
+    ['try', 'try - catch', 'try\n{\n\t$1\n}\ncatch (${2:Exception} ex)\n{\n\t$0\n}'],
+    ['class', '클래스', 'class ${1:Name}\n{\n\t$0\n}'],
+    ['prop', '속성', 'public ${1:int} ${2:Name} { get; set; }$0']
+  ],
+  go: [
+    ['main', 'main 함수', 'package main\n\nimport "fmt"\n\nfunc main() {\n\t$0\n}'],
+    ['pl', 'fmt.Println()', 'fmt.Println($1)$0'],
+    ['pf', 'fmt.Printf()', 'fmt.Printf("${1:%v}\\n", ${2:x})$0'],
+    ['func', '함수', 'func ${1:name}(${2:args}) ${3:int} {\n\t$0\n}'],
+    ['for', 'for 반복문', 'for ${1:i} := 0; ${1:i} < ${2:n}; ${1:i}++ {\n\t$0\n}'],
+    ['forr', 'for range', 'for ${1:i}, ${2:v} := range ${3:items} {\n\t$0\n}'],
+    ['if', 'if 문', 'if ${1:condition} {\n\t$0\n}'],
+    ['iferr', 'if err != nil', 'if err != nil {\n\t${0:return err}\n}'],
+    ['struct', '구조체', 'type ${1:Name} struct {\n\t$0\n}']
+  ],
+  rust: [
+    ['main', 'main 함수', 'fn main() {\n\t$0\n}'],
+    ['pl', 'println!()', 'println!("${1:{\\}}", ${2:x});$0'],
+    ['fn', '함수', 'fn ${1:name}(${2:args}) -> ${3:i32} {\n\t$0\n}'],
+    ['for', 'for 반복문', 'for ${1:i} in ${2:0..n} {\n\t$0\n}'],
+    ['while', 'while 반복문', 'while ${1:condition} {\n\t$0\n}'],
+    ['if', 'if 문', 'if ${1:condition} {\n\t$0\n}'],
+    ['match', 'match', 'match ${1:value} {\n\t${2:_} => $0,\n}'],
+    ['struct', '구조체', 'struct ${1:Name} {\n\t$0\n}'],
+    ['inp', '입력 받기', 'let mut ${1:line} = String::new();\nstd::io::stdin().read_line(&mut ${1:line}).unwrap();$0']
+  ],
+  ruby: [
+    ['pu', 'puts', 'puts $1$0'],
+    ['def', '메서드', 'def ${1:name}(${2:args})\n\t$0\nend'],
+    ['class', '클래스', 'class ${1:Name}\n\tdef initialize($2)\n\t\t$0\n\tend\nend'],
+    ['each', 'each', '${1:items}.each do |${2:item}|\n\t$0\nend'],
+    ['if', 'if 문', 'if ${1:condition}\n\t$0\nend'],
+    ['gets', '입력 받기', '${1:line} = gets.chomp$0']
+  ],
+  php: [
+    ['php', 'PHP 시작 태그', '<?php\n\n$0'],
+    ['echo', 'echo', 'echo ${1:"Hello"} . "\\n";$0'],
+    ['func', '함수', 'function ${1:name}(${2:\\$args}) {\n\t$0\n}'],
+    ['foreach', 'foreach', 'foreach (${1:\\$items} as ${2:\\$item}) {\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}']
+  ],
+  perl: [
+    ['pr', 'print', 'print "${1:Hello}\\n";$0'],
+    ['sub', '서브루틴', 'sub ${1:name} {\n\tmy (${2:\\$arg}) = @_;\n\t$0\n}'],
+    ['foreach', 'foreach', 'foreach my ${1:\\$item} (${2:@items}) {\n\t$0\n}'],
+    ['if', 'if 문', 'if (${1:condition}) {\n\t$0\n}']
+  ],
+  shell: [
+    ['sh', 'shebang', '#!/bin/bash\n$0'],
+    ['echo', 'echo', 'echo "${1:Hello}"$0'],
+    ['read', '입력 받기', 'read -p "${1:입력: }" ${2:name}$0'],
+    ['if', 'if 문', 'if [ ${1:condition} ]; then\n\t$0\nfi'],
+    ['for', 'for 반복문', 'for ${1:i} in ${2:1 2 3}; do\n\t$0\ndone'],
+    ['while', 'while 반복문', 'while [ ${1:condition} ]; do\n\t$0\ndone'],
+    ['func', '함수', '${1:name}() {\n\t$0\n}']
+  ],
+  html: [
+    ['html5', 'HTML 기본 문서', '<!DOCTYPE html>\n<html lang="ko">\n<head>\n\t<meta charset="UTF-8">\n\t<meta name="viewport" content="width=device-width, initial-scale=1">\n\t<title>${1:제목}</title>\n\t<link rel="stylesheet" href="style.css">\n</head>\n<body>\n\t$0\n\t<script src="app.js"></script>\n</body>\n</html>'],
+    ['link', 'CSS 연결', '<link rel="stylesheet" href="${1:style.css}">$0'],
+    ['script', 'JS 연결', '<script src="${1:app.js}"></script>$0'],
+    ['div', 'div', '<div class="${1:box}">\n\t$0\n</div>'],
+    ['ul', '목록', '<ul>\n\t<li>${1:항목}</li>\n\t<li>$0</li>\n</ul>'],
+    ['a', '링크', '<a href="${1:#}">${2:링크}</a>$0'],
+    ['img', '이미지', '<img src="${1:image.png}" alt="${2:설명}">$0'],
+    ['btn', '버튼', '<button type="button" id="${1:btn}">${2:누르기}</button>$0'],
+    ['form', '폼', '<form action="${1:#}" method="post">\n\t<input type="text" name="${2:name}" placeholder="${3:입력}">\n\t<button type="submit">${4:보내기}</button>\n</form>$0']
+  ],
+  css: [
+    ['flex', 'flex 가운데 정렬', 'display: flex;\njustify-content: center;\nalign-items: center;$0'],
+    ['grid', 'grid 열 나누기', 'display: grid;\ngrid-template-columns: repeat(${1:3}, 1fr);\ngap: ${2:16px};$0'],
+    ['media', '반응형 미디어 쿼리', '@media (max-width: ${1:600px}) {\n\t$0\n}'],
+    ['reset', '기본 초기화', '* { box-sizing: border-box; }\nbody { margin: 0; font-family: sans-serif; }$0'],
+    ['var', 'CSS 변수', ':root {\n\t--${1:main-color}: ${2:#4f46e5};\n}$0']
+  ]
+};
+WS_SNIPPETS.typescript = WS_SNIPPETS.javascript.concat([
+  ['iface', 'interface', 'interface ${1:Name} {\n\t$0\n}'],
+  ['type', 'type 별칭', 'type ${1:Name} = $0;']
+]);
+
+function wsSnippetPreview(body) { return body.replace(/\$\{\d+:([^}]*)\}/g, '$1').replace(/\$\{\d+\}|\$\d+/g, '').replace(/\{\{CLASS\}\}/g, 'Main'); }
+function wsRegisterSnippets() {
+  if (!window.monaco || wsRegisterSnippets.done) return;
+  wsRegisterSnippets.done = true;
+  Object.keys(WS_SNIPPETS).forEach(function(lang) {
+    monaco.languages.registerCompletionItemProvider(lang, {
+      provideCompletionItems: function(model, position) {
+        var w = model.getWordUntilPosition(position);
+        var range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: w.startColumn, endColumn: w.endColumn };
+        var f = currentFileKey && files[currentFileKey], stem = f ? wsFileBase(f).replace(/\.[^.]+$/, '') : 'Main';
+        if (!/^[A-Za-z_$][\w$]*$/.test(stem)) stem = 'Main';
+        return {
+          suggestions: WS_SNIPPETS[lang].map(function(s) {
+            var body = s[2].replace(/\{\{CLASS\}\}/g, stem);
+            return {
+              label: { label: s[0], description: s[1] }, kind: monaco.languages.CompletionItemKind.Snippet, detail: s[1],
+              documentation: { value: '```\n' + wsSnippetPreview(s[2]).replace(/\t/g, '    ').replace(/Main(?= \{)/, stem) + '\n```' },
+              insertText: body, insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              filterText: s[0], sortText: '0' + s[0], range: range
+            };
+          })
+        };
+      }
+    });
+  });
+}
+
+/* =========================================================
+   모바일·태블릿 입력줄 — 터치 키보드에는 Tab · 괄호 · 세미콜론이 불편해서 키보드 위에 따로 붙여 준다
+   (터치 기기에서 코드 입력칸을 눌렀을 때만 보인다. 키보드가 올라온 높이만큼 자동으로 따라 올라간다)
+   ========================================================= */
+var WS_QK = [['Tab', 'tab'], ['{ }', '{}'], ['( )', '()'], ['[ ]', '[]'], [';', ';'], ['"', '"'], ["'", "'"], ['=', '='], [':', ':'], ['.', '.'], [',', ','], ['<', '<'], ['>', '>'], ['/', '/'], ['_', '_'], ['#', '#'], ['!', '!'], ['&', '&'], ['|', '|'], ['\\', '\\'],
+             ['←', '@left'], ['→', '@right'], ['↑', '@up'], ['↓', '@down'], ['↶', '@undo'], ['↷', '@redo']];
+function wsQuickKeys(v) {
+  var ed = monacoEditor; if (!ed) return;
+  ed.focus();
+  if (v === 'tab') { ed.trigger('qk', 'tab', null); return; }
+  if (v.charAt(0) === '@') { ed.trigger('qk', { left: 'cursorLeft', right: 'cursorRight', up: 'cursorUp', down: 'cursorDown', undo: 'undo', redo: 'redo' }[v.slice(1)], null); return; }
+  var pair = { '{}': '{}', '()': '()', '[]': '[]', '"': '""', "'": "''" }[v];
+  if (pair) {                                           // 여는 기호와 닫는 기호를 같이 넣고 커서를 그 사이로 (선택한 글자가 있으면 그것을 감싼다)
+    var sel = ed.getSelection(), txt = sel && !sel.isEmpty() ? ed.getModel().getValueInRange(sel) : '';
+    if (txt) { ed.executeEdits('qk', [{ range: sel, text: pair.charAt(0) + txt + pair.charAt(1) }]); return; }
+    ed.trigger('qk', 'type', { text: pair }); ed.trigger('qk', 'cursorLeft', null); return;
+  }
+  ed.trigger('qk', 'type', { text: v });
+}
+function wsQuickKeysInit() {
+  var bar = document.getElementById('wsQuickKeys');
+  if (!bar || bar.dataset.ready || !monacoEditor) return;
+  bar.dataset.ready = '1';
+  bar.innerHTML = WS_QK.map(function(k) { return '<button type="button" class="qk" data-v="' + escapeHtml(k[1]) + '">' + escapeHtml(k[0]) + '</button>'; }).join('');
+  bar.addEventListener('pointerdown', function(e) { e.preventDefault(); });           // 눌러도 입력칸에서 포커스가 빠지지 않게 (키보드가 안 내려간다)
+  bar.addEventListener('click', function(e) { var b = e.target.closest('.qk'); if (b) wsQuickKeys(b.dataset.v); });
+  var coarse = window.matchMedia && matchMedia('(pointer:coarse)');
+  function place() {
+    var vv = window.visualViewport;
+    var lift = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+    bar.style.bottom = lift + 'px';
+    bar.style.paddingBottom = lift > 40 ? '0' : 'env(safe-area-inset-bottom)';           // 키보드가 올라와 있으면 안전 영역 여백은 필요 없다
+  }
+  function show(on) { bar.classList.toggle('show', !!on && !!(coarse && coarse.matches)); place(); }
+  monacoEditor.onDidFocusEditorText(function() { show(true); });
+  monacoEditor.onDidBlurEditorText(function() { setTimeout(function() { if (!monacoEditor.hasTextFocus()) show(false); }, 150); });
+  if (window.visualViewport) { visualViewport.addEventListener('resize', place); visualViewport.addEventListener('scroll', place); }
+}

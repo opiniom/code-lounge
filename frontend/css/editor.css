@@ -254,3 +254,13 @@
 .ws-term-meta .icon-btn{background:transparent; color:#8b949e; border:1px solid transparent; width:28px; height:28px; padding:0 !important; display:inline-flex; align-items:center; justify-content:center;}
 .ws-term-meta .icon-btn:hover{color:#fff; background:rgba(255,255,255,.08);}
 .pv-bar{padding-right:46px;}
+
+/* ---- 터치 기기용 코드 입력줄 ---- */
+.ws-quickkeys{position:fixed; left:0; right:0; bottom:0; z-index:2147; display:none; gap:6px; padding:6px 8px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  background:#161b22; border-top:1px solid #30363d; box-shadow:0 -6px 18px rgba(0,0,0,.35);}
+.ws-quickkeys::-webkit-scrollbar{display:none;}
+.ws-quickkeys.show{display:flex;}
+.ws-quickkeys .qk{flex:0 0 auto; min-width:40px; height:38px; padding:0 12px; background:#21262d; color:#e6edf3; border:1px solid #30363d; border-radius:8px; font:600 14px/1 var(--font-mono, monospace); cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;}
+.ws-quickkeys .qk:active{background:#388bfd; border-color:#388bfd; color:#fff;}
+.ws-quickkeys .qk:first-child{background:#1f6feb; border-color:#1f6feb; color:#fff;}
+@media (display-mode: standalone){ .ws-quickkeys{padding-left:max(8px, env(safe-area-inset-left)); padding-right:max(8px, env(safe-area-inset-right));} }
