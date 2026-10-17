@@ -264,3 +264,4 @@
 .ws-quickkeys .qk:active{background:#388bfd; border-color:#388bfd; color:#fff;}
 .ws-quickkeys .qk:first-child{background:#1f6feb; border-color:#1f6feb; color:#fff;}
 @media (display-mode: standalone){ .ws-quickkeys{padding-left:max(8px, env(safe-area-inset-left)); padding-right:max(8px, env(safe-area-inset-right));} }
+.editor-statusbar .sb-save.live{color:#9be9a8; font-weight:600;}

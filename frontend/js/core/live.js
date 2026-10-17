@@ -24,6 +24,7 @@ function liveConnect(){
   };
   ws.onclose = function(){
     LIVE.ok = false; LIVE.ws = null; clearInterval(LIVE.ping);
+    if(typeof wsLiveLost === 'function') wsLiveLost();      // 실시간 편집 중이었다면 일반 저장으로 돌아간다
     if(LIVE.closing || !authToken) return;
     var wait = Math.min(30000, 1000 * Math.pow(2, Math.min(LIVE.retry++, 5)));   // 1s, 2s, 4s … 최대 30s
     clearTimeout(LIVE.reconnect); LIVE.reconnect = setTimeout(liveConnect, wait);
@@ -41,6 +42,7 @@ function liveResync(){
   apiFetch('/api/meetings').then(function(rows){ liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; }); }).catch(function(){});
   if(chatServerId()) loadChat(false);
   if(typeof wsPresStart === 'function' && wsPresInWorkspace()) wsPresStart();      // 재연결되면 내 작업 위치를 다시 알린다
+  if(typeof wsLiveRejoin === 'function') wsLiveRejoin();                           // 실시간 편집도 다시 붙는다
 }
 /* 팀원이 회의록을 만들면 목록에 바로 올리고, 새 글이면 한 번만 조용히 알려준다 */
 var liveSeenDocs = null;
@@ -76,6 +78,7 @@ function liveHandle(m){
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': liveNotes(m); break;
     case 'files': wsPollSoon(); break;
+    case 'docsync': case 'docop': case 'docsaved': case 'docreset': case 'docerr': if(typeof wsLiveHandle === 'function') wsLiveHandle(m); break;
     case 'wspres': case 'wssnap': if(typeof wsPresHandle === 'function') wsPresHandle(m); break;
     case 'projects':
       if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); tmRefresh(); }).catch(function(){});

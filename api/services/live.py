@@ -50,12 +50,21 @@ class LiveHub:
         return False
 
     async def send(self, user_ids: Iterable[int], payload: dict) -> None:
-        for uid in set(user_ids):
-            for ws in list(self.conns.get(uid, ())):
-                try:
-                    await ws.send_json(payload)
-                except Exception:
-                    self.conns.get(uid, set()).discard(ws)
+        """받을 화면 모두에게 동시에 보낸다 (느린 화면 하나가 나머지를 기다리게 하지 않고, 3초 안에 못 받으면 건너뛴다)"""
+        targets = [(uid, ws) for uid in set(user_ids) for ws in list(self.conns.get(uid, ()))]
+        if not targets:
+            return
+
+        async def one(uid: int, ws: WebSocket) -> None:
+            try:
+                await asyncio.wait_for(ws.send_json(payload), 3.0)
+            except Exception:
+                self.conns.get(uid, set()).discard(ws)
+
+        if len(targets) == 1:
+            await one(*targets[0])
+        else:
+            await asyncio.gather(*[one(u, w) for u, w in targets])
 
     def schedule_offline(self, user_id: int) -> None:
         old = self._grace.pop(user_id, None)
@@ -133,7 +142,8 @@ def _collect(session: Session, flush_context=None) -> None:
             bag.add(("follow", obj.followee_id, None, obj.follower_id))
             bag.add(("follow", obj.follower_id, None, obj.followee_id))
         elif isinstance(obj, ProjectFile):
-            bag.add(("files", None, obj.project_id, None))
+            if not session.info.get("nolive_files"):          # 글자 단위 공동 편집이 저장한 경우는 이미 실시간으로 전해졌으니 생략
+                bag.add(("files", None, obj.project_id, None))
         elif isinstance(obj, MeetingDoc):
             if obj.project_id:
                 bag.add(("notes", None, obj.project_id, None))

@@ -10,6 +10,7 @@ from models import User, ProjectFile
 from schemas import FileSave, FileBulk, FileRename, FileResponse_
 from services.auth_service import get_current_user
 from services.access import get_member_project
+from services import livedoc
 
 router = APIRouter(prefix="/api/projects/{project_id}/files", tags=["Workspace Files"])
 
@@ -92,6 +93,7 @@ async def save_file(project_id: int, data: FileSave, current_user: User = Depend
         return JSONResponse(status_code=409, content={"detail": "다른 팀원이 먼저 수정했어요.", "file": _out(conflict, names).model_dump()})
     await db.commit()
     await db.refresh(row)
+    await livedoc.external_change(project_id, row.path)          # 같은 파일을 실시간으로 편집 중인 화면이 있으면 새 내용을 다시 받게 한다
     return _out(row, {row.updated_by: current_user.username})
 
 
@@ -108,6 +110,7 @@ async def save_bulk(project_id: int, data: FileBulk, current_user: User = Depend
     await db.commit()
     for r in saved:
         await db.refresh(r)
+        await livedoc.external_change(project_id, r.path)
     return [_out(r, {r.updated_by: current_user.username}) for r in saved]
 
 
@@ -126,6 +129,8 @@ async def rename_file(project_id: int, data: FileRename, current_user: User = De
     row.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(row)
+    await livedoc.external_change(project_id, src)
+    await livedoc.external_change(project_id, dst)
     return _out(row, {row.updated_by: current_user.username})
 
 
@@ -141,4 +146,5 @@ async def delete_file(project_id: int, path: str, current_user: User = Depends(g
         (ProjectFile.path == p) | (ProjectFile.path.like(p + "/%")),
     ))
     await db.commit()
+    await livedoc.external_change(project_id, p, prefix=True)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

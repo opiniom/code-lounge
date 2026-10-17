@@ -357,6 +357,24 @@ function updateEditorStatusBar() {
   }
 }
 
+/* 코드 편집기(Monaco, 약 0.7MB)는 처음 화면에서는 받지 않고, 워크스페이스를 열 때 불러온다.
+   빠른 PC 에서는 홈 화면이 다 그려진 뒤 한가할 때 미리 받아 둬서 처음 열 때도 바로 뜬다 (데이터 절약 모드·느린 망·폰에서는 미리 받지 않음) */
+var wsMonacoAsked = false;
+function wsEnsureMonaco() {
+  if (wsMonacoAsked || monacoLoaded) return;
+  wsMonacoAsked = true;
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js';
+  s.async = true;
+  s.onload = initMonacoEditor;
+  s.onerror = function() { wsMonacoAsked = false; pushToast('⚠️', '코드 편집기를 불러오지 못했어요', '인터넷 연결을 확인하고 워크스페이스를 다시 열어 주세요.'); };
+  document.head.appendChild(s);
+}
+(function() {
+  var c = navigator.connection || {};
+  var fast = !c.saveData && (!c.effectiveType || c.effectiveType === '4g') && window.innerWidth >= 900;
+  if (fast) window.addEventListener('load', function() { (window.requestIdleCallback || function(f) { setTimeout(f, 3500); })(wsEnsureMonaco, { timeout: 6000 }); });
+})();
 function initMonacoEditor() {
   if (typeof require === 'undefined') {
     setTimeout(initMonacoEditor, 100);
@@ -414,16 +432,19 @@ function initMonacoEditor() {
     if (typeof wsPresHookEditor === 'function') wsPresHookEditor();
 
     // 실시간 코드 변경 동기화
-    monacoEditor.onDidChangeModelContent(function() {
+    monacoEditor.onDidChangeModelContent(function(ev) {
       if (wsSettingValue) return;   // 파일을 열면서 값을 채우는 변경은 '수정'이 아님
       if (currentFileKey && files[currentFileKey]) {
         files[currentFileKey].raw = monacoEditor.getValue();
-        wsMarkDirty(currentFileKey);
-        if (typeof wsPresTyped === 'function') wsPresTyped();
+        var live = wsLiveOnChange(ev);                          // 실시간 공동 편집 중이면 서버가 저장한다 (일반 저장은 하지 않음)
+        if (!live) wsMarkDirty(currentFileKey);
+        if (!LVSTAT.applying && typeof wsPresTyped === 'function') wsPresTyped();
         pvAutoRefresh();
       }
       updateEditorStatusBar();
     });
+    wsLiveInitInput();
+    if (currentFileKey) wsLiveAttach(currentFileKey, false);   // 편집기가 늦게 떠도 현재 파일을 실시간 편집에 붙인다
 
     // 커서 위치 변경 시 상태바 동기화
     monacoEditor.onDidChangeCursorPosition(function(e) {
@@ -512,9 +533,10 @@ function closeFileTab(key, ev) {
       openFile(nextKey, null);
     } else {
       currentFileKey = null;
+      wsLiveDetach();
       renderTabs();
       if (window.monaco && monacoEditor) {
-        monacoEditor.setValue('');
+        wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false;
       }
       updateEditorStatusBar();
     }
@@ -568,6 +590,7 @@ function renderFileContent(key, keepCursor) {
   wsUpdateSaveStatus();
   wsRenderConflict();
   if (typeof wsPresCursors === 'function') wsPresCursors();   // 새 파일 내용이 들어온 뒤 팀원 커서 위치를 다시 맞춘다
+  wsLiveAttach(key, !!keepCursor);                             // 글자 단위 실시간 공동 편집에 붙는다
 }
 
 /* ======================================================================
@@ -638,6 +661,7 @@ function wsUpdateSaveStatus(){
   if (!f) { el.textContent = ''; return; }
   if (!wsUseServer()) { el.textContent = '로컬 편집 (저장 안 됨)'; return; }
   if (f.conflict) { el.classList.add('dirty'); el.textContent = '⚠ 충돌'; }
+  else if (f.live) { el.classList.add('live'); el.textContent = wsLivePending() ? '⟳ 동기화 중…' : '⚡ 실시간 · 자동 저장'; }
   else if (f.saving) { el.textContent = '저장 중…'; }
   else if (f.dirty) { el.classList.add('dirty'); el.textContent = '● 저장 안 됨'; }
   else { el.textContent = '✓ 저장됨' + (f.updatedBy ? ' · ' + f.updatedBy + ' ' + wsAgo(f.baseUpdatedAt) : ''); }
@@ -674,6 +698,7 @@ function wsMarkDirty(key){
 function wsSave(key, force, manual){
   var f = files[key];
   if (!f || !wsUseServer()) return Promise.resolve();
+  if (f.live) { if (manual) wsLiveSave(key); return Promise.resolve(); }      // 실시간 편집 중인 파일은 서버가 자동 저장한다
   clearTimeout(f._t);
   if (!f.dirty && !force) { if (manual) pushToast('✓', '이미 저장돼 있어요', f.tab); return Promise.resolve(); }
   if (f.conflict && !force) return Promise.resolve();
@@ -696,7 +721,7 @@ function wsFlushSaves(){
   Object.keys(files).forEach(function(k){ var f = files[k]; if (f.dirty && wsUseServer() && !f.conflict) wsSave(k); });
 }
 window.addEventListener('beforeunload', function(e){
-  var pending = Object.keys(files).some(function(k){ return files[k].dirty && wsUseServer(); });
+  var pending = wsLiveHasPending() || Object.keys(files).some(function(k){ return files[k].dirty && wsUseServer(); });
   if (pending) { wsFlushSaves(); e.preventDefault(); e.returnValue = ''; }
 });
 document.addEventListener('keydown', function(e){
@@ -915,6 +940,7 @@ function selectWsProject(id){
 }
 var wsMobileInited = false;
 function enterWorkspaceView(){
+  wsEnsureMonaco();
   /* 폰에서는 파일 목록을 처음엔 접어 둔다 (에디터가 화면을 다 쓰도록) */
   if(!wsMobileInited && document.documentElement.classList.contains('is-mobile')){ wsMobileInited = true; var ft = document.getElementById('wsFileTree'); if(ft) ft.classList.add('collapsed'); }
   renderWsSelector();
@@ -931,6 +957,7 @@ function loadWorkspace(id){
   if(calApiMode && id && chatProject !== id && typeof switchChatProject === 'function') switchChatProject(id);   // 워크스페이스에서 프로젝트를 바꾸면 채팅·통화도 같은 프로젝트로
   wsStopPolling();
   wsFlushSaves();
+  wsLiveDetach();
   wsProject = id; wsLoaded = false; wsLoading = true;
   files = {}; openedTabs = []; currentFileKey = null; wsRenaming = null; wsDeleting = null; wsSearch = '';
   var si = document.getElementById('wsFileSearch'); if (si) si.value = '';
@@ -953,12 +980,13 @@ function loadWorkspace(id){
   }).catch(function(e){ wsLoading = false; renderWsEmpty(); pushToast('⚠️', '파일을 불러오지 못했어요', e.message); });
 }
 function renderFileContent_empty(){
+  wsLiveDetach();
   if (window.monaco && monacoEditor) { wsSettingValue = true; monacoEditor.setValue(''); wsSettingValue = false; }
   updateEditorStatusBar(); wsUpdateSaveStatus(); wsRenderConflict();
 }
 function wsStartPolling(){ wsStopPolling(); wsPollTimer = setInterval(function(){ wsPollTick = (wsPollTick || 0) + 1; if(!LIVE.ok || wsPollTick % 6 === 0) wsPoll(); }, 6000); }   // 실시간 연결이 있으면 가끔만 확인(변경은 푸시로 바로 옴)
 var wsPollTick = 0, wsPollSoonTimer = null;
-function wsPollSoon(){ clearTimeout(wsPollSoonTimer); wsPollSoonTimer = setTimeout(wsPoll, 350); }   // 팀원이 저장하면 거의 바로 반영 (연속 저장은 한 번으로 묶음)
+function wsPollSoon(){ clearTimeout(wsPollSoonTimer); wsPollSoonTimer = setTimeout(wsPoll, 150); }   // 팀원이 저장하면 거의 바로 반영 (연속 저장은 한 번으로 묶음)
 function wsStopPolling(){ if (wsPollTimer) { clearInterval(wsPollTimer); wsPollTimer = null; } }
 /* 팀원이 파일을 고칠 때의 알림: 저장할 때마다 팝업이 뜨면 방해되므로
    · 상태 표시줄에 '○○님이 수정 중'을 잠깐 보여주고(팝업 아님)
@@ -991,7 +1019,8 @@ function wsPoll(){
       var key = wsKey(r.path), f = files[key];
       if (!f) { files[key] = wsMakeFile(r); if (r.updated_by !== me) { added.push(r.path); who[r.updated_by || '팀원'] = 1; } return; }
       if (f.baseUpdatedAt !== r.updated_at) {
-        if (!f.dirty && !f.saving) {
+        if (f.live) { f.baseUpdatedAt = r.updated_at; }                 // 실시간으로 받고 있는 파일은 글자 단위로 이미 반영돼 있다
+        else if (!f.dirty && !f.saving) {
           f.raw = r.content; f.baseUpdatedAt = r.updated_at; f.updatedBy = r.updated_by;
           if (r.updated_by !== me) { changed.push(r.path); who[r.updated_by || '팀원'] = 1; }
           if (key === currentFileKey) renderFileContent(key, true);

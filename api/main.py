@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, List
-from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -272,12 +272,15 @@ if os.path.isdir(UI_DIR):
 @app.get("/ui", tags=["UI"], include_in_schema=False)
 @app.get("/app", tags=["UI"], include_in_schema=False)
 @app.get("/app/{page:path}", tags=["UI"], include_in_schema=False)
-async def serve_ui(page: str = ""):
+async def serve_ui(request: Request, page: str = ""):
     if "." in page.rsplit("/", 1)[-1]:      # /app/없는파일.js 같은 요청은 화면이 아니라 404
         raise HTTPException(status_code=404, detail="Not found")
     snap = _ui_snapshot()
     if snap["html"]:
-        return HTMLResponse(snap["html"], headers={"Cache-Control": "no-store"})
+        etag = '"%s"' % snap.get("build", "")
+        if snap.get("build") and request.headers.get("if-none-match") == etag:      # 화면이 안 바뀌었으면 92KB 를 다시 보내지 않는다
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
+        return HTMLResponse(snap["html"], headers={"Cache-Control": "no-cache", "ETag": etag})
     return {"error": "UI index.html 파일을 찾을 수 없습니다."}
 
 
@@ -400,7 +403,7 @@ async def live_socket(websocket: WebSocket):
     from database import async_session_maker
     from models import User
     from services.auth_service import decode_access_token
-    from services import live
+    from services import live, livedoc
     payload = decode_access_token(websocket.query_params.get("token", "") or "")
     uid = int(payload["sub"]) if payload and str(payload.get("sub", "")).isdigit() else None
     user = None
@@ -422,12 +425,14 @@ async def live_socket(websocket: WebSocket):
             msg = await websocket.receive_text()
             if msg == "ping":
                 await websocket.send_text("pong")
-            elif msg.startswith("{") and len(msg) < 700:
+            elif msg.startswith("{") and (len(msg) < 700 or (len(msg) < 600_000 and msg[:12] == '{"t":"doc","')):
                 try:
                     d = json.loads(msg)
                 except ValueError:
                     continue
-                if d.get("t") == "typing" and isinstance(d.get("project_id"), int):
+                if d.get("t") == "doc":
+                    await livedoc.handle(websocket, user, d)
+                elif d.get("t") == "typing" and isinstance(d.get("project_id"), int):
                     await live.relay_typing(user, d["project_id"], bool(d.get("on", True)))
                 elif d.get("t") == "ws" and isinstance(d.get("project_id"), int):
                     p_ = d.get("path")
@@ -438,6 +443,7 @@ async def live_socket(websocket: WebSocket):
     except Exception:
         pass
     finally:
+        await livedoc.leave(websocket)
         if live.hub.disconnect(uid, websocket):
             live.hub.schedule_offline(uid)
             await live.clear_ws_presence(uid, user.username)

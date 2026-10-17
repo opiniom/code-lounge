@@ -26,8 +26,8 @@ function wsPresSend(force){
   if(wsPresFirst){ msg.snap = true; }
   if(liveSend(msg)){ wsPresSig = sig; wsPresLastAt = now; wsPresActive = true; wsPresFirst = false; }
 }
-/* 커서는 자주 움직이므로 150ms 마다 한 번만 (맨 앞과 맨 뒤는 반드시 보냄) */
-function wsPresSync(){ if(wsPresTimer) return; wsPresTimer = setTimeout(function(){ wsPresTimer = null; wsPresSend(false); }, 150); }
+/* 커서는 자주 움직이므로 60ms 마다 한 번만 (맨 앞과 맨 뒤는 반드시 보냄) */
+function wsPresSync(){ if(wsPresTimer) return; wsPresTimer = setTimeout(function(){ wsPresTimer = null; wsPresSend(false); }, 60); }
 function wsPresStart(){
   wsPresSig = ''; wsPresFirst = true; wsPresSend(true);
   if(!wsPresSweep) wsPresSweep = setInterval(function(){ if(!wsPresInWorkspace()) return; wsPresSend(false); wsPresExpire(); }, 15000);
@@ -160,7 +160,7 @@ function wsCurEnsureStyle(uid, name){
   if(!wsCurStyle){ wsCurStyle = document.createElement('style'); wsCurStyle.id = 'wsCursorStyle'; document.head.appendChild(wsCurStyle); }
   var css = '';
   Object.keys(wsCurStyled).forEach(function(u){ var nm = (WSP[u] && WSP[u].name) || name, c = chatColor(nm || '?');
-    css += '.wsc-u' + u + '{--c:' + c + ';} .wss-u' + u + '{background:' + wsHexA(c, .28) + ';} .wsline-u' + u + '{background:' + wsHexA(c, .08) + ';} .wsline-u' + u + '.editing{background:' + wsHexA(c, .15) + ';} .wslg-u' + u + '{background:' + c + '; width:3px !important; margin-left:3px; border-radius:2px;}\n'; });
+    css += '.wsc-u' + u + '{--c:' + c + ';} .wsr-u' + u + '{background:' + wsHexA(c, .38) + '; border-radius:2px;} .wss-u' + u + '{background:' + wsHexA(c, .28) + ';} .wsline-u' + u + '{background:' + wsHexA(c, .08) + ';} .wsline-u' + u + '.editing{background:' + wsHexA(c, .15) + ';} .wslg-u' + u + '{background:' + c + '; width:3px !important; margin-left:3px; border-radius:2px;}\n'; });
   wsCurStyle.textContent = css; return color;
 }
 function wsCurRemove(uid){

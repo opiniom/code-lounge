@@ -177,8 +177,7 @@ function initWebSocket() {
   } catch(e){}
 }
 
-// 초기화
-initMonacoEditor();
+// 초기화: 코드 편집기는 워크스페이스를 열 때(wsEnsureMonaco) 불러온다
 var initialKey = currentFileKey || Object.keys(files)[0];
 if (initialKey) {
   openFile(initialKey, null);
