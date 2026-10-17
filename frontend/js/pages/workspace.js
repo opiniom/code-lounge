@@ -803,6 +803,7 @@ function wsRenameFile(key, newPath){
   function applyLocal(row){
     var nk = wsKey(newPath), ext = (newPath.split('.').pop() || '').toLowerCase();
     var oldStem = wsFileBase(f).replace(/\.java$/i, ''), wasJava = wsExt(f.path || f.tab) === 'java';
+    if (typeof pvOnRename === 'function') pvOnRename(f.path, newPath);
     f.tab = newPath; f.path = newPath; f.dot = getDotColorForExt(ext); f.lang = getLangForExt(ext);
     if (row) { f.baseUpdatedAt = row.updated_at; f.updatedBy = row.updated_by; }
     delete files[key]; files[nk] = f;
@@ -951,6 +952,7 @@ function loadWorkspace(id){
   wsStopPolling();
   wsFlushSaves();
   wsLiveDetach();
+  if (typeof pvReset === 'function') pvReset();
   wsProject = id; wsLoaded = false; wsLoading = true;
   files = {}; openedTabs = []; currentFileKey = null; wsRenaming = null; wsDeleting = null; wsSearch = '';
   var si = document.getElementById('wsFileSearch'); if (si) si.value = '';
@@ -1200,13 +1202,13 @@ function clearTerminal() {
 }
 
 function setTerminalTab(tab) {
-  ['interactive', 'preview', 'history'].forEach(function(t) {
+  ['interactive', 'history'].forEach(function(t) {
     var btn = document.getElementById('termTab' + t.charAt(0).toUpperCase() + t.slice(1));
     var body = document.getElementById('termBody' + t.charAt(0).toUpperCase() + t.slice(1));
     if (btn) btn.classList.toggle('active', t === tab);
     if (body) {
       if (t === tab) {
-        body.style.display = (t === 'interactive' || t === 'preview') ? 'flex' : 'block';
+        body.style.display = (t === 'interactive') ? 'flex' : 'block';
       } else {
         body.style.display = 'none';
       }
@@ -1216,9 +1218,6 @@ function setTerminalTab(tab) {
     focusLiveInput();
   }
   if (tab === 'history') loadSubmissions();
-  var panel = document.getElementById('wsTerminalPanel');
-  if (panel) panel.classList.toggle('pv-tall', tab === 'preview');          // 미리보기는 화면이 커야 해서 터미널을 키워 준다
-  if (tab === 'preview') { pvFit(); setTimeout(pvFit, 80); }
   if (window.monaco && monacoEditor) setTimeout(function() { monacoEditor.layout(); }, 60);
 }
 
@@ -1472,24 +1471,27 @@ async function runCode() {
 
 
 /* =========================================================
-   결과 미리보기 · 기기 크기 시뮬레이션
-   HTML 파일에서 ▶ 실행 → 같은 폴더의 CSS/JS 를 합쳐서 격리된 창(iframe, 앱의 로그인·저장소에는 접근 불가)에 띄운다.
-   모바일·태블릿·PC 크기로 바꿔 보고, 미리보기 안의 console.log / 오류는 '실행 콘솔'에도 나온다.
+   미리보기 창 — 에디터 옆에 붙는 작은 브라우저 (주소창 · 뒤로/앞으로 · 새로고침 · 기기 크기)
+   HTML 파일에서 ▶ 실행(또는 '미리보기' 버튼)을 누르면 같은 프로젝트의 CSS·JS 를 합쳐서 격리된 창(iframe)에 띄운다.
+   · 앱의 로그인·저장소에는 접근할 수 없다(sandbox). 서버에서 실행하지 않고 내 브라우저에서만 그린다.
+   · 코드를 고치면(팀원이 고쳐도) 잠깐 뒤 자동으로 다시 그리고, 스크롤 위치는 그대로 둔다.
+   · 미리보기 안의 링크(about.html)를 누르면 프로젝트의 그 파일로 이동하고, 미리보기 안의 console.log / 오류는 '실행 콘솔'에도 나온다.
+   · PC·태블릿(넓은 화면)은 에디터 오른쪽에 나란히, 폰·좁은 화면은 에디터 위를 덮는 전체 화면으로 열린다.
    ========================================================= */
 var PV_DEVICES = { phone: { w: 390, h: 844, label: '모바일' }, tablet: { w: 820, h: 1180, label: '태블릿' }, desktop: { w: 1280, h: 800, label: 'PC' }, fit: null };
-var pvState = { key: null, dev: 'phone', landscape: false, timer: null };
-try { var _pvd = localStorage.getItem('sync_pv_dev'); if (_pvd && PV_DEVICES.hasOwnProperty(_pvd)) pvState.dev = _pvd; } catch (e) {}
+var pvState = { path: null, dev: 'fit', landscape: false, hist: [], hi: -1, scroll: [0, 0], open: false, timer: null, n: 0, width: 0 };
+try { var _pvd = localStorage.getItem('sync_pv_dev2'); if (_pvd && PV_DEVICES.hasOwnProperty(_pvd)) pvState.dev = _pvd; var _pvw = parseInt(localStorage.getItem('sync_pv_w'), 10); if (_pvw >= 300 && _pvw <= 2000) pvState.width = _pvw; } catch (e) {}
 
 function pvIsHtml(path) { var e = wsExt(path); return e === 'html' || e === 'htm'; }
 /* 경로 합치기: 'a/b' + '../c.css' → 'a/c.css' */
 function pvResolve(baseDir, rel) {
   var r = String(rel || '').split('#')[0].split('?')[0];
-  if (!r || /^([a-z]+:)?\/\//i.test(r) || /^(data|blob|mailto|javascript):/i.test(r)) return null;
+  if (!r || /^([a-z]+:)?\/\//i.test(r) || /^(data|blob|mailto|javascript|tel):/i.test(r)) return null;
   var parts = (r.charAt(0) === '/' ? '' : baseDir).split('/').filter(Boolean);
   r.replace(/^\//, '').split('/').forEach(function(seg) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); });
   return parts.join('/');
 }
-function pvFileRaw(path) { var f = files[wsKey(path)]; return f ? (window.monaco && monacoEditor && wsKey(path) === currentFileKey ? monacoEditor.getValue() : (f.raw || '')) : null; }
+function pvFileRaw(path) { var k = wsKey(path), f = files[k]; return f ? (window.monaco && monacoEditor && k === currentFileKey ? monacoEditor.getValue() : (f.raw || '')) : null; }
 /* 어떤 파일에서 ▶ 를 눌러도 화면(HTML) 파일을 찾는다: HTML 은 자기 자신, CSS 와 브라우저용 JS 는 그것을 쓰는 HTML */
 function pvTargetFor(key) {
   var f = files[key]; if (!f) return null;
@@ -1508,15 +1510,28 @@ function pvTargetFor(key) {
   });
   return found || (isStyle ? '__none__' : null);
 }
+/* 미리보기 창 안에 넣는 안내 스크립트: console · 오류 · 링크 클릭 · 폼 제출 · 스크롤 위치를 부모(앱)에 알린다 */
 function pvBridgeScript() {
-  return '<script>(function(){function s(t,a){try{parent.postMessage({__pv:1,t:t,m:Array.prototype.map.call(a,function(x){try{return typeof x==="string"?x:JSON.stringify(x)}catch(e){return String(x)}}).join(" ")},"*")}catch(e){}}' +
+  var js = '(function(){function s(t,a){try{parent.postMessage({__pv:1,t:t,m:Array.prototype.map.call(a,function(x){try{return typeof x==="string"?x:JSON.stringify(x)}catch(e){return String(x)}}).join(" ")},"*")}catch(e){}}' +
     '["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){s(k,arguments);try{o.apply(console,arguments)}catch(e){}}});' +
     'addEventListener("error",function(e){s("error",[(e.message||"오류")+" ("+(e.lineno||0)+":"+(e.colno||0)+")"])});' +
-    'addEventListener("unhandledrejection",function(e){s("error",["처리되지 않은 오류: "+(e.reason&&e.reason.message||e.reason)])});})();<\/script>';
+    'addEventListener("unhandledrejection",function(e){s("error",["처리되지 않은 오류: "+(e.reason&&e.reason.message||e.reason)])});' +
+    'document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey)return;var h=a.getAttribute("href");if(!h||h.charAt(0)==="#"||/^(javascript|mailto|tel):/i.test(h))return;e.preventDefault();parent.postMessage({__pv:1,t:"nav",href:h,blank:a.target==="_blank"},"*")},true);' +
+    'document.addEventListener("submit",function(e){e.preventDefault();s("warn",["폼 제출은 미리보기에서 서버로 보내지 않아요"])},true);' +
+    'var st;addEventListener("scroll",function(){clearTimeout(st);st=setTimeout(function(){parent.postMessage({__pv:1,t:"scroll",x:scrollX,y:scrollY},"*")},150)},true);' +
+    'addEventListener("load",function(){var p=window.__PV_SCROLL;if(p&&(p[0]||p[1]))scrollTo(p[0],p[1])});})();';
+  return '<script>window.__PV_SCROLL=' + JSON.stringify(pvState.scroll) + ';' + js.replace(/<\//g, '<\\/') + '<\/script>';
+}
+function pvMessageDoc(title, detail) {
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">' + pvBridgeScript() +
+    '</head><body style="font-family:system-ui,-apple-system,sans-serif;color:#444;padding:28px 22px;line-height:1.6"><h2 style="margin:0 0 8px;font-size:18px">' + escapeHtml(title) + '</h2><p style="margin:0;font-size:14px;color:#777">' + escapeHtml(detail) + '</p></body></html>';
 }
 /* 같은 프로젝트의 CSS·JS 파일을 HTML 안으로 합쳐서, 링크가 끊기지 않는 한 장짜리 문서로 만든다 */
-function pvBuildDoc(key) {
-  var f = files[key], dir = wsDirOf(f.path), html = pvFileRaw(f.path) || '';
+function pvBuildDoc(path) {
+  var raw = pvFileRaw(path);
+  if (raw == null) return pvMessageDoc('파일을 찾을 수 없어요', '"' + path + '" 파일이 이 프로젝트에 없어요. 주소를 확인해 주세요.');
+  if (!pvIsHtml(path)) return pvMessageDoc('이 파일은 미리볼 수 없어요', '"' + path + '" 는 HTML 파일이 아니에요. .html 파일을 열어 주세요.');
+  var dir = wsDirOf(path), html = raw;
   html = html.replace(/<link\b[^>]*>/gi, function(tag) {
     if (!/rel\s*=\s*["']?stylesheet/i.test(tag)) return tag;
     var h = /href\s*=\s*["']([^"']+)["']/i.exec(tag), p = h && pvResolve(dir, h[1]), css = p ? pvFileRaw(p) : null;
@@ -1530,53 +1545,124 @@ function pvBuildDoc(key) {
   if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, function(m) { return m + bridge; });
   return bridge + html;
 }
+
+/* ---- 창 열기/닫기 ---- */
+function pvEls() { return { dock: document.getElementById('wsPreview'), rz: document.getElementById('wsResizerPreview'), shell: document.querySelector('.ws-shell'), btn: document.getElementById('wsPreviewBtn') }; }
+function pvOpenDock() {
+  var e = pvEls(); if (!e.dock) return;
+  pvState.open = true; e.dock.hidden = false; if (e.rz) e.rz.hidden = false;
+  if (e.shell) e.shell.classList.add('pv-open');
+  if (e.btn) { e.btn.classList.add('on'); e.btn.setAttribute('aria-pressed', 'true'); }
+  pvApplyWidth(); pvFit(); setTimeout(pvFit, 60);
+  if (window.monaco && monacoEditor) setTimeout(function() { monacoEditor.layout(); }, 60);
+}
+function pvClose() {
+  var e = pvEls(); if (!e.dock) return;
+  pvState.open = false; e.dock.hidden = true; if (e.rz) e.rz.hidden = true;
+  if (e.shell) e.shell.classList.remove('pv-open');
+  if (e.btn) { e.btn.classList.remove('on'); e.btn.setAttribute('aria-pressed', 'false'); }
+  var fr = document.getElementById('pvFrame'); if (fr) fr.srcdoc = '';        // 닫으면 미리보기 안의 코드도 멈춘다
+  clearTimeout(pvState.timer);
+  if (window.monaco && monacoEditor) setTimeout(function() { monacoEditor.layout(); }, 60);
+}
+function pvToggle() {
+  if (pvState.open) { pvClose(); return; }
+  var tgt = currentFileKey ? pvTargetFor(currentFileKey) : null, path = null;
+  if (tgt && tgt !== '__none__') path = files[tgt].path;
+  if (!path && pvState.path && files[wsKey(pvState.path)]) path = pvState.path;
+  if (!path) {                                                                  // 열린 파일이 HTML 이 아니면 프로젝트의 index.html (없으면 첫 HTML) 을 보여 준다
+    var htmls = Object.keys(files).map(function(k) { return files[k].path; }).filter(pvIsHtml).sort(function(a, b) { return a.split('/').length - b.split('/').length || (a < b ? -1 : 1); });
+    path = htmls.find(function(p) { return /(^|\/)index\.html?$/i.test(p); }) || htmls[0] || null;
+  }
+  pvOpenDock();
+  if (path) pvNavigate(path); else pvShowEmpty();
+}
+function pvShowEmpty() { var em = document.getElementById('pvEmpty'), wrap = document.getElementById('pvWrap'); if (em) em.hidden = false; if (wrap) wrap.hidden = true; var a = document.getElementById('pvAddr'); if (a) a.value = ''; pvNavState(); }
+/* ▶ 실행에서 호출: 그 HTML(또는 그것을 쓰는 HTML)을 미리보기 창에 띄운다 */
+function pvShow(key) {
+  if (key === '__none__') { wsRunNotice('이 CSS 를 쓰는 HTML 파일이 없어요', 'HTML 파일에서 <link rel="stylesheet" href="이_파일.css"> 로 연결하면 ▶ 실행으로 결과를 볼 수 있어요.'); return; }
+  pvOpenDock(); pvNavigate(files[key].path);
+}
+function pvReset() { pvClose(); pvState.path = null; pvState.hist = []; pvState.hi = -1; pvState.scroll = [0, 0]; }
+function pvOnRename(from, to) { pvState.hist = pvState.hist.map(function(p) { return p === from ? to : p; }); if (pvState.path === from) { pvState.path = to; var a = document.getElementById('pvAddr'); if (a && document.activeElement !== a) a.value = to; } }
+
+/* ---- 주소 이동 · 뒤로/앞으로 ---- */
+function pvNavigate(path, opts) {
+  opts = opts || {};
+  path = String(path || '').trim().replace(/^\.?\/+/, '');
+  if (!path) return;
+  if (opts.push !== false) {
+    pvState.hist = pvState.hist.slice(0, pvState.hi + 1);
+    if (pvState.hist[pvState.hist.length - 1] !== path) pvState.hist.push(path);
+    pvState.hi = pvState.hist.length - 1;
+  }
+  if (path !== pvState.path) pvState.scroll = [0, 0];
+  pvState.path = path;
+  var a = document.getElementById('pvAddr'); if (a && document.activeElement !== a) a.value = path;
+  pvRender(); pvNavState();
+}
+function pvNavState() {
+  var b = document.getElementById('pvBack'), f = document.getElementById('pvFwd');
+  if (b) b.disabled = pvState.hi <= 0; if (f) f.disabled = pvState.hi >= pvState.hist.length - 1;
+}
+function pvBack() { if (pvState.hi > 0) { pvState.hi--; pvNavigate(pvState.hist[pvState.hi], { push: false }); } }
+function pvForward() { if (pvState.hi < pvState.hist.length - 1) { pvState.hi++; pvNavigate(pvState.hist[pvState.hi], { push: false }); } }
+/* 주소창에 파일 경로를 쓰고 Enter: 정확한 경로 → 지금 보는 폴더 기준 상대 경로 → .html 을 붙여서 찾는다 */
+function pvGoForm(ev) {
+  if (ev) ev.preventDefault();
+  var a = document.getElementById('pvAddr'), v = String(a.value || '').trim().replace(/^\.?\/+/, '');
+  if (!v) return false;
+  var dir = pvState.path ? wsDirOf(pvState.path) : '', cands = [v, pvResolve(dir, v), v + '.html', pvResolve(dir, v + '.html')];
+  var hit = cands.find(function(p) { return p && files[wsKey(p)]; });
+  pvNavigate(hit || v);
+  if (a) a.blur();
+  return false;
+}
+
+/* ---- 그리기 ---- */
 function pvRender() {
-  var frame = document.getElementById('pvFrame'), key = pvState.key;
-  if (!frame || !key || !files[key]) return;
+  var frame = document.getElementById('pvFrame'), path = pvState.path;
+  if (!frame || !path) return;
   var empty = document.getElementById('pvEmpty'), wrap = document.getElementById('pvWrap');
   if (empty) empty.hidden = true; if (wrap) wrap.hidden = false;
   pvFit(); void frame.offsetWidth;                       // 기기 크기를 먼저 확정해 둬야 화면 안의 코드가 새 창 너비를 본다
-  pvState.n = (pvState.n || 0) + 1; var n = pvState.n;
+  pvState.n++; var n = pvState.n;
   requestAnimationFrame(function() {
-    if (n !== pvState.n || !files[key]) return;
-    frame.srcdoc = pvBuildDoc(key) + '<!-- ' + n + ' -->';   // 내용이 같아도 반드시 새로 불러오게 번호를 붙인다
+    if (n !== pvState.n || !pvState.open) return;
+    frame.srcdoc = pvBuildDoc(path) + '<!-- ' + n + ' -->';   // 내용이 같아도 반드시 새로 불러오게 번호를 붙인다
   });
 }
-function pvShow(key) {
-  if (key === '__none__') { wsRunNotice('이 CSS 를 쓰는 HTML 파일이 없어요', 'HTML 파일에서 <link rel="stylesheet" href="이_파일.css"> 로 연결하면 ▶ 실행으로 결과를 볼 수 있어요.'); return; }
-  pvState.key = key;
-  var termPanel = document.getElementById('wsTerminalPanel'); if (termPanel) termPanel.classList.remove('collapsed');
-  setTerminalTab('preview');
-  var chip = document.getElementById('termStatusChip'), t = document.getElementById('termExecTime');
-  if (chip) { chip.style.display = 'inline-block'; chip.className = 'term-status-chip success'; chip.textContent = '미리보기'; }
-  if (t) { t.style.display = 'inline-block'; t.textContent = files[key].path; }
-  pvRender();
-}
-function pvReload() { if (pvState.key && files[pvState.key]) pvRender(); }
-/* 미리보기 중인 HTML·CSS·JS 를 고치면 잠깐 뒤 자동으로 다시 그린다 */
+function pvReload() { if (pvState.path) pvRender(); else { pvToggleReopen(); } }
+function pvToggleReopen() { if (pvState.open) { pvClose(); pvToggle(); } }
+/* 미리보기 중인 HTML·CSS·JS 를 고치면(내가 쳐도, 팀원이 쳐도) 잠깐 뒤 자동으로 다시 그린다 */
 function pvAutoRefresh() {
-  if (!pvState.key) return;
-  var body = document.getElementById('termBodyPreview');
-  if (!body || body.style.display === 'none') return;
+  if (!pvState.open || !pvState.path) return;
+  var f = currentFileKey && files[currentFileKey];
+  if (f && ['html', 'htm', 'css', 'js', 'mjs', 'svg', 'json'].indexOf(wsExt(f.path || f.tab)) < 0) return;
   clearTimeout(pvState.timer);
-  pvState.timer = setTimeout(pvReload, 700);
+  pvState.timer = setTimeout(function() { if (pvState.open) pvRender(); }, 700);
 }
 function pvSetDevice(dev) {
   if (!PV_DEVICES.hasOwnProperty(dev)) return;
   pvState.dev = dev; if (dev === 'fit' || dev === 'desktop') pvState.landscape = false;
-  try { localStorage.setItem('sync_pv_dev', dev); } catch (e) {}
-  pvFit(); pvReload();           // 기기 크기가 바뀌면 화면을 다시 불러와서 그 크기 기준으로 다시 그리게 한다 (창 너비를 읽는 코드도 새 값을 본다)
+  try { localStorage.setItem('sync_pv_dev2', dev); } catch (e) {}
+  if (pvState.path) pvRender(); else pvFit();           // 기기 크기가 바뀌면 그 크기로 화면을 다시 불러온다 (CSS 미디어쿼리·innerWidth 가 실제 기기처럼 반응)
 }
-function pvRotate() { if (pvState.dev === 'phone' || pvState.dev === 'tablet') { pvState.landscape = !pvState.landscape; pvFit(); pvReload(); } }
+function pvRotate() { if (pvState.dev === 'phone' || pvState.dev === 'tablet') { pvState.landscape = !pvState.landscape; if (pvState.path) pvRender(); else pvFit(); } }
 /* 기기 크기에 맞게 틀을 잡고, 미리보기 칸보다 크면 비율을 줄여서 통째로 보여 준다 */
 function pvFit() {
-  var stage = document.getElementById('pvStage'), wrap = document.getElementById('pvWrap'), inner = document.getElementById('pvInner'), size = document.getElementById('pvSize');
-  document.querySelectorAll('#termBodyPreview .pv-dev').forEach(function(b) { b.classList.toggle('active', b.dataset.dev === pvState.dev); });
+  var stage = document.getElementById('pvStage'), wrap = document.getElementById('pvWrap'), inner = document.getElementById('pvInner'), size = document.getElementById('pvSize'), frame = document.getElementById('pvFrame');
+  document.querySelectorAll('#wsPreview .pv-dev').forEach(function(b) { b.classList.toggle('active', b.dataset.dev === pvState.dev); });
   var rot = document.getElementById('pvRotate'); if (rot) rot.style.display = (pvState.dev === 'phone' || pvState.dev === 'tablet') ? '' : 'none';
   if (!stage || !wrap || !inner) return;
+  stage.classList.toggle('is-fit', pvState.dev === 'fit');
   wrap.dataset.dev = pvState.dev;
   var d = PV_DEVICES[pvState.dev];
-  if (!d) { wrap.style.width = ''; wrap.style.height = ''; inner.style.width = ''; inner.style.height = ''; inner.style.transform = ''; if (size) size.textContent = '창 크기'; return; }
+  if (!d) {
+    wrap.style.width = ''; wrap.style.height = ''; inner.style.width = ''; inner.style.height = ''; inner.style.transform = '';
+    if (size && frame) size.textContent = Math.round(frame.clientWidth) + ' × ' + Math.round(frame.clientHeight);
+    return;
+  }
   var w = pvState.landscape ? d.h : d.w, h = pvState.landscape ? d.w : d.h;
   var cs = getComputedStyle(stage), aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 24, ah = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 24;
   var sc = (aw > 40 && ah > 40) ? Math.min(1, aw / w, Math.max(ah / h, 0.5)) : 1;     // 폭에 맞추되 너무 작아지면 세로로 스크롤
@@ -1585,25 +1671,74 @@ function pvFit() {
   if (size) size.textContent = w + ' × ' + h + (sc < 0.995 ? ' · ' + Math.round(sc * 100) + '%' : '');
 }
 function pvOpenTab() {
-  if (!pvState.key || !files[pvState.key]) return;
+  if (!pvState.path) return;
   try {
-    var url = URL.createObjectURL(new Blob([pvBuildDoc(pvState.key)], { type: 'text/html' }));
-    var w = window.open(url, '_blank', 'noopener'); setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    var url = URL.createObjectURL(new Blob([pvBuildDoc(pvState.path)], { type: 'text/html' }));
+    var w = window.open(url, '_blank'); if (w) w.opener = null; setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
     if (!w) pushToast('ℹ️', '새 탭이 막혔어요', '브라우저의 팝업 차단을 풀어 주세요.');
   } catch (e) {}
 }
+
+/* ---- 너비 조절 (넓은 화면): 오른쪽 창 너비를 끌어서 바꾼다 ---- */
+function pvDefaultWidth() { var sh = document.querySelector('.ws-shell'); return Math.round(Math.max(340, Math.min(760, (sh ? sh.clientWidth : 1000) * 0.42))); }
+function pvApplyWidth() {
+  var e = pvEls(); if (!e.dock || !e.shell) return;
+  var max = Math.max(320, e.shell.clientWidth - 420), w = Math.min(Math.max(pvState.width || pvDefaultWidth(), 300), max);
+  e.dock.style.width = w + 'px';
+}
+function pvInitResizer() {
+  var rz = document.getElementById('wsResizerPreview'), dock = document.getElementById('wsPreview'), shell = document.querySelector('.ws-shell');
+  if (!rz || !dock || !shell || rz.dataset.ready) return;
+  rz.dataset.ready = '1';
+  var drag = false;
+  function move(ev) {
+    if (!drag) return; ev.preventDefault();
+    var rect = shell.getBoundingClientRect(), sc = (typeof currentUiScale === 'function' ? currentUiScale() : 1) || 1;
+    var w = Math.round((rect.right - ev.clientX) / sc), max = Math.max(320, shell.clientWidth - 420);
+    pvState.width = Math.min(Math.max(w, 300), max); dock.style.width = pvState.width + 'px';
+    if (window.monaco && monacoEditor) monacoEditor.layout(); pvFit();
+  }
+  function up() {
+    if (!drag) return; drag = false; rz.classList.remove('dragging'); shell.classList.remove('pv-dragging');
+    document.body.style.cursor = ''; document.body.style.userSelect = '';
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    try { localStorage.setItem('sync_pv_w', String(pvState.width)); } catch (e) {}
+    if (window.monaco && monacoEditor) monacoEditor.layout(); pvFit();
+  }
+  rz.addEventListener('pointerdown', function(ev) {
+    drag = true; rz.classList.add('dragging'); shell.classList.add('pv-dragging');          // 끄는 동안 미리보기 안이 마우스를 가로채지 않게
+    document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; ev.preventDefault();
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  });
+  rz.addEventListener('dblclick', function() { pvState.width = 0; try { localStorage.removeItem('sync_pv_w'); } catch (e) {} pvApplyWidth(); if (window.monaco && monacoEditor) monacoEditor.layout(); pvFit(); });
+}
+
+/* ---- 미리보기 안에서 온 메시지: console · 링크 이동 · 스크롤 위치 ---- */
 window.addEventListener('message', function(ev) {
   var frame = document.getElementById('pvFrame'), d = ev.data;
   if (!frame || ev.source !== frame.contentWindow || !d || d.__pv !== 1) return;     // 미리보기 창에서 온 메시지만
+  if (d.t === 'scroll') { pvState.scroll = [Math.round(d.x) || 0, Math.round(d.y) || 0]; return; }
+  if (d.t === 'nav') {
+    var href = String(d.href || '');
+    if (/^([a-z][a-z0-9+.-]*:)?\/\//i.test(href)) {                                                                                        // 바깥 사이트 링크는 새 탭에서
+      var url = /^\/\//.test(href) ? 'https:' + href : href, w = null;
+      try { w = window.open(url, '_blank'); if (w) w.opener = null; } catch (e) {}
+      if (!w) pushToast('🔗', '새 탭이 막혔어요', '눌러서 열기 · ' + url.slice(0, 40), { duration: 6000, onclick: function() { try { var w2 = window.open(url, '_blank'); if (w2) w2.opener = null; } catch (e) {} } });
+      return;
+    }
+    var target = pvResolve(pvState.path ? wsDirOf(pvState.path) : '', href);
+    if (target != null) pvNavigate(target);
+    return;
+  }
   var tag = d.t === 'error' ? '\x1b[31m[미리보기 오류] ' : d.t === 'warn' ? '\x1b[33m[미리보기] ' : '\x1b[90m[미리보기] ';
   appendLiveOutput(tag + String(d.m).slice(0, 2000) + '\x1b[0m\n', false);
 });
 (function() {
   var stage = document.getElementById('pvStage');
-  if (stage && window.ResizeObserver) new ResizeObserver(function() { pvFit(); }).observe(stage);
-  window.addEventListener('resize', function() { pvFit(); });
+  if (stage && window.ResizeObserver) new ResizeObserver(function() { if (pvState.open) pvFit(); }).observe(stage);
+  window.addEventListener('resize', function() { if (pvState.open) { pvApplyWidth(); pvFit(); } });
+  pvInitResizer();
 })();
-
 
 /* =========================================================
    코드 조각(스니펫) 자동완성 — IntelliJ·VS Code 처럼 줄임말을 치면 코드가 펼쳐진다

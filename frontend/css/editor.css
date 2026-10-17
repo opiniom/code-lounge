@@ -221,39 +221,11 @@
 .sb-warn{color:#f0b429; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;}
 .sb-warn[hidden]{display:none;}
 
-/* ---- 결과 미리보기 (HTML 실행 결과를 기기 크기별로 시뮬레이션) ---- */
-.ws-term-body.ws-pv{padding:0; flex-direction:column; height:calc(100% - 34px); background:#0c1017; overflow:hidden;}
-.pv-bar{display:flex; align-items:center; gap:6px; padding:6px 10px; border-bottom:1px solid #30363d; background:#161b22; flex:0 0 auto; flex-wrap:wrap;}
-.pv-devices{display:inline-flex; gap:2px; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:2px;}
-.pv-dev{display:inline-flex; align-items:center; gap:5px; background:transparent; color:#8b949e; border:none; border-radius:6px; padding:5px 9px; font-size:11.5px; font-weight:600; cursor:pointer; min-height:28px;}
-.pv-dev:hover{color:#e6edf3;}
-.pv-dev.active{background:#238636; color:#fff;}
-.pv-size{color:#8b949e; font-size:11px; font-family:var(--font-mono);}
-.pv-spacer{flex:1 1 auto;}
-.pv-btn{display:inline-flex; align-items:center; justify-content:center; width:30px; height:28px; background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:6px; cursor:pointer;}
-.pv-btn:hover{color:#fff; border-color:#6e7681;}
-.pv-stage{flex:1 1 auto; min-height:0; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:12px; background:
-  repeating-conic-gradient(#10151d 0% 25%, #0c1017 0% 50%) 0 0/20px 20px;}
-.pv-empty{align-self:center; margin:auto; text-align:center; color:#8b949e; font-size:12.5px; line-height:1.7; padding:16px;}
-.pv-empty b{color:#e6edf3;}
-.pv-frame-wrap{flex:0 0 auto; position:relative; margin:0 auto;}
-.pv-frame-inner{transform-origin:0 0; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 0 0 1px #30363d, 0 8px 28px rgba(0,0,0,.45);}
-.pv-frame-wrap[data-dev="phone"] .pv-frame-inner{border-radius:26px; box-shadow:0 0 0 7px #1c2128, 0 0 0 8px #3d444d, 0 10px 30px rgba(0,0,0,.5);}
-.pv-frame-wrap[data-dev="tablet"] .pv-frame-inner{border-radius:18px; box-shadow:0 0 0 9px #1c2128, 0 0 0 10px #3d444d, 0 10px 30px rgba(0,0,0,.5);}
-.pv-frame-wrap[data-dev="fit"], .pv-frame-wrap[data-dev="fit"] .pv-frame-inner{width:100%; height:100%;}
-.pv-frame-inner iframe{display:block; width:100%; height:100%; border:0; background:#fff;}
-@media (max-width:640px){
-  .pv-dev span{display:none;}
-  .pv-dev{padding:5px 10px;}
-  .pv-size{display:none;}
-}
-.ws-terminal.pv-tall:not(.maximized){height:min(64%, 620px) !important; min-height:260px;}
 .ws-term-meta #termExecTime{max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .editor-statusbar .sb-left{min-width:0; flex:1 1 auto; overflow:hidden; white-space:nowrap;}
 .sb-warn{white-space:nowrap; font-weight:600;}
 .ws-term-meta .icon-btn{background:transparent; color:#8b949e; border:1px solid transparent; width:28px; height:28px; padding:0 !important; display:inline-flex; align-items:center; justify-content:center;}
 .ws-term-meta .icon-btn:hover{color:#fff; background:rgba(255,255,255,.08);}
-.pv-bar{padding-right:46px;}
 
 /* ---- 터치 기기용 코드 입력줄 ---- */
 .ws-quickkeys{position:fixed; left:0; right:0; bottom:0; z-index:2147; display:none; gap:6px; padding:6px 8px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
@@ -265,3 +237,58 @@
 .ws-quickkeys .qk:first-child{background:#1f6feb; border-color:#1f6feb; color:#fff;}
 @media (display-mode: standalone){ .ws-quickkeys{padding-left:max(8px, env(safe-area-inset-left)); padding-right:max(8px, env(safe-area-inset-right));} }
 .editor-statusbar .sb-save.live{color:#9be9a8; font-weight:600;}
+
+/* ---- 미리보기 창: 에디터 옆에 붙는 작은 브라우저 (좁은 화면에서는 에디터 위를 덮는 전체 화면) ---- */
+.ws-preview{flex:0 0 auto; width:42%; min-width:300px; display:flex; flex-direction:column; min-height:0; height:100%; background:var(--vscode-bg); border-left:1px solid var(--vscode-border); position:relative; overflow:hidden;}
+.ws-preview[hidden], .ws-resizer-pv[hidden]{display:none !important;}
+.ws-shell.pv-dragging iframe{pointer-events:none;}
+.ws-shell.is-empty .ws-preview, .ws-shell.is-empty .ws-resizer-pv{display:none !important;}
+#wsPreviewBtn.on{color:var(--accent); background:rgba(79,70,229,.10);}
+.pv-chrome{display:flex; align-items:center; gap:5px; padding:7px 8px; background:var(--vscode-head-bg); border-bottom:1px solid var(--vscode-border); flex:0 0 auto;}
+.pv-btn{display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; width:30px; height:30px; padding:0; background:transparent; color:var(--vscode-tab-text); border:1px solid transparent; border-radius:8px; cursor:pointer; touch-action:manipulation;}
+.pv-btn:hover:not(:disabled){background:rgba(127,127,127,.16); color:var(--vscode-tab-active-text);}
+.pv-btn:disabled{opacity:.35; cursor:default;}
+.pv-addr{flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px; height:32px; padding:0 11px; margin:0; background:var(--vscode-bg); border:1px solid var(--vscode-border); border-radius:16px;}
+.pv-addr:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,70,229,.16);}
+.pv-addr-ico{font-size:12px; flex:0 0 auto; opacity:.7;}
+.pv-addr input{flex:1 1 auto; min-width:0; width:100%; height:100%; border:0; outline:0; background:transparent; color:var(--vscode-tab-active-text); font:12.5px/1 var(--font-mono, monospace); text-overflow:ellipsis;}
+.pv-bar{display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid var(--vscode-border); background:var(--vscode-bg); flex:0 0 auto; overflow-x:auto; scrollbar-width:none; white-space:nowrap;}
+.pv-bar::-webkit-scrollbar{display:none;}
+.pv-devices{display:inline-flex; gap:2px; background:var(--vscode-head-bg); border:1px solid var(--vscode-border); border-radius:9px; padding:2px; flex:0 0 auto;}
+.pv-dev{display:inline-flex; align-items:center; gap:5px; background:transparent; color:var(--vscode-tab-text); border:none; border-radius:7px; padding:4px 9px; font-size:11.5px; font-weight:600; cursor:pointer; min-height:28px; touch-action:manipulation;}
+.pv-dev:hover{color:var(--vscode-tab-active-text);}
+.pv-dev.active{background:var(--accent); color:#fff;}
+.pv-size{color:var(--vscode-tab-text); font-size:11px; font-family:var(--font-mono, monospace); flex:0 0 auto;}
+.pv-spacer{flex:1 1 auto;}
+.pv-stage{flex:1 1 auto; min-height:0; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:12px; -webkit-overflow-scrolling:touch;
+  background:repeating-conic-gradient(var(--vscode-sidebar-bg) 0% 25%, var(--vscode-bg) 0% 50%) 0 0/20px 20px;}
+.pv-stage.is-fit{padding:0; background:#fff;}
+.pv-empty{align-self:center; margin:auto; text-align:center; color:var(--vscode-tab-text); font-size:12.5px; line-height:1.7; padding:16px; background:var(--vscode-bg); border-radius:12px;}
+.pv-empty b{color:var(--vscode-tab-active-text);}
+.pv-frame-wrap{flex:0 0 auto; position:relative; margin:0 auto;}
+.pv-frame-inner{transform-origin:0 0; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 0 0 1px rgba(127,127,127,.35), 0 8px 28px rgba(0,0,0,.25);}
+.pv-frame-wrap[data-dev="phone"] .pv-frame-inner{border-radius:26px; box-shadow:0 0 0 7px #1c2128, 0 0 0 8px #3d444d, 0 10px 30px rgba(0,0,0,.35);}
+.pv-frame-wrap[data-dev="tablet"] .pv-frame-inner{border-radius:18px; box-shadow:0 0 0 9px #1c2128, 0 0 0 10px #3d444d, 0 10px 30px rgba(0,0,0,.35);}
+.pv-frame-wrap[data-dev="fit"], .pv-frame-wrap[data-dev="fit"] .pv-frame-inner{width:100%; height:100%; margin:0; border-radius:0; box-shadow:none;}
+.pv-frame-inner iframe{display:block; width:100%; height:100%; border:0; background:#fff;}
+@media (pointer:coarse){ .pv-btn{width:38px; height:38px;} .pv-addr{height:38px;} .pv-dev{min-height:34px; padding:5px 11px;} }
+
+/* 좁은 화면(폰·세로 태블릿): 에디터 옆에 둘 자리가 없으니 에디터 위를 덮는 전체 화면으로 */
+@media (max-width:900px){
+  .ws-preview{position:absolute; inset:0; width:100% !important; min-width:0; z-index:60; border-left:0;}
+  .ws-resizer-pv{display:none !important;}
+  .pv-addr input{font-size:16px;}                       /* 16px 미만이면 아이폰이 입력칸을 누를 때 화면을 확대해 버린다 */
+  .pv-dev span{display:none;} .pv-dev{padding:5px 12px;}
+  .pv-btn-lbl{display:none;}
+}
+@media (max-width:900px) and (display-mode:standalone){ .ws-preview .pv-bar{padding-bottom:max(5px, env(safe-area-inset-bottom, 0px));} }
+
+/* 미리보기 창이 열려 에디터가 좁아지면 위쪽 버튼의 글자는 숨기고 아이콘만 (탭이 줄어들고, 버튼은 잘리지 않게) */
+.editor-head-bar .editor-tabs{min-width:0;}
+.ws-shell.pv-open .editor-actions{gap:4px; padding-right:6px;}
+.ws-shell.pv-open .editor-actions .pv-btn-lbl, .ws-shell.pv-open .editor-actions .tb-lbl{display:none;}
+/* 폰 가로 모드처럼 높이가 낮을 때는 미리보기 위쪽 줄들을 얇게 해서 화면 내용이 더 보이게 */
+@media (max-height:520px){
+  .pv-chrome{padding:4px 8px;} .pv-bar{padding:2px 8px;}
+  .pv-btn{width:30px; height:30px;} .pv-addr{height:30px;} .pv-dev{min-height:26px; padding:3px 10px;}
+}
