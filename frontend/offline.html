@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오프라인 · DureSync</title>
+<meta name="theme-color" content="#F5F7FC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0F1F" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/static/icons/favicon-light-64.png" media="(prefers-color-scheme: light)">
+<link rel="icon" href="/static/icons/favicon-dark-64.png" media="(prefers-color-scheme: dark)">
+<style>
+  :root{--bg:#F5F7FC; --card:#fff; --text:#0F1629; --muted:#566079; --line:#E1E6F0; --accent:#3B82F6;}
+  @media (prefers-color-scheme: dark){ :root{--bg:#0A0F1F; --card:#111731; --text:#EEF2FF; --muted:#A8B2D1; --line:#232C4D; --accent:#60A5FA;} }
+  *{box-sizing:border-box;} html,body{height:100%;}
+  body{margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; padding:max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased;}
+  .card{width:100%; max-width:380px; text-align:center; background:var(--card); border:1px solid var(--line); border-radius:24px; padding:34px 26px 28px; box-shadow:0 18px 48px rgba(15,22,41,.12);}
+  .logo{width:84px; height:84px; margin:0 auto 18px; border-radius:22px; display:block;}
+  .logo.dark{display:none;} @media (prefers-color-scheme: dark){ .logo.light{display:none;} .logo.dark{display:block;} }
+  h1{margin:0 0 8px; font-size:20px; letter-spacing:-.03em;} p{margin:0 0 22px; font-size:14px; color:var(--muted); overflow-wrap:anywhere;}
+  button{width:100%; min-height:48px; border:none; border-radius:14px; background:var(--accent); color:#fff; font:inherit; font-size:15px; font-weight:700; cursor:pointer;}
+  button:active{transform:scale(.98);} .hint{margin-top:14px; font-size:12px; color:var(--muted);}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:#EF4444; margin-right:6px; vertical-align:middle;} .dot.on{background:#22C55E;}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+<main class="card">
+  <img class="logo light" src="/static/icons/icon-light-192.png" alt="" width="84" height="84">
+  <img class="logo dark" src="/static/icons/icon-dark-192.png" alt="" width="84" height="84">
+  <h1>인터넷에 연결되어 있지 않아요</h1>
+  <p>연결이 돌아오면 자동으로 이어서 열어 드릴게요.<br>작성 중이던 내용은 연결 후에 다시 불러와요.</p>
+  <button type="button" id="retry">다시 시도</button>
+  <div class="hint"><span class="dot" id="dot"></span><span id="state">오프라인</span></div>
+</main>
+<script>
+  var dot = document.getElementById('dot'), st = document.getElementById('state');
+  function sync(){ var on = navigator.onLine; dot.className = 'dot' + (on ? ' on' : ''); st.textContent = on ? '연결됨 — 여는 중…' : '오프라인'; }
+  function go(){ location.href = '/app'; }
+  window.addEventListener('online', function(){ sync(); setTimeout(go, 600); });      // 연결이 돌아오면 앱으로
+  window.addEventListener('offline', sync);
+  document.getElementById('retry').addEventListener('click', function(){ sync(); if (navigator.onLine) go(); else { this.textContent = '아직 연결되지 않았어요'; var b = this; setTimeout(function(){ b.textContent = '다시 시도'; }, 1800); } });
+  sync();
+</script>
+</body>
+</html>

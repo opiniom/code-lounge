@@ -91,7 +91,7 @@ app = FastAPI(
 )
 
 import os
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 # CORS 설정 (모든 로컬 개발 환경 및 Vercel, Cloudflare Tunnel 허용)
@@ -207,6 +207,61 @@ async def bundle_css():
 @app.get("/static/bundle.js", include_in_schema=False)
 async def bundle_js():
     return Response(_ui_snapshot()["js"], media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+# ---------------- PWA (앱으로 설치) ----------------
+# 매니페스트는 사용자가 쓰는 화면 모드(라이트/다크)에 맞는 아이콘·색으로 내려준다: /manifest.webmanifest?theme=dark
+# (설치하는 순간의 아이콘이 홈 화면 아이콘이 되므로, 화면이 테마가 바뀔 때마다 이 주소의 theme 값을 바꿔 둔다)
+def _pwa_manifest(theme: str) -> dict:
+    t = "dark" if theme == "dark" else "light"
+    icon = lambda n, purpose="any", fmt="icon-%s-%d": {"src": "/static/icons/" + (fmt % (t, n)) + ".png", "sizes": "%dx%d" % (n, n), "type": "image/png", "purpose": purpose}
+    shortcut = lambda name, url: {"name": name, "short_name": name, "url": url, "icons": [{"src": "/static/icons/icon-%s-96.png" % t, "sizes": "96x96", "type": "image/png"}]}
+    return {
+        "id": "/app",
+        "name": "DureSync (두레싱크)",
+        "short_name": "DureSync",
+        "description": "팀 프로젝트를 위한 AI 워크스페이스 — 채팅·통화·일정·회의록·코드를 한곳에서",
+        "lang": "ko", "dir": "ltr",
+        "start_url": "/app?source=pwa",
+        "scope": "/",
+        "display": "standalone",
+        "display_override": ["standalone", "minimal-ui"],
+        "orientation": "any",
+        "background_color": "#0A0F1F" if t == "dark" else "#F5F7FC",
+        "theme_color": "#111731" if t == "dark" else "#FFFFFF",
+        "categories": ["productivity", "business", "education"],
+        "prefer_related_applications": False,
+        "icons": [icon(n) for n in (48, 96, 144, 192, 256, 384, 512)]
+                 + [{"src": "/static/icons/maskable-%s-%d.png" % (t, n), "sizes": "%dx%d" % (n, n), "type": "image/png", "purpose": "maskable"} for n in (192, 512)]
+                 + [{"src": "/static/icons/monochrome-%d.png" % n, "sizes": "%dx%d" % (n, n), "type": "image/png", "purpose": "monochrome"} for n in (192, 512)],
+        "shortcuts": [shortcut("워크스페이스", "/app/workspace?source=shortcut"), shortcut("회의록", "/app/meetings?source=shortcut"),
+                      shortcut("캘린더", "/app/calendar?source=shortcut"), shortcut("커뮤니티", "/app/community?source=shortcut")],
+    }
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def pwa_manifest(theme: str = "light"):
+    return JSONResponse(_pwa_manifest(theme), media_type="application/manifest+json", headers={"Cache-Control": "public, max-age=600"})
+
+@app.get("/sw.js", include_in_schema=False)
+async def pwa_service_worker():
+    """서비스 워커: 항상 최신을 확인하게(no-cache) 하고, 화면 버전을 넣어서 내려준다. 전체 사이트(/)를 관리할 수 있게 허용."""
+    try:
+        with open(os.path.join(UI_DIR, "sw.js"), "r", encoding="utf-8") as fh:
+            body = fh.read().replace("__BUILD__", _ui_snapshot()["build"])
+    except OSError:
+        raise HTTPException(status_code=404, detail="Not found")
+    return Response(body, media_type="application/javascript; charset=utf-8", headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+
+class _IconStatic(StaticFiles):
+    """아이콘은 거의 안 바뀌므로 하루 동안 다시 묻지 않고 쓰게 한다 (이름에 버전이 없어서 너무 길게 잡지는 않는다)"""
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if resp.status_code == 200:
+            resp.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+        return resp
+
+_ICON_DIR = os.path.join(UI_DIR, "icons")
+if os.path.isdir(_ICON_DIR):
+    app.mount("/static/icons", _IconStatic(directory=_ICON_DIR), name="pwa-icons")      # /static 마운트보다 먼저 (더 구체적인 주소가 먼저 잡히게)
 
 if os.path.isdir(UI_DIR):
     app.mount("/static", StaticFiles(directory=UI_DIR), name="ui-static")

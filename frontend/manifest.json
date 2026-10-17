@@ -22,6 +22,7 @@
     "css/guest.css",
     "css/sysadmin.css",
     "css/account.css",
+    "css/pwa.css",
     "css/compat.css",
     "css/mobile.css",
     "css/responsive.css"
@@ -32,6 +33,7 @@
     "js/core/home-landing.js",
     "js/core/auth.js",
     "js/core/settings.js",
+    "js/core/pwa.js",
     "js/shell/menus.js",
     "js/shell/presence.js",
     "js/shell/notifications.js",
