@@ -81,7 +81,16 @@ cd code-lounge
 
 - **실행 언어:** 파일 확장자로 정해져요 — Python(.py) · JavaScript(.js) · TypeScript(.ts) · Java(.java) · C(.c) · C++(.cpp) · C#(.cs) · Ruby(.rb) · PHP(.php) · Perl(.pl) · Bash(.sh) · Go(.go) · Rust(.rs). **서버에 설치된 도구만** 자동으로 실행 가능 목록에 올라가고(`/health`), 없는 언어는 가짜 결과 없이 "이 서버에는 ○○ 실행 환경이 없어요"라고 알려줘요. `.md`·`.txt` 같은 파일은 실행하지 않아요(예전처럼 몰래 Python 으로 돌려서 오류가 나지 않아요).
 - **Java:** 클래스 이름이 `Main` 이 아니어도, `public` 이 없어도, `package` 가 있어도 실행돼요(`main` 이 있는 클래스를 찾아요).
-- **배포 서버(Docker):** `Dockerfile` 이 gcc/g++ · JDK · Node.js · Ruby · PHP · Perl 을 설치해요(Go·Rust·C# 이 필요하면 `Dockerfile` 에 추가). 실행되는 코드에는 서버의 환경변수(비밀키)를 넘기지 않고, 시간·출력 크기를 제한해요.
+- **배포 서버(Docker) — 언어는 터미널에서 나중에 설치해요(재빌드·재시작 없음):** 이미지에는 기본 언어(Python · JavaScript · TypeScript(Node 22) · Java · C · C++ · Ruby · PHP · Perl · Bash)만 들어 있고, 큰 언어는 서버 터미널에서 필요할 때 설치해요.
+  ```bash
+  docker compose -f docker-compose.prod.yml exec app install-lang list          # 설치 현황
+  docker compose -f docker-compose.prod.yml exec app install-lang go            # Go (최신)
+  docker compose -f docker-compose.prod.yml exec app install-lang rust           # Rust  (버전 지정: rust 1.85.0)
+  docker compose -f docker-compose.prod.yml exec app install-lang dotnet         # C# (.NET SDK)
+  docker compose -f docker-compose.prod.yml exec app install-lang remove go      # 삭제
+  ```
+  설치한 언어는 `./langs`(컨테이너 안 `/opt/langs`, 도커 볼륨)에 저장돼서 **컨테이너를 새로 만들어도 남아요.** 서버가 10초 안에 자동으로 알아봐서 `/health` 의 `supported_languages` 와 워크스페이스 ▶ 실행에 바로 나타나요. 공식 배포처(go.dev · static.rust-lang.org · dot.net)에서 HTTPS 로 받고 체크섬을 확인해요. 디스크는 Go 약 250MB · Rust 약 500MB · .NET 약 1GB 쓰니 여유를 확인하세요(`./langs` 는 깃허브에 올라가지 않아요). 새 언어(예: Kotlin)를 지원 목록에 넣는 건 코드 수정이 필요해요. 실행되는 코드에는 서버의 환경변수(비밀키)를 넘기지 않고, 시간·출력 크기를 제한해요.
+  - *개발 컴퓨터에서 이미지를 직접 빌드할 때 `Unable to connect to deb.debian.org` 가 나면* 인터넷이 잠깐 끊긴 것이라 다시 실행하면 돼요(Dockerfile 에 apt 재시도 설정이 들어 있어요).
 - **⚠️ 보안:** 이 샌드박스는 서버 안에서 코드를 직접 돌려요(컨테이너/VM 수준의 완전한 격리가 아니에요). 누구나 접속하는 공개 서버에서는 `PUBLIC_MODE=true` 로 실행을 끄거나, Judge0 같은 별도 격리 환경을 쓰는 것을 권장해요.
 - **파일 탐색기(VS Code 방식):** 폴더를 누르면 그 폴더가 선택되고, 위의 **새 파일 / 새 폴더** 버튼(또는 폴더에 마우스를 올렸을 때 나오는 버튼)을 누르면 **그 폴더 안에 입력칸**이 바로 생겨요 — 이름만 입력하면 돼요. 빈 곳을 누르면 맨 위(루트)가 선택돼요. 빈 폴더는 보이지 않는 `.gitkeep` 파일로 유지돼요. 폰·태블릿에서는 이름 바꾸기·삭제 버튼이 항상 보여요.
 - **이름 규칙:** `.` `..` `...` 처럼 점으로만 된 이름, `\ : * ? " < > |` 문자, 끝의 마침표/공백은 쓸 수 없어요(`a..b.txt`·`.gitignore` 는 가능). 서버가 거부한 파일이 화면에만 남는 일은 없어요.

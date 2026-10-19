@@ -92,9 +92,7 @@ def _prepare(lang: str, code: str, tmp: str, fname: Optional[str] = None) -> Tup
         cs = nm("Program.cs")
         with open(os.path.join(tmp, cs), "w", encoding="utf-8") as f:
             f.write(code)
-        if sb.CSC:
-            return [sb.CSC, "/nologo", "/utf8output", "/out:Program.exe", cs], [os.path.join(tmp, "Program.exe")]
-        return [sb.MCS, "-out:Program.exe", cs], [sb.MONO, "Program.exe"]
+        return sb.csharp_commands(tmp, cs)
     if lang == "go":
         go = nm("main.go")
         with open(os.path.join(tmp, go), "w", encoding="utf-8") as f:

@@ -8,6 +8,7 @@
 주의: 이 샌드박스는 컨테이너/VM 같은 완전한 격리가 아니다. 공개 서버에서는 PUBLIC_MODE 로 끄거나 Judge0 같은 별도 격리 환경을 쓰는 것을 권장한다.
 """
 import asyncio
+import glob
 import os
 import re
 import shutil
@@ -26,20 +27,67 @@ OUTPUT_LIMIT = 256 * 1024          # 출력은 이만큼만 돌려준다 (무한
 COMPILE_TIMEOUT = 25.0
 
 PYTHON_EXEC = sys.executable
-NODE = shutil.which("node")
-RUBY = shutil.which("ruby")
-PHP = shutil.which("php")
-PERL = shutil.which("perl")
-BASH = shutil.which("bash")
-GO = shutil.which("go")
-RUSTC = shutil.which("rustc")
-JAVAC = shutil.which("javac")
-JAVA = shutil.which("java")
-GCC = shutil.which("gcc") or shutil.which("clang")
-GPP = shutil.which("g++") or shutil.which("clang++")
-MCS = shutil.which("mcs")
-MONO = shutil.which("mono")
-CSC = next((p for p in (r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe", r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe") if os.path.exists(p)), None) if IS_WINDOWS else None
+
+# 서버 터미널에서 `install-lang go` 처럼 나중에 설치하는 언어는 이 폴더 아래에 놓인다 (도커 볼륨 — 컨테이너를 새로 만들어도 남는다)
+LANGS_DIR = os.environ.get("LANGS_DIR", "/opt/langs")
+TOOLS_RECHECK_SECONDS = 10.0
+_tools_at = 0.0
+
+
+def lang_bins() -> List[str]:
+    """LANGS_DIR 아래 설치된 언어들의 실행 파일 폴더 (go/bin, rust/bin, dotnet …)"""
+    out: List[str] = []
+    try:
+        for name in sorted(os.listdir(LANGS_DIR)):
+            d = os.path.join(LANGS_DIR, name)
+            if not os.path.isdir(d) or name.startswith("."):
+                continue
+            b = os.path.join(d, "bin")
+            out.append(b if os.path.isdir(b) else d)
+    except OSError:
+        pass
+    return out
+
+
+def tool_path() -> str:
+    return os.pathsep.join(lang_bins() + [os.environ.get("PATH", "/usr/bin:/bin")])
+
+
+def _find(name: str) -> Optional[str]:
+    return shutil.which(name, path=tool_path())
+
+
+NODE = RUBY = PHP = PERL = BASH = GO = RUSTC = JAVAC = JAVA = GCC = GPP = MCS = MONO = DOTNET = None
+CSC = None
+DOTNET_CSHARP: Optional[Dict[str, str]] = None       # .NET SDK 로 C# 을 컴파일할 때 필요한 위치들 (없으면 None)
+
+
+def _dotnet_csharp() -> Optional[Dict[str, str]]:
+    """설치된 .NET SDK 에서 C# 컴파일러(csc.dll)·참조 어셈블리·런타임 버전을 찾는다"""
+    if not DOTNET:
+        return None
+    root = os.path.dirname(os.path.realpath(DOTNET))
+    try:
+        csc = sorted(glob.glob(os.path.join(root, "sdk", "*", "Roslyn", "bincore", "csc.dll")))[-1]
+        refdir = sorted(d for d in glob.glob(os.path.join(root, "packs", "Microsoft.NETCore.App.Ref", "*", "ref", "net*")) if os.path.isdir(d))[-1]
+        rt = os.path.basename(sorted(glob.glob(os.path.join(root, "shared", "Microsoft.NETCore.App", "*")))[-1])
+    except IndexError:
+        return None
+    tfm = "net" + ".".join(rt.split(".")[:2])
+    return {"root": root, "csc": csc, "refdir": refdir, "runtime": rt, "tfm": tfm}
+
+
+def refresh_tools() -> None:
+    """설치된 언어 도구를 다시 찾는다. 서버를 다시 켜지 않아도 새로 설치한 언어가 목록에 오른다."""
+    global NODE, RUBY, PHP, PERL, BASH, GO, RUSTC, JAVAC, JAVA, GCC, GPP, MCS, MONO, DOTNET, CSC, DOTNET_CSHARP, TS_FLAGS, _tools_at
+    NODE, RUBY, PHP, PERL, BASH = _find("node"), _find("ruby"), _find("php"), _find("perl"), _find("bash")
+    GO, RUSTC, JAVAC, JAVA = _find("go"), _find("rustc"), _find("javac"), _find("java")
+    GCC, GPP = _find("gcc") or _find("clang"), _find("g++") or _find("clang++")
+    MCS, MONO, DOTNET = _find("mcs"), _find("mono"), _find("dotnet")
+    CSC = next((p for p in (r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe", r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe") if os.path.exists(p)), None) if IS_WINDOWS else None
+    DOTNET_CSHARP = _dotnet_csharp()
+    TS_FLAGS = _node_ts_flags()
+    _tools_at = time.monotonic()
 
 
 def _node_ts_flags() -> Optional[List[str]]:
@@ -58,7 +106,8 @@ def _node_ts_flags() -> Optional[List[str]]:
     return None
 
 
-TS_FLAGS = _node_ts_flags()
+TS_FLAGS: Optional[List[str]] = None
+refresh_tools()
 
 # 화면에 보여줄 이름
 LABELS = {"python": "Python", "javascript": "JavaScript", "typescript": "TypeScript", "java": "Java", "c": "C", "cpp": "C++", "csharp": "C#",
@@ -68,9 +117,11 @@ ALIASES = {"py": "python", "python3": "python", "js": "javascript", "node": "jav
 
 
 def available() -> Dict[str, bool]:
+    if time.monotonic() - _tools_at > TOOLS_RECHECK_SECONDS:
+        refresh_tools()
     return {
         "python": os.path.exists(PYTHON_EXEC), "javascript": bool(NODE), "typescript": TS_FLAGS is not None, "java": bool(JAVAC and JAVA),
-        "c": bool(GCC), "cpp": bool(GPP), "csharp": bool(CSC or (MCS and MONO)), "ruby": bool(RUBY), "php": bool(PHP), "perl": bool(PERL),
+        "c": bool(GCC), "cpp": bool(GPP), "csharp": bool(CSC or (MCS and MONO) or DOTNET_CSHARP), "ruby": bool(RUBY), "php": bool(PHP), "perl": bool(PERL),
         "bash": bool(BASH) and not IS_WINDOWS, "go": bool(GO), "rust": bool(RUSTC),
     }
 
@@ -89,9 +140,13 @@ def decode_bytes(data: bytes) -> str:
 
 def _clean_env(workdir: str) -> Dict[str, str]:
     """서버의 환경변수(비밀키·토큰 등)는 넘기지 않고, 실행에 꼭 필요한 것만 준다"""
-    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": workdir, "TMPDIR": workdir, "TEMP": workdir, "TMP": workdir,
+    gocache = os.environ.get("SANDBOX_GOCACHE") or os.path.join(LANGS_DIR, ".gocache")
+    env = {"PATH": tool_path(), "HOME": workdir, "TMPDIR": workdir, "TEMP": workdir, "TMP": workdir,
            "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1",
-           "GOCACHE": os.path.join(workdir, ".gocache"), "GOPATH": os.path.join(workdir, ".gopath"), "GOFLAGS": "-mod=mod", "NO_COLOR": "1"}
+           "GOCACHE": gocache if os.path.isdir(gocache) else os.path.join(workdir, ".gocache"), "GOPATH": os.path.join(workdir, ".gopath"), "GOFLAGS": "-mod=mod", "NO_COLOR": "1"}
+    if DOTNET_CSHARP:
+        env.update({"DOTNET_ROOT": DOTNET_CSHARP["root"], "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_HOME": workdir,
+                    "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1", "DOTNET_EnableDiagnostics": "0"})
     if IS_WINDOWS:
         for k in ("SystemRoot", "SYSTEMROOT", "COMSPEC", "PATHEXT", "WINDIR"):
             if os.environ.get(k):
@@ -227,6 +282,23 @@ def java_class_mismatch(code: str, file_name: Optional[str]) -> Optional[Tuple[s
     return (pub.group(1), stem) if pub and pub.group(1) != stem else None
 
 
+def csharp_commands(tmp: str, cs_name: str = "Program.cs") -> Tuple[List[str], List[str]]:
+    """(컴파일 명령, 실행 명령). Windows csc → Mono(mcs) → .NET SDK 순서로 쓸 수 있는 것을 고른다"""
+    if CSC:
+        return [CSC, "/nologo", "/utf8output", "/out:Program.exe", cs_name], [os.path.join(tmp, "Program.exe")]
+    if MCS and MONO:
+        return [MCS, "-out:Program.exe", cs_name], [MONO, "Program.exe"]
+    d = DOTNET_CSHARP
+    if not d or not DOTNET:
+        raise FileNotFoundError("C# 컴파일러")
+    refs = sorted(glob.glob(os.path.join(d["refdir"], "*.dll")))
+    with open(os.path.join(tmp, "refs.rsp"), "w", encoding="utf-8") as f:
+        f.write("\n".join("-r:" + r for r in refs) + "\n")
+    with open(os.path.join(tmp, "Program.runtimeconfig.json"), "w", encoding="utf-8") as f:
+        f.write('{"runtimeOptions":{"tfm":"%s","framework":{"name":"Microsoft.NETCore.App","version":"%s"}}}' % (d["tfm"], d["runtime"]))
+    return [DOTNET, d["csc"], "-nologo", "-target:exe", "-out:Program.dll", "@refs.rsp", cs_name], [DOTNET, "Program.dll"]
+
+
 class LocalSandboxRunner:
     def is_available(self) -> bool:
         return os.path.exists(PYTHON_EXEC)
@@ -333,9 +405,8 @@ class LocalSandboxRunner:
     async def _run_csharp(self, code, stdin, timeout, mem, tmp):
         with open(os.path.join(tmp, "Program.cs"), "w", encoding="utf-8") as f:
             f.write(code)
-        if CSC:
-            return await self._compiled(tmp, "C#", [CSC, "/nologo", "/utf8output", "/out:Program.exe", "Program.cs"], [os.path.join(tmp, "Program.exe")], stdin, timeout, 18200)
-        return await self._compiled(tmp, "C#", [MCS, "-out:Program.exe", "Program.cs"], [MONO, "Program.exe"], stdin, timeout, 18200)
+        comp, run = csharp_commands(tmp)
+        return await self._compiled(tmp, "C#", comp, run, stdin, timeout, 18200)
 
     async def _run_go(self, code, stdin, timeout, mem, tmp):
         with open(os.path.join(tmp, "main.go"), "w", encoding="utf-8") as f:
