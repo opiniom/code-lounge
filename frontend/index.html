@@ -931,6 +931,14 @@
         <button class="icon-btn" id="chatCallBtn" title="팀 통화방" onclick="toggleCall()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></button>
         <button class="icon-btn x" onclick="toggleChat()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
+      <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="대화 종류">
+        <button type="button" class="chat-tab active" id="chatTabTeam" role="tab" aria-selected="true" onclick="setChatMode('team')">💬 팀 채팅</button>
+        <button type="button" class="chat-tab" id="chatTabAi" role="tab" aria-selected="false" onclick="setChatMode('ai')">🔒 나만 보는 AI<i class="chat-tab-dot" id="chatTabAiDot" hidden></i></button>
+      </div>
+      <div class="ai-private-note" id="aiPrivateNote" hidden>
+        <span class="apn-text"><b>🔒 나만 볼 수 있어요.</b> 팀원에게는 이 대화도, 대화가 있었다는 알림도 가지 않아요.</span>
+        <button type="button" class="apn-clear" onclick="clearAiChat()" title="이 프로젝트에서 나와 AI 의 대화를 모두 지워요">대화 지우기</button>
+      </div>
       <div class="ai-guide" id="aiGuide">
         <button class="ai-guide-head" onclick="toggleAiGuide()" title="AI 사용법 펼치기/접기">
           <span>💡 AI 사용법</span>

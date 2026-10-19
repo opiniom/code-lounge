@@ -225,6 +225,7 @@ class MeetingDocResponse(BaseModel):
 # ================================
 class ChatMessageCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
+    private: bool = Field(default=False, description="True 면 '나만 보는 AI 대화': 팀 채팅에 올리지 않고 AI 가 나에게만 답한다")
 
 class ChatMessageResponse(BaseModel):
     id: int
@@ -234,6 +235,7 @@ class ChatMessageResponse(BaseModel):
     kind: str
     text: str
     meta: Optional[dict] = None
+    private: bool = False
     created_at: str
 
 

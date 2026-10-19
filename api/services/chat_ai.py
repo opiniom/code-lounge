@@ -176,7 +176,7 @@ async def _ask_agent(system: str, user_msg: str) -> Dict[str, Any]:
 # 자료(컨텍스트)
 # ======================================================================
 async def _build_context(db: AsyncSession, project: Project, user_id: int, today: date,
-                         upto_id: Optional[int] = None) -> str:
+                         upto_id: Optional[int] = None, private: bool = False) -> str:
     members = await project_users(db, project)
     # AI 를 부른 문장(누가 어떤 이름으로 불렀든)은 '요청'이지 대화 자료가 아니므로 자료에서 뺀다
     names = [n for u in members for n in ((u.ai_name or "").strip(),) if n]
@@ -193,8 +193,9 @@ async def _build_context(db: AsyncSession, project: Project, user_id: int, today
             or_(CalendarEvent.kind != "private", CalendarEvent.user_id == user_id),
         ).order_by(CalendarEvent.start_date, CalendarEvent.start_time).limit(30)
     )).scalars().all()
-    q = select(ChatMessage).where(ChatMessage.project_id == project.id, ChatMessage.kind == "user")
-    if upto_id is not None:
+    # 팀 대화 자료에는 '나만 보는 AI 대화'를 넣지 않는다 (남의 개인 대화가 AI 를 통해 새는 것을 막는다)
+    q = select(ChatMessage).where(ChatMessage.project_id == project.id, ChatMessage.kind == "user", ChatMessage.private_to.is_(None))
+    if upto_id is not None and not private:
         q = q.where(ChatMessage.id < upto_id)
     rows = (await db.execute(q.order_by(ChatMessage.id.desc()).limit(40))).scalars().all()
     msgs = [m for m in rows if not call_re.match(m.text or "") and not any(r.match(m.text or "") for r in custom_res)][:15]
@@ -223,6 +224,14 @@ async def _build_context(db: AsyncSession, project: Project, user_id: int, today
             out.append(f"- {author.get(m.user_id, '?')}: {m.text[:200]}")
     else:
         out.append("- (없음)")
+    if private:      # 나와 AI 의 이전 대화 (후속 질문 "그 일정 4시로 바꿔줘" 를 이해하려면 필요). 내 것만 넣는다
+        prev = (await db.execute(
+            select(ChatMessage).where(ChatMessage.project_id == project.id, ChatMessage.private_to == user_id,
+                                      ChatMessage.id < (upto_id or 10**12)).order_by(ChatMessage.id.desc()).limit(10)
+        )).scalars().all()
+        prev.reverse()
+        out.append("\n[나와 AI 의 이전 대화 (이 사용자만 보는 개인 대화)]")
+        out.extend([f"- {'나' if m.kind == 'user' else 'AI'}: {(m.text or '')[:200]}" for m in prev] or ["- (없음)"])
     return "\n".join(out)
 
 
@@ -407,7 +416,7 @@ _FAIL_TEXT = "⚠️ 지금은 AI가 답변을 만들지 못했어요 (무료 �
 
 
 async def run_agent(db: AsyncSession, project_id: int, user: User, text: str,
-                    ai_name: Optional[str] = None, trigger_id: Optional[int] = None) -> Tuple[str, Dict[str, Any]]:
+                    ai_name: Optional[str] = None, trigger_id: Optional[int] = None, private: bool = False) -> Tuple[str, Dict[str, Any]]:
     """AI 요청 하나를 처리하고 (채팅에 올릴 텍스트, 메타) 를 돌려준다. 호출한 쪽이 커밋한다."""
     meta: Dict[str, Any] = {"requester_id": user.id}
     if ai_name:
@@ -422,7 +431,7 @@ async def run_agent(db: AsyncSession, project_id: int, user: User, text: str,
     if project is None:
         return _FAIL_TEXT, meta
     today = date.today()
-    context = await _build_context(db, project, user.id, today, trigger_id)
+    context = await _build_context(db, project, user.id, today, trigger_id, private)
     user_msg = f"[프로젝트 자료]\n{context}\n\n[요청 — {user.username}]\n{body}"
     try:
         data = await _ask_agent(_system(ai_name), user_msg)

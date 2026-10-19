@@ -128,6 +128,8 @@ async def withdraw_user(db: AsyncSession, user: User, reason: Optional[str] = No
             db.add(Notification(user_id=succ.id, project_id=p.id, title="팀장이 바뀌었어요", message=f"이전 팀장이 탈퇴해서 '{p.title}' 프로젝트의 팀장을 맡게 됐어요.", category="project"))
             summary["projects_transferred"] += 1
 
+    await db.execute(delete(ChatMessage).where(ChatMessage.private_to == uid))        # 나와 AI 의 개인 대화는 남기지 않는다
+
     # 2) 다른 사람 프로젝트에서는 나가기 (채팅·파일·회의록 기록은 팀에 남고 작성자는 '탈퇴한 사용자'로 보인다)
     summary["left_projects"] = await _count(db, select(func.count()).select_from(ProjectMember).where(ProjectMember.user_id == uid))
     await db.execute(delete(ProjectMember).where(ProjectMember.user_id == uid))

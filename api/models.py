@@ -101,7 +101,8 @@ class ProjectMember(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 class ChatMessage(Base):
-    """프로젝트 팀 채팅. kind='ai_detect' 는 AI 가 대화에서 찾은 일정 카드(meta 에 JSON)."""
+    """프로젝트 팀 채팅. kind='ai_detect' 는 AI 가 대화에서 찾은 일정 카드(meta 에 JSON).
+    private_to 가 있으면 '나만 보는 AI 개인 대화'다: 그 사용자에게만 보이고 팀 채팅·AI 분석·다른 사람의 AI 에는 쓰이지 않는다."""
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -110,6 +111,7 @@ class ChatMessage(Base):
     kind = Column(String(20), default="user", nullable=False)     # user | ai_detect
     text = Column(Text, nullable=False)
     meta = Column(Text, nullable=True)
+    private_to = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 

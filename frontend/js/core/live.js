@@ -73,6 +73,7 @@ function liveHandle(m){
       if(m.from) chatTypingClear(m.from);                       // 방금 메시지를 보낸 사람은 '입력 중'이 끝난 것
       if(chatServerId()) loadChat(false);
       break;
+    case 'aichat': if(typeof aiChatLive === 'function') aiChatLive(m); break;      // 나만 보는 AI 대화 (나에게만 온다)
     case 'typing': chatTypingEvent(m); break;
     case 'follow': pfLive(); break;
     case 'calendar': refreshTeamEvents(); break;

@@ -321,3 +321,21 @@ html[data-motion="reduce"] .wsc.editing .wsc-caret{animation:none;}
   .ftree-node .fact{display:flex;} .ftree-node.folder .fcnt{display:none;} .ftree-node .fact button{padding:5px 6px;}
   .ftree-node:hover .fmod{display:inline-block;}
 }
+
+/* ---- 채팅 패널: 팀 채팅 / 나만 보는 AI 전환 ---- */
+.chat-tabs{display:flex; gap:4px; padding:8px 12px 0; flex:0 0 auto; border-bottom:1px solid var(--border);}
+.chat-tab{position:relative; flex:1 1 0; min-width:0; padding:9px 8px 10px; border:none; background:transparent; color:var(--text-faint); font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; touch-action:manipulation;}
+.chat-tab:hover{color:var(--text);}
+.chat-tab.active{color:var(--text); border-bottom-color:var(--accent);}
+#chatTabAi.active{color:#7c3aed; border-bottom-color:#7c3aed;}
+.chat-tab-dot{position:absolute; top:7px; right:10px; width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 0 2px var(--bg-elev, #fff);}
+.chat-tab-dot[hidden]{display:none;}
+.ai-private-note{display:flex; align-items:center; gap:8px; padding:8px 12px; flex:0 0 auto; background:rgba(124,58,237,.08); border-bottom:1px solid rgba(124,58,237,.22); font-size:11.5px; line-height:1.5; color:var(--text-muted, var(--text-faint));}
+.ai-private-note[hidden]{display:none;}
+.apn-text{flex:1 1 auto; min-width:0;} .apn-text b{color:#7c3aed;}
+.apn-clear{flex:0 0 auto; border:1px solid rgba(124,58,237,.35); background:transparent; color:#7c3aed; border-radius:8px; padding:5px 9px; font-size:11px; font-weight:600; cursor:pointer; min-height:30px; touch-action:manipulation;}
+.apn-clear:hover{background:rgba(124,58,237,.1);}
+.chat-panel.ai-private .chat-input{border-top:2px solid rgba(124,58,237,.35);}
+.chat-panel.ai-private .chat-input button{background:#7c3aed;}
+.chat-panel.ai-private .msg-row.me .bubble{background:#7c3aed;}
+.ai-empty{padding:22px 16px;} .ai-empty-ico{font-size:30px; margin-bottom:6px;} .ai-empty-sub{margin-top:12px; font-size:11.5px; opacity:.75; line-height:1.6;}

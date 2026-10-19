@@ -74,6 +74,10 @@ def _add_missing_columns(sync_conn):
     for name, ddl in (("is_admin", "BOOLEAN NOT NULL DEFAULT 0"), ("ban_reason", "VARCHAR(200)"), ("banned_at", "DATETIME"), ("withdrawn_at", "DATETIME")):
         if user_cols and name not in user_cols:
             sync_conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
+    cm_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(chat_messages)"))}
+    if cm_cols and "private_to" not in cm_cols:          # 나만 보는 AI 대화
+        sync_conn.execute(text("ALTER TABLE chat_messages ADD COLUMN private_to INTEGER"))
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_messages_private_to ON chat_messages (private_to)"))
     rp_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(community_reports)"))}
     for name, ddl in (("status", "VARCHAR(10) NOT NULL DEFAULT 'open'"), ("handled_by", "INTEGER"), ("handled_at", "DATETIME")):
         if rp_cols and name not in rp_cols:

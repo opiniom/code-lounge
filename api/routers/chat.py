@@ -4,7 +4,7 @@ import re
 from datetime import date, datetime
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db, async_session_maker
 from models import User, ChatMessage, CalendarEvent
@@ -36,7 +36,7 @@ def _to_response(msg: ChatMessage, author: str) -> ChatMessageResponse:
             meta = None
     return ChatMessageResponse(
         id=msg.id, project_id=msg.project_id, user_id=msg.user_id, author=author,
-        kind=msg.kind, text=msg.text, meta=meta, created_at=_iso(msg.created_at),
+        kind=msg.kind, text=msg.text, meta=meta, private=msg.private_to is not None, created_at=_iso(msg.created_at),
     )
 
 
@@ -52,17 +52,26 @@ async def _author_names(db: AsyncSession, msgs: List[ChatMessage]) -> dict:
 async def list_messages(
     project_id: int,
     limit: int = 100,
+    scope: str = "team",
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """scope=team(기본): 팀 채팅 — 나만 보는 AI 대화는 절대 섞이지 않는다.  scope=ai: 나와 AI 의 개인 대화(내 것만)."""
     await get_member_project(db, project_id, current_user)
-    rows = (await db.execute(
-        select(ChatMessage).where(ChatMessage.project_id == project_id)
-        .order_by(ChatMessage.id.desc()).limit(max(1, min(limit, 300)))
-    )).scalars().all()
+    q = select(ChatMessage).where(ChatMessage.project_id == project_id)
+    q = q.where(ChatMessage.private_to == current_user.id) if scope == "ai" else q.where(ChatMessage.private_to.is_(None))
+    rows = (await db.execute(q.order_by(ChatMessage.id.desc()).limit(max(1, min(limit, 300))))).scalars().all()
     rows.reverse()
     names = await _author_names(db, rows)
     return [_to_response(m, names.get(m.user_id, "AI" if str(m.kind).startswith("ai") else "탈퇴한 사용자")) for m in rows]
+
+
+@router.delete("/private", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_private_chat(project_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """나와 AI 의 개인 대화를 모두 지운다 (내 것만)"""
+    await get_member_project(db, project_id, current_user)
+    await db.execute(delete(ChatMessage).where(ChatMessage.project_id == project_id, ChatMessage.private_to == current_user.id))
+    await db.commit()
 
 
 async def analyze_message(project_id: int, message_id: int):
@@ -71,7 +80,8 @@ async def analyze_message(project_id: int, message_id: int):
         async with async_session_maker() as db:
             recent = (await db.execute(
                 select(ChatMessage).where(
-                    ChatMessage.project_id == project_id, ChatMessage.kind == "user", ChatMessage.id <= message_id
+                    ChatMessage.project_id == project_id, ChatMessage.kind == "user", ChatMessage.id <= message_id,
+                    ChatMessage.private_to.is_(None),                  # 나만 보는 AI 대화는 일정 감지에 쓰지 않는다
                 ).order_by(ChatMessage.id.desc()).limit(12)
             )).scalars().all()
             recent.reverse()
@@ -112,7 +122,7 @@ async def analyze_message(project_id: int, message_id: int):
         return
 
 
-async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None):
+async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None, private: bool = False):
     """AI 요청을 처리해 답변(과 실행 결과)을 AI 메시지로 저장 (백그라운드). 일정·회의록 변경도 여기서 일어난다."""
     from services.chat_ai import run_agent
     try:
@@ -121,14 +131,14 @@ async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, 
             if user is None:
                 return
             try:
-                reply, meta = await run_agent(db, project_id, user, text, ai_name, trigger_id)
-                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai", text=reply,
+                reply, meta = await run_agent(db, project_id, user, text, ai_name, trigger_id, private)
+                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai", text=reply, private_to=user_id if private else None,
                                    meta=json.dumps(meta, ensure_ascii=False)))
                 await db.commit()
             except Exception:
                 logger.exception("AI 요청 처리 실패 (project=%s)", project_id)
                 await db.rollback()
-                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai",
+                db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai", private_to=user_id if private else None,
                                    text="⚠️ 지금은 AI가 요청을 처리하지 못했어요. 잠시 후 다시 불러주세요.",
                                    meta=json.dumps({"requester_id": user_id, **({"ai_name": ai_name} if ai_name else {})}, ensure_ascii=False)))
                 await db.commit()
@@ -146,10 +156,15 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     await get_member_project(db, project_id, current_user)
-    msg = ChatMessage(project_id=project_id, user_id=current_user.id, kind="user", text=data.text.strip())
+    private = bool(data.private)
+    msg = ChatMessage(project_id=project_id, user_id=current_user.id, kind="user", text=data.text.strip(), private_to=current_user.id if private else None)
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
+
+    if private:      # 나만 보는 AI 대화: 이름을 부르지 않아도 AI 가 답하고, 팀 채팅·일정 감지에는 쓰이지 않는다
+        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id, True)
+        return _to_response(msg, current_user.username)
 
     # AI 이름을 불러 건 말("뚜비야 …", "@뚜비 …")은 백그라운드에서 AI가 처리해 채팅에 올린다 (응답을 기다리지 않음)
     from services.chat_ai import is_ai_request
@@ -228,7 +243,7 @@ async def _get_ai_action_msg(db: AsyncSession, project_id: int, message_id: int,
             ChatMessage.id == message_id, ChatMessage.project_id == project_id, ChatMessage.kind == "ai"
         )
     )).scalar_one_or_none()
-    if not msg:
+    if not msg or (msg.private_to is not None and msg.private_to != user.id):
         raise HTTPException(status_code=404, detail="AI 메시지를 찾을 수 없습니다.")
     meta = json.loads(msg.meta or "{}")
     if meta.get("requester_id") != user.id:

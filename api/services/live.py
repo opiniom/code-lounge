@@ -135,7 +135,10 @@ def _collect(session: Session, flush_context=None) -> None:
         if isinstance(obj, Notification):
             bag.add(("notification", obj.user_id, None, None))
         elif isinstance(obj, ChatMessage):
-            bag.add(("chat", None, obj.project_id, obj.user_id))
+            if obj.private_to is not None:                 # 나만 보는 AI 대화: 팀원에게는 '새 메시지' 신호조차 보내지 않는다
+                bag.add(("aichat", obj.private_to, obj.project_id, None))
+            else:
+                bag.add(("chat", None, obj.project_id, obj.user_id))
         elif isinstance(obj, CalendarEvent):
             bag.add(("calendar", None, obj.project_id, None))
         elif isinstance(obj, Follow):                      # 팔로우/언팔로우: 양쪽 화면의 숫자·목록을 바로 갱신
@@ -176,7 +179,7 @@ async def _deliver(bag: set) -> None:
                 targets: Set[int] = set()
                 if user_id:
                     targets.add(user_id)
-                if project_id:
+                if project_id and kind != "aichat":
                     targets |= await project_audience(db, project_id)
                 payload = {"t": kind}
                 if project_id:

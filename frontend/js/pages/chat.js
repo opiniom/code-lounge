@@ -1,6 +1,9 @@
 /* ---- team chat (프로젝트별 채팅 + AI 일정 감지) ---- */
 var chatProject = null;      // 프런트 프로젝트 id ('p3')
-var chatMsgs = [];           // 서버 메시지
+var chatMsgs = [];           // 서버 메시지 (팀 채팅)
+var chatMode = 'team';       // 'team' = 팀 채팅 · 'ai' = 나만 보는 AI 대화
+var aiMsgs = [];             // 나와 AI 의 개인 대화 (나만 보인다 — 서버도 내 것만 내려준다)
+var aiSig = '', aiBusy = false;
 var chatLocal = [];          // 이 세션에서만 보이는 안내 말풍선
 var chatSig = '';
 var chatTimer = null;
@@ -36,7 +39,7 @@ window.addEventListener('resize', function(){ if(chatPanelOpen()) syncChatDock()
 function toggleChat(){
   document.getElementById('chatPanel').classList.toggle('open');
   syncChatDock();
-  if(chatPanelOpen()){ chatForceBottom = true; renderChatHeader(); renderAiGuide(); chatScrollBottom(false); loadChat(true).then(function(){ chatScrollBottom(false); }); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
+  if(chatPanelOpen()){ chatForceBottom = true; renderChatHeader(); renderAiGuide(); chatScrollBottom(false); loadChat(true).then(function(){ chatScrollBottom(false); }); if(chatMode === 'ai') loadAiChat(true); setTimeout(function(){ var i = document.getElementById('chatMsgInput'); if(i) i.focus(); }, 200); }
 }
 /* ---- AI 사용법 (채팅 옆 패널에 정리) ---- */
 function aiGuideCollapsed(){
@@ -147,8 +150,8 @@ function chatRenderPresence(){
   document.querySelectorAll('#chatPanel .mavatar[data-uid]').forEach(function(av){ av.dataset.pst = pstOf(av.dataset.uid); });
 }
 function switchChatProject(id){
-  chatProject = id; chatMsgs = []; chatSig = ''; CHAT_TYPING = {}; chatForceBottom = true;
-  renderChatHeader(); renderChat(); loadChat(true);
+  chatProject = id; chatMsgs = []; chatSig = ''; aiMsgs = []; aiSig = ''; chatAiWait = null; CHAT_TYPING = {}; chatForceBottom = true;
+  renderChatHeader(); renderChat(); loadChat(true); if(chatMode === 'ai') loadAiChat(true);
   if(typeof callSyncProject === 'function') callSyncProject();
   if(typeof dureRenderProj === 'function'){ dureSig = ''; renderDureOrbit(); if(typeof wgLiveTeam === 'function') wgLiveTeam(); }
 }
@@ -204,12 +207,13 @@ function startChat(){
   loadChat(true);
   if(chatTimer) clearInterval(chatTimer);
   var chatTick = 0;
-  chatTimer = setInterval(function(){ chatTick++; if(!document.hidden && (!LIVE.ok || chatTick % 8 === 0)) loadChat(false); }, 3000);   // 실시간 연결이 있으면 가끔만 확인
+  chatTimer = setInterval(function(){ chatTick++; if(!document.hidden && (!LIVE.ok || chatTick % 8 === 0)){ loadChat(false); if(chatMode === 'ai' && chatPanelOpen()) loadAiChat(false); } }, 3000);   // 실시간 연결이 있으면 가끔만 확인
 }
 function stopChat(){
   if(typeof leaveCall === 'function') leaveCall(true);
   if(chatTimer){ clearInterval(chatTimer); chatTimer = null; }
-  chatMsgs = []; chatLocal = []; chatSig = ''; chatProject = null;
+  chatMsgs = []; chatLocal = []; chatSig = ''; chatProject = null; aiMsgs = []; aiSig = ''; chatAiWait = null;
+  if(chatMode === 'ai') setChatMode('team');
   renderChatHeader(); renderChat(); updateChatBadge();
 }
 /* AI 답변의 **굵게**, `코드`, 목록(-, *)을 안전하게(텍스트 노드로만) 표시 */
@@ -336,36 +340,103 @@ function buildDetectBubble(m){
   div.appendChild(row);
   return div;
 }
+/* ===================== 나만 보는 AI 대화 =====================
+   팀 채팅과 완전히 분리된 대화: 내 질문과 AI 의 답은 나에게만 보이고(서버가 내 것만 내려줌), 팀원에게는 '대화가 있었다'는 신호조차 가지 않는다.
+   이름을 부르지 않아도 AI 가 답한다. 일정·회의록을 만들면 그 결과는 팀 캘린더·회의록에 보이지만, 대화 내용은 나만 본다. */
+function aiMyName(){ return (typeof myAiName !== 'undefined' && myAiName) ? myAiName : '두레'; }
+function setChatMode(mode){
+  mode = mode === 'ai' ? 'ai' : 'team';
+  chatMode = mode;
+  var panel = document.getElementById('chatPanel'); if(panel) panel.classList.toggle('ai-private', mode === 'ai');
+  var t = document.getElementById('chatTabTeam'), a = document.getElementById('chatTabAi');
+  if(t){ t.classList.toggle('active', mode === 'team'); t.setAttribute('aria-selected', mode === 'team' ? 'true' : 'false'); }
+  if(a){ a.classList.toggle('active', mode === 'ai'); a.setAttribute('aria-selected', mode === 'ai' ? 'true' : 'false'); }
+  var note = document.getElementById('aiPrivateNote'); if(note) note.hidden = mode !== 'ai';
+  var guide = document.getElementById('aiGuide'); if(guide) guide.style.display = mode === 'ai' ? 'none' : '';
+  var dot = document.getElementById('chatTabAiDot'); if(dot && mode === 'ai') dot.hidden = true;
+  var input = document.getElementById('chatMsgInput');
+  if(input){ input.placeholder = mode === 'ai' ? 'AI 에게 물어보세요 · 나만 볼 수 있어요 🔒' : "팀원에게 메시지 · '" + aiMyName() + "야 …'로 부르면 AI가 알아서 처리해요"; }
+  if(mode === 'ai'){ chatStopTyping(); chatForceBottom = true; renderChat(); loadAiChat(true).then(function(){ chatScrollBottom(false); }); }
+  else { chatForceBottom = true; renderChat(); loadChat(true); }
+  if(input) setTimeout(function(){ input.focus(); }, 50);
+}
+function renderAiEmpty(scroll){
+  var n = aiMyName(), box = document.createElement('div'); box.className = 'chat-empty ai-empty';
+  box.innerHTML = "<div class='ai-empty-ico'>🔒</div><b>나만 보는 AI 대화</b><br>여기서 묻는 것은 <b>나에게만</b> 보여요. 팀 채팅에는 올라가지 않아요.<br><span style='opacity:.8'>이름을 부르지 않아도 답해요.</span>";
+  var row = document.createElement('div'); row.className = 'ai-chip-row'; row.style.justifyContent = 'center';
+  ['이번 주 마감이 뭐야?', '내가 맡은 일 알려줘', '어제 회의 내용 요약해줘', '다음 주 화요일 3시에 중간발표 일정 잡아줘'].forEach(function(t){
+    var b = document.createElement('button'); b.className = 'ai-chip'; b.textContent = t; b.onclick = function(){ fillChatInput(t); }; row.appendChild(b);
+  });
+  box.appendChild(row);
+  var p = document.createElement('p'); p.className = 'ai-empty-sub';
+  p.textContent = '일정·회의록을 만들어 달라고 하면 그 결과는 팀 캘린더·회의록에 보여요. (대화 내용은 나만 봐요)';
+  box.appendChild(p);
+  scroll.appendChild(box);
+}
+function loadAiChat(force){
+  var sid = chatServerId();
+  if(!calApiMode || !sid || aiBusy) return Promise.resolve();
+  aiBusy = true;
+  return apiFetch('/api/projects/'+sid+'/messages?scope=ai').then(function(rows){
+    var sig = rows.map(function(m){
+      var x = m.meta || {};
+      return m.id+(m.meta ? ':'+(x.actions ? x.actions.map(function(a){ return a.undone ? 'u' : 'd'; }).join('') : '')+(x.confirms ? ':'+x.confirms.map(function(c){ return c.status; }).join('') : '') : '');
+    }).join(',');
+    var changed = sig !== aiSig;
+    aiSig = sig; aiMsgs = rows;
+    if((changed || force) && chatMode === 'ai'){
+      renderChat();
+      if(changed && rows.some(function(m){ return m.kind === 'ai' && m.meta && (m.meta.actions || []).length; })){ refreshTeamEvents(); refreshMeetingDocs(); }   // AI 가 일정·회의록을 만들었다면 팀 화면도 새로
+    }
+  }).catch(function(){}).then(function(){ aiBusy = false; });
+}
+/* 실시간: 서버가 내 개인 대화가 바뀌었다고 알려 줌 (나에게만 온다) */
+function aiChatLive(m){
+  if(!m || m.project_id !== chatServerId()) return;
+  if(chatMode === 'ai') loadAiChat(false);
+  else { var dot = document.getElementById('chatTabAiDot'); if(dot) dot.hidden = false; }      // 팀 채팅을 보는 중이면 탭에 작은 점
+}
+function clearAiChat(){
+  var sid = chatServerId(); if(!sid) return;
+  if(!confirm('이 프로젝트에서 나와 AI 가 나눈 대화를 모두 지울까요?\n(팀 채팅과 이미 만들어진 일정·회의록은 그대로예요)')) return;
+  apiFetch('/api/projects/'+sid+'/messages/private', {method:'DELETE'}).then(function(){
+    aiMsgs = []; aiSig = ''; chatAiWait = null; renderChat(); pushToast('🧹', '지웠어요', '나와 AI 의 대화를 모두 지웠어요.');
+  }).catch(function(e){ pushToast('⚠️', '지우지 못했어요', e.message); });
+}
+
 function renderChat(){
   var scroll = document.getElementById('chatScroll');
   if(!scroll) return;
+  var aiMode = chatMode === 'ai', list = aiMode ? aiMsgs : chatMsgs;
   var nearBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
   scroll.innerHTML = '';
   if(!calApiMode){
-    scroll.innerHTML = "<div class='chat-empty'>로그인하면 프로젝트 팀원과 대화할 수 있어요.<br>대화에서 \"제가 금요일까지 할게요\"처럼 담당과 기한이 나오면 AI가 캘린더에 올려줘요.</div>";
+    scroll.innerHTML = aiMode ? "<div class='chat-empty'>로그인하면 AI 와 나만 보는 대화를 할 수 있어요.</div>"
+      : "<div class='chat-empty'>로그인하면 프로젝트 팀원과 대화할 수 있어요.<br>대화에서 \"제가 금요일까지 할게요\"처럼 담당과 기한이 나오면 AI가 캘린더에 올려줘요.</div>";
   } else if(!chatServerId()){
-    scroll.innerHTML = "<div class='chat-empty'>프로젝트를 만들면 이곳에서 팀원과 대화할 수 있어요.</div>";
-  } else if(!chatMsgs.length && !chatLocal.length){
-    scroll.innerHTML = "<div class='chat-empty'>아직 대화가 없어요.<br>첫 메시지를 보내보세요. 담당과 기한이 나오는 대화는 AI가 캘린더에 올려줘요.</div>";
+    scroll.innerHTML = "<div class='chat-empty'>프로젝트를 만들면 이곳에서 " + (aiMode ? 'AI 와 대화할' : '팀원과 대화할') + " 수 있어요.</div>";
+  } else if(!list.length && !chatLocal.length){
+    if(aiMode) renderAiEmpty(scroll);
+    else scroll.innerHTML = "<div class='chat-empty'>아직 대화가 없어요.<br>첫 메시지를 보내보세요. 담당과 기한이 나오는 대화는 AI가 캘린더에 올려줘요.</div>";
   } else {
-    chatMsgs.forEach(function(m){
+    list.forEach(function(m){
       if(m.kind==='ai_detect'){ if(m.meta && m.meta.status!=='dismissed') scroll.appendChild(buildDetectBubble(m)); }
       else scroll.appendChild(buildMsgRow(m));
     });
-    chatLocal.forEach(function(el){ scroll.appendChild(el); });
-    if(chatAiWait){
-      var answered = chatMsgs.some(function(m){ return m.kind==='ai' && m.id > chatAiWait.after; });
-      if(answered || Date.now() - chatAiWait.since > 45000){ chatAiWait = null; }
-      else {
-        var typing = document.createElement('div'); typing.className = 'msg-row ai-msg';
-        typing.innerHTML = "<div class='mavatar ai-av'></div><div class='typing-dots'><span></span><span></span><span></span></div>";
-        scroll.appendChild(typing);
-      }
+    if(!aiMode) chatLocal.forEach(function(el){ scroll.appendChild(el); });
+  }
+  if(chatAiWait && (aiMode === !!chatAiWait.priv)){
+    var answered = list.some(function(m){ return m.kind==='ai' && m.id > chatAiWait.after; });
+    if(answered || Date.now() - chatAiWait.since > 45000){ chatAiWait = null; }
+    else {
+      var typing = document.createElement('div'); typing.className = 'msg-row ai-msg';
+      typing.innerHTML = "<div class='mavatar ai-av'></div><div class='typing-dots'><span></span><span></span><span></span></div>";
+      scroll.appendChild(typing);
     }
   }
-  chatRenderTyping(true);
-  if(nearBottom || chatForceBottom || chatMsgs.length<=1) chatScrollBottom(chatForceBottom);
-  if(chatMsgs.length || chatLocal.length) chatForceBottom = false;     // 글이 실제로 그려질 때까지는 '맨 아래로' 요청을 유지
+  if(!aiMode) chatRenderTyping(true);
+  if(nearBottom || chatForceBottom || list.length<=1) chatScrollBottom(chatForceBottom);
+  if(list.length || chatLocal.length) chatForceBottom = false;     // 글이 실제로 그려질 때까지는 '맨 아래로' 요청을 유지
   chatUpdateJump();
 }
 /* ---- 맨 아래로 내려가기 ---- */
@@ -412,6 +483,7 @@ function chatRenderTyping(fromRender){
 /* 내가 입력하는 동안 팀원 화면에 '입력 중' 신호 (2.5초에 한 번만) */
 var chatTypingSentAt = 0, chatTypingOn = false;
 function chatMyTyping(){
+  if(chatMode === 'ai') return;                 // 나만 보는 AI 대화에서는 팀원에게 '입력 중'도 보내지 않는다
   var sid = chatServerId(), input = document.getElementById('chatMsgInput');
   if(!sid || !input) return;
   if(!input.value.trim()){ chatStopTyping(); return; }
@@ -476,12 +548,24 @@ function sendChatMsg(){
   chatForceBottom = true;        // 내가 보내면 항상 맨 아래로
 
   var sid = chatServerId();
+  if(chatMode === 'ai'){          // 나만 보는 AI 대화: 팀 채팅에는 올리지 않고, 입력 중 신호도 보내지 않는다
+    if(!calApiMode || !sid){ pushToast('🔒','로그인 후 AI 와 대화할 수 있어요',''); input.value = val; return; }
+    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val, private:true})}).then(function(msg){
+      try{
+        aiMsgs.push(msg); aiSig += (aiSig ? ',' : '')+msg.id;
+        chatAiWait = {after: msg.id, since: Date.now(), priv: true};
+        chatForceBottom = true; renderChat();
+        [1200, 2500, 4500, 8000, 12000, 18000, 28000].forEach(function(t){ setTimeout(function(){ if(chatMode === 'ai') loadAiChat(true); }, t); });
+      }catch(uiErr){ console.error(uiErr); }
+    }, function(e){ if(e.status!==401) pushToast('⚠️','보내지 못했어요', e.message); input.value = val; });
+    return;
+  }
   if(calApiMode && sid){
     apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val})}).then(function(msg){
       try{
       chatMsgs.push(msg); chatSig += (chatSig ? ',' : '')+msg.id;
       var waitAi = isAiRequest(val);
-      if(waitAi) chatAiWait = {after: msg.id, since: Date.now()};
+      if(waitAi) chatAiWait = {after: msg.id, since: Date.now(), priv: false};
       chatForceBottom = true; renderChat(); chatMarkSeen();
       // AI 가 대화를 분석/답변하는 동안(백그라운드) 몇 번 더 확인해서 일정 카드·답변이 바로 뜨게 한다
       (waitAi ? [1500, 3000, 5000, 8000, 12000, 18000, 28000] : [1500, 3500, 7000]).forEach(function(t){ setTimeout(function(){ loadChat(true); }, t); });
