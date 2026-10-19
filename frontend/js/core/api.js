@@ -15,6 +15,16 @@ var API_BASE = (function(){
   }
   return stored || defaultApiBase();
 })();
+/* 소셜 로그인 실패 안내 (서버가 ?social_error=코드&reason=이유 로 넘겨 준다) */
+var SOCIAL_ERRORS = {
+  access_denied: ['로그인을 취소했거나 허용되지 않았어요', '구글 앱이 "테스트" 상태라면 등록된 테스트 사용자만 로그인할 수 있어요. 관리자에게 알려 주세요.'],
+  cancelled: ['로그인이 취소됐어요', '다시 시도해 주세요.'],
+  naver_token_failed: ['네이버 로그인에 실패했어요', '잠시 뒤 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.'],
+  naver_profile_failed: ['네이버에서 계정 정보를 가져오지 못했어요', '네이버 앱이 "개발 중" 상태라 등록된 멤버만 쓸 수 있거나, 정보 제공에 동의하지 않았을 수 있어요. 다른 네이버 계정이나 시크릿 창에서 다시 해 보고, 계속되면 관리자에게 알려 주세요.'],
+  google_token_failed: ['구글 로그인에 실패했어요', '잠시 뒤 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.'],
+  google_profile_failed: ['구글에서 계정 정보를 가져오지 못했어요', '다른 구글 계정으로 다시 해 보고, 계속되면 관리자에게 알려 주세요.'],
+  google_no_email: ['구글 계정에서 이메일을 받지 못했어요', '이메일 제공에 동의해야 로그인할 수 있어요.']
+};
 var authToken = localStorage.getItem('sync_auth_token') || null;
 var pendingInviteMem = '';
 function getPendingInvite(){ try{ return pendingInviteMem || localStorage.getItem('sync_pending_invite') || ''; }catch(e){ return pendingInviteMem; } }
@@ -210,9 +220,11 @@ async function checkAutoLogin() {
       }
     }
     if (urlParams.has('social_error')) {
-      var err = urlParams.get('social_error');
+      var err = urlParams.get('social_error'), why = urlParams.get('reason');
       window.history.replaceState({}, document.title, window.location.pathname);
-      pushToast('⚠️', '소셜 로그인 취소 또는 오류', decodeURIComponent(err));
+      var known = SOCIAL_ERRORS[err];
+      if (known) pushToast('⚠️', known[0], known[1] + (why ? '\n(원인: ' + why + ')' : ''), { duration: 12000, long: true });
+      else pushToast('⚠️', '소셜 로그인 취소 또는 오류', decodeURIComponent(err) + (why ? '\n(원인: ' + why + ')' : ''), { duration: 9000, long: true });
     }
   } catch(e){}
 

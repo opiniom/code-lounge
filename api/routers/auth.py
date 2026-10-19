@@ -1,3 +1,4 @@
+import logging
 import re
 import secrets
 import urllib.parse
@@ -12,6 +13,30 @@ from models import User
 from schemas import AiNameUpdate, UserLogin, UserResponse, TokenResponse, SocialLoginRequest
 from services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from config import settings
+
+logger = logging.getLogger("oauth")
+
+
+def _why(res) -> str:
+    """소셜 로그인 제공자가 거부한 이유를 짧게 뽑는다 (토큰·비밀값은 절대 포함하지 않는다). 서버 로그와 화면 안내에 쓴다."""
+    try:
+        d = res.json()
+    except Exception:
+        return f"http{res.status_code}"
+    if isinstance(d, dict):
+        parts = [str(d.get(k)) for k in ("error", "error_description", "resultcode", "message") if d.get(k)]
+        r = d.get("response")
+        if not parts and isinstance(r, dict):
+            parts = [str(r.get(k)) for k in ("resultcode", "message") if r.get(k)]
+        if parts:
+            return (f"http{res.status_code} " + " / ".join(parts))[:160]
+    return f"http{res.status_code}"
+
+
+def _fail(provider: str, step: str, detail: str):
+    """실패를 서버 로그(docker compose logs app)에 남기고, 화면에는 원인 코드와 짧은 이유를 넘긴다"""
+    logger.warning("%s login failed at %s: %s", provider, step, detail)
+    return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={provider}_{step}&reason={urllib.parse.quote(detail[:120])}")
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -148,20 +173,24 @@ async def google_callback(
                 "grant_type": "authorization_code"
             })
             if token_res.status_code != 200:
-                return RedirectResponse(f"{settings.FRONTEND_URL}?social_error=token_exchange_failed")
+                return _fail("google", "token_failed", _why(token_res))
             
             token_data = token_res.json()
             access_token = token_data.get("access_token")
+            if not access_token:
+                return _fail("google", "token_failed", "no access_token")
             
             userinfo_res = await client.get(
                 "https://www.googleapis.com/oauth2/v3/userinfo",
                 headers={"Authorization": f"Bearer {access_token}"}
             )
             if userinfo_res.status_code != 200:
-                return RedirectResponse(f"{settings.FRONTEND_URL}?social_error=userinfo_failed")
+                return _fail("google", "profile_failed", _why(userinfo_res))
             
             userinfo = userinfo_res.json()
             email = userinfo.get("email")
+            if not email:
+                return _fail("google", "no_email", "구글 계정에서 이메일을 받지 못했어요")
             name = userinfo.get("name") or email.split("@")[0]
             sub = userinfo.get("sub")
 
@@ -232,19 +261,23 @@ async def naver_callback(
                 "state": state
             })
             if token_res.status_code != 200:
-                return RedirectResponse(f"{settings.FRONTEND_URL}?social_error=naver_token_failed")
+                return _fail("naver", "token_failed", _why(token_res))
             
             token_data = token_res.json()
             access_token = token_data.get("access_token")
+            if not access_token:                                      # 네이버는 실패해도 200 으로 오류 내용을 담아 보내는 경우가 있다
+                return _fail("naver", "token_failed", str(token_data.get("error_description") or token_data.get("error") or "no access_token")[:120])
 
             me_res = await client.get(
                 "https://openapi.naver.com/v1/nid/me",
                 headers={"Authorization": f"Bearer {access_token}"}
             )
             if me_res.status_code != 200:
-                return RedirectResponse(f"{settings.FRONTEND_URL}?social_error=naver_profile_failed")
+                return _fail("naver", "profile_failed", _why(me_res))
             
             me_data = me_res.json()
+            if str(me_data.get("resultcode", "00")) != "00":           # 200 이어도 resultcode 가 00 이 아니면 실패
+                return _fail("naver", "profile_failed", _why(me_res))
             profile = me_data.get("response", {})
             email = profile.get("email") or f"naver_{profile.get('id', 'user')}@naver.com"
             name = profile.get("name") or profile.get("nickname") or "네이버 사용자"

@@ -213,7 +213,7 @@ function pushToast(icon, title, desc, opts){
   }
   if(dup){ arm(dup); dup.classList.remove('bump'); void dup.offsetWidth; dup.classList.add('bump'); return; }
   var t = document.createElement('div');
-  t.className = 'toast' + (opts.onclick ? ' click' : ''); t.dataset.key = title + '|' + (desc || ''); t.style.setProperty('--tc', color); t.setAttribute('role', kind === 'error' || kind === 'warn' ? 'alert' : 'status');
+  t.className = 'toast' + (opts.onclick ? ' click' : '') + (opts.long ? ' long' : ''); t.dataset.key = title + '|' + (desc || ''); t.style.setProperty('--tc', color); t.setAttribute('role', kind === 'error' || kind === 'warn' ? 'alert' : 'status');
   var glyph = opts.category ? ntIcon(opts.category, 17) : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' + TOAST_KINDS[kind].svg + '</svg>';
   t.innerHTML = '<span class="nic">' + glyph + '</span><div class="toast-body"><div class="tt"></div><div class="td"></div></div>' +
     '<button type="button" class="toast-close" aria-label="닫기"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button><i class="tbar"></i>';

@@ -79,3 +79,5 @@ html[data-motion="reduce"] .toast, html[data-motion="reduce"] .notif-panel.open,
 .nt-ftext{font-size:13px; line-height:1.5; letter-spacing:-.015em; color:var(--text-muted);} .nt-ftext b{color:var(--text); font-weight:700;} .nt-follow.unread .nt-ftext{color:var(--text);} .nt-ftext .ntime{margin-left:4px; color:var(--text-faint);}
 .nt-follow .fw-btn{flex:0 0 auto; margin-left:6px;} .nt-follow .nt-dot{bottom:auto; top:12px;}
 .notif-item.nt-follow:hover .ntime{opacity:1;}
+
+.toast.long .td{-webkit-line-clamp:unset; display:block; white-space:pre-wrap;}   /* 오류 안내처럼 끝까지 읽어야 하는 알림은 줄여서 자르지 않는다 */

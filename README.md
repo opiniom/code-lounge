@@ -373,3 +373,13 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
 - **AI 분석 엔진**: Gemini(`GEMINI_API_KEY`, 한도(429) 시 `GEMINI_FALLBACK_MODELS`로 자동 전환) → Claude(`ANTHROPIC_API_KEY`) → 규칙 기반(키 불필요).
 
 > API 키와 OAuth 시크릿은 반드시 `.env`(git 제외)에만 넣으세요. `.env.example`에는 빈 칸만 있습니다.
+
+### 🔑 소셜 로그인(구글·네이버) 오류 해결
+
+- 로그인이 안 되면 화면에 **원인**이 같이 뜨고(`네이버에서 계정 정보를 가져오지 못했어요 … (원인: http401 024 …)`), 서버 로그에도 남아요: `docker compose -f docker-compose.prod.yml logs app | grep oauth`. 토큰·비밀값은 기록하지 않아요.
+- **"한 사람만 안 돼요 / 등록한 사람만 돼요"는 대부분 앱이 '개발·테스트 중' 상태라서예요.** 코드가 아니라 개발자 콘솔 설정이에요:
+  - **네이버:** developers.naver.com → 내 애플리케이션 → 해당 앱 → **멤버 관리**에 로그인할 사람의 네이버 ID 를 추가하거나(최대 인원 제한 있음), **API 설정에서 검수(서비스 승인)를 요청**해 일반 사용자도 쓰게 하세요.
+  - **구글:** console.cloud.google.com → API 및 서비스 → **OAuth 동의 화면** → 게시 상태가 **'테스트'** 이면 등록한 **테스트 사용자**만 로그인돼요. **'앱 게시(프로덕션으로 푸시)'** 를 누르면 누구나 로그인할 수 있어요(이메일·프로필만 쓰므로 별도 심사 없이 바로 가능).
+  - 허용된 리디렉션 주소가 `https://(도메인)/api/auth/google/callback`, `https://(도메인)/api/auth/naver/callback` 와 정확히 같은지도 확인하세요.
+- PC 에서만 안 되고 폰에서는 되는 경우: PC 브라우저가 **다른 네이버/구글 계정**으로 이미 로그인돼 있을 수 있어요. 시크릿 창에서 시도해 보세요.
+- 테스트: `tests/test_oauth_errors.py`
