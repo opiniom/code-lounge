@@ -555,3 +555,120 @@ async def system_info(admin: User = Depends(require_admin), db: AsyncSession = D
             "flags": {"PUBLIC_MODE": settings.PUBLIC_MODE, "EVENT_CRAWL_ENABLED": settings.EVENT_CRAWL_ENABLED, "ALLOW_DEV_LOGIN": settings.ALLOW_DEV_LOGIN,
                       "ADMIN_EMAILS_SET": bool((settings.ADMIN_EMAILS or "").strip())},
             "tables": tables, "you": {"id": admin.id, "role": _role(admin)}}
+
+
+# ---------------------------------------------------------------- 언어 관리 (워크스페이스 ▶ 실행 환경)
+from services import lang_install as _li
+from services import lang_jobs as _lj
+from services import lang_registry as _lr
+from services import sandbox_runner as _sb
+
+
+class LangEnableIn(BaseModel):
+    enabled: bool
+
+
+class RuntimeIn(BaseModel):
+    version: Optional[str] = Field(default=None, max_length=40)
+
+
+def _lang_overview() -> Dict[str, Any]:
+    inst, avail = _sb.installed(), _sb.available()
+    langs = []
+    for lang, label in _sb.LABELS.items():
+        rt = _lr.runtime_for_lang(lang)
+        langs.append({"id": lang, "label": label, "kind": "server", "runtime": rt, "installed": bool(inst.get(lang)), "enabled": _lr.is_enabled(lang),
+                      "available": bool(avail.get(lang)), "core": lang in _lr.CORE_ENABLED})
+    runtimes = []
+    for rt, m in _lr.RUNTIMES.items():
+        runtimes.append({"id": rt, "label": m["label"], "langs": m["langs"], "versions": _lr.list_versions(rt)})
+    try:
+        import shutil as _sh
+        free = _sh.disk_usage(_lr.LANGS_DIR if os.path.isdir(_lr.LANGS_DIR) else os.path.dirname(os.path.abspath(__file__))).free // (1 << 20)
+    except Exception:
+        free = None
+    return {"languages": langs, "browser": [{"id": "html", "label": "HTML"}, {"id": "css", "label": "CSS"}], "runtimes": runtimes, "free_mb": free,
+            "langs_dir": _lr.LANGS_DIR, "core": _lr.CORE_ENABLED, "job": _lj.current()}
+
+
+@router.get("/languages")
+async def langs_overview(admin: User = Depends(require_admin)):
+    return _lang_overview()
+
+
+@router.post("/languages/{lang}/enabled")
+async def langs_enable(lang: str, data: LangEnableIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    if lang not in _sb.LABELS:
+        raise HTTPException(404, "알 수 없는 언어예요.")
+    _lr.set_enabled(lang, data.enabled)
+    _sb.refresh_tools()
+    _audit(db, admin, "lang.enable" if data.enabled else "lang.disable", "language", None, f"{lang} {'공개' if data.enabled else '비공개'}")
+    await db.commit()
+    return _lang_overview()
+
+
+@router.get("/languages/runtimes/{rt}/available")
+async def langs_available(rt: str, admin: User = Depends(require_admin)):
+    import asyncio
+    if rt not in _lr.RUNTIMES:
+        raise HTTPException(404, "알 수 없는 런타임이에요.")
+    try:
+        return {"versions": await asyncio.to_thread(_li.available, rt)}
+    except Exception as e:
+        raise HTTPException(502, f"설치할 수 있는 버전 목록을 불러오지 못했어요: {e}")
+
+
+@router.post("/languages/runtimes/{rt}/install")
+async def langs_install(rt: str, data: RuntimeIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    if rt not in _lr.RUNTIMES:
+        raise HTTPException(404, "알 수 없는 런타임이에요.")
+    import re as _re
+    if data.version and not _re.fullmatch(r"[0-9A-Za-z.+_-]*", data.version):
+        raise HTTPException(400, "버전 표기가 올바르지 않아요.")
+    try:
+        job = _lj.start(rt, data.version, admin.username or admin.email)
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+    _audit(db, admin, "lang.install", "language", None, f"{rt} {data.version or '최신'} 설치 시작")
+    await db.commit()
+    return job
+
+
+@router.get("/languages/jobs/current")
+async def langs_job_current(admin: User = Depends(require_admin)):
+    return {"job": _lj.current()}
+
+
+@router.get("/languages/jobs/{job_id}")
+async def langs_job(job_id: str, admin: User = Depends(require_admin)):
+    j = _lj.get(job_id)
+    if not j:
+        raise HTTPException(404, "작업을 찾을 수 없어요.")
+    if j["status"] != "running":
+        _sb.refresh_tools()          # 끝나면 서버가 바로 새 언어를 알아보게
+    return j
+
+
+@router.post("/languages/runtimes/{rt}/default")
+async def langs_default(rt: str, data: RuntimeIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    if rt not in _lr.RUNTIMES or not data.version or not any(v["id"] == data.version for v in _lr.list_versions(rt)):
+        raise HTTPException(404, "그 버전은 설치돼 있지 않아요.")
+    _lr.set_default(rt, data.version)
+    _sb.refresh_tools()
+    _audit(db, admin, "lang.default", "language", None, f"{rt} 기본 버전 {data.version}")
+    await db.commit()
+    return _lang_overview()
+
+
+@router.post("/languages/runtimes/{rt}/remove")
+async def langs_remove(rt: str, data: RuntimeIn, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    if rt not in _lr.RUNTIMES or not data.version:
+        raise HTTPException(404, "알 수 없는 런타임이에요.")
+    if data.version == "image":
+        raise HTTPException(400, "기본으로 포함된 버전은 삭제할 수 없어요. (이미지를 다시 빌드할 때만 바뀌어요)")
+    if not _lr.remove_version(rt, data.version):
+        raise HTTPException(404, "그 버전을 찾지 못했어요.")
+    _sb.refresh_tools()
+    _audit(db, admin, "lang.remove", "language", None, f"{rt} {data.version} 삭제")
+    await db.commit()
+    return _lang_overview()

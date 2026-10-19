@@ -1,7 +1,10 @@
 """코드 실행 샌드박스 단독 테스트 (서버 필요 없음). 실행: .venv/bin/python tests/test_sandbox_runner.py (프로젝트 루트에서)
 이 컴퓨터에 설치된 언어만 검사하고, 없는 언어는 '미설치 안내'가 정직하게 나오는지 확인한다."""
-import asyncio, os, sys
+import asyncio, json, os, sys, tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api"))
+_cfg = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)          # 이 테스트는 엔진 자체를 검사하므로 모든 언어를 '공개'로 켠다 (공개 여부는 별도 테스트)
+json.dump({"enabled": {k: True for k in ("python", "javascript", "typescript", "java", "c", "cpp", "csharp", "ruby", "php", "perl", "bash", "go", "rust")}}, _cfg); _cfg.close()
+os.environ["LANGS_CONFIG"] = _cfg.name
 from services.sandbox_runner import local_sandbox_runner as r, available, LABELS
 AV = available(); R = []
 def chk(name, cond, extra=""): R.append((name, bool(cond), extra))

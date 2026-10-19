@@ -34,6 +34,7 @@ from routers.profile import router as profile_router, follow_router
 from routers.admin import router as admin_router
 from routers.account import router as account_router
 from routers.terminal import router as terminal_router
+from routers.languages import router as languages_router
 
 # 실시간 웹소켓 연결 매니저 (Supabase Realtime 완벽 대체)
 class ConnectionManager:
@@ -126,6 +127,7 @@ app.include_router(follow_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(terminal_router)
+app.include_router(languages_router)
 
 # 프론트엔드 UI 직접 서빙 (/ui 및 /app)
 DEFAULT_UI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
@@ -361,7 +363,8 @@ async def execute_code(
             language=request.language,
             stdin=request.stdin or "",
             cpu_time_limit=request.cpu_time_limit,
-            memory_limit=request.memory_limit
+            memory_limit=request.memory_limit,
+            runtime_version=request.runtime_version,
         )
 
     # 2. 로그인된 사용자인 경우 DB에 실행 히스토리 영속화

@@ -28,82 +28,123 @@ COMPILE_TIMEOUT = 25.0
 
 PYTHON_EXEC = sys.executable
 
-# 서버 터미널에서 `install-lang go` 처럼 나중에 설치하는 언어는 이 폴더 아래에 놓인다 (도커 볼륨 — 컨테이너를 새로 만들어도 남는다)
-LANGS_DIR = os.environ.get("LANGS_DIR", "/opt/langs")
+# 언어 도구를 찾는 규칙은 lang_registry 에 있다: 이미지에 기본으로 들어 있는 것 + /opt/langs(도커 볼륨)에 나중에 설치한 여러 버전.
+# 어떤 언어를 사용자에게 열어 둘지는 관리자가 정한다(공개 여부).
+from contextvars import ContextVar
+from contextlib import contextmanager
+from services import lang_registry as registry
+
+LANGS_DIR = registry.LANGS_DIR
 TOOLS_RECHECK_SECONDS = 10.0
 _tools_at = 0.0
-
-
-def lang_bins() -> List[str]:
-    """LANGS_DIR 아래 설치된 언어들의 실행 파일 폴더 (go/bin, rust/bin, dotnet …)"""
-    out: List[str] = []
-    try:
-        for name in sorted(os.listdir(LANGS_DIR)):
-            d = os.path.join(LANGS_DIR, name)
-            if not os.path.isdir(d) or name.startswith("."):
-                continue
-            b = os.path.join(d, "bin")
-            out.append(b if os.path.isdir(b) else d)
-    except OSError:
-        pass
-    return out
-
-
-def tool_path() -> str:
-    return os.pathsep.join(lang_bins() + [os.environ.get("PATH", "/usr/bin:/bin")])
+RUN_VERSIONS: ContextVar = ContextVar("run_versions", default=None)    # 이번 실행에서 사용자가 고른 버전 {런타임: 버전 id}
 
 
 def _find(name: str) -> Optional[str]:
-    return shutil.which(name, path=tool_path())
+    return shutil.which(name)
+
+
+def _default_exe(rt: str, exe: str) -> Optional[str]:
+    return registry.exe_in_version(rt, registry.default_version(rt), exe)
 
 
 NODE = RUBY = PHP = PERL = BASH = GO = RUSTC = JAVAC = JAVA = GCC = GPP = MCS = MONO = DOTNET = None
 CSC = None
-DOTNET_CSHARP: Optional[Dict[str, str]] = None       # .NET SDK 로 C# 을 컴파일할 때 필요한 위치들 (없으면 None)
+DOTNET_CSHARP: Optional[Dict[str, str]] = None       # 기본 .NET SDK 의 C# 컴파일에 필요한 위치들 (없으면 None)
+_dotnet_cache: Dict[str, Optional[Dict[str, str]]] = {}
 
 
-def _dotnet_csharp() -> Optional[Dict[str, str]]:
-    """설치된 .NET SDK 에서 C# 컴파일러(csc.dll)·참조 어셈블리·런타임 버전을 찾는다"""
-    if not DOTNET:
+def dotnet_info(dotnet_exe: Optional[str]) -> Optional[Dict[str, str]]:
+    """그 .NET SDK 에서 C# 컴파일러(csc.dll)·참조 어셈블리·런타임 버전을 찾는다"""
+    if not dotnet_exe:
         return None
-    root = os.path.dirname(os.path.realpath(DOTNET))
+    root = os.path.dirname(os.path.realpath(dotnet_exe))
+    if root in _dotnet_cache and _dotnet_cache[root]:
+        return _dotnet_cache[root]
     try:
         csc = sorted(glob.glob(os.path.join(root, "sdk", "*", "Roslyn", "bincore", "csc.dll")))[-1]
         refdir = sorted(d for d in glob.glob(os.path.join(root, "packs", "Microsoft.NETCore.App.Ref", "*", "ref", "net*")) if os.path.isdir(d))[-1]
         rt = os.path.basename(sorted(glob.glob(os.path.join(root, "shared", "Microsoft.NETCore.App", "*")))[-1])
     except IndexError:
         return None
-    tfm = "net" + ".".join(rt.split(".")[:2])
-    return {"root": root, "csc": csc, "refdir": refdir, "runtime": rt, "tfm": tfm}
+    info = {"root": root, "csc": csc, "refdir": refdir, "runtime": rt, "tfm": "net" + ".".join(rt.split(".")[:2])}
+    _dotnet_cache[root] = info
+    return info
+
+
+def tool(exe: str, runtime: Optional[str] = None) -> Optional[str]:
+    """실행 도구의 경로. 사용자가 이번 실행에서 버전을 골랐으면 그 버전의 것, 아니면 기본 버전의 것"""
+    rt = runtime or {"javac": "java", "java": "java", "node": "node", "dotnet": "dotnet", "go": "go", "rustc": "rust"}.get(exe)
+    if rt:
+        vid = (RUN_VERSIONS.get() or {}).get(rt)
+        if vid:
+            p = registry.exe_in_version(rt, vid, exe)
+            if p:
+                return p
+    return {"node": NODE, "javac": JAVAC, "java": JAVA, "dotnet": DOTNET, "go": GO, "rustc": RUSTC}.get(exe)
+
+
+@contextmanager
+def runtime_override(versions: Optional[Dict[str, str]]):
+    token = RUN_VERSIONS.set(dict(versions) if versions else None)
+    try:
+        yield
+    finally:
+        RUN_VERSIONS.reset(token)
+
+
+def check_runtime(lang: str, version: Optional[str]) -> Optional[str]:
+    """사용자가 고른 버전이 정말 설치돼 있는지 확인. 문제가 있으면 안내 문구, 괜찮으면 None"""
+    if not version:
+        return None
+    rt = registry.runtime_for_lang(lang)
+    if not rt:
+        return None                                  # 버전을 고를 수 없는 언어(Python·C 등)는 무시
+    if not any(v["id"] == version for v in registry.list_versions(rt)):
+        return f"{LABELS.get(lang, lang)} {version} 버전은 이 서버에 설치돼 있지 않아요. 다른 버전을 골라 주세요."
+    return None
+
+
+def tool_path() -> str:
+    return os.environ.get("PATH", "/usr/bin:/bin")
 
 
 def refresh_tools() -> None:
     """설치된 언어 도구를 다시 찾는다. 서버를 다시 켜지 않아도 새로 설치한 언어가 목록에 오른다."""
     global NODE, RUBY, PHP, PERL, BASH, GO, RUSTC, JAVAC, JAVA, GCC, GPP, MCS, MONO, DOTNET, CSC, DOTNET_CSHARP, TS_FLAGS, _tools_at
-    NODE, RUBY, PHP, PERL, BASH = _find("node"), _find("ruby"), _find("php"), _find("perl"), _find("bash")
-    GO, RUSTC, JAVAC, JAVA = _find("go"), _find("rustc"), _find("javac"), _find("java")
+    RUBY, PHP, PERL, BASH = _find("ruby"), _find("php"), _find("perl"), _find("bash")
+    NODE, JAVAC, JAVA = _default_exe("node", "node"), _default_exe("java", "javac"), _default_exe("java", "java")
+    GO, RUSTC, DOTNET = _default_exe("go", "go"), _default_exe("rust", "rustc"), _default_exe("dotnet", "dotnet")
     GCC, GPP = _find("gcc") or _find("clang"), _find("g++") or _find("clang++")
-    MCS, MONO, DOTNET = _find("mcs"), _find("mono"), _find("dotnet")
+    MCS, MONO = _find("mcs"), _find("mono")
     CSC = next((p for p in (r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe", r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe") if os.path.exists(p)), None) if IS_WINDOWS else None
-    DOTNET_CSHARP = _dotnet_csharp()
-    TS_FLAGS = _node_ts_flags()
+    DOTNET_CSHARP = dotnet_info(DOTNET)
+    TS_FLAGS = ts_flags(NODE)
     _tools_at = time.monotonic()
 
 
-def _node_ts_flags() -> Optional[List[str]]:
+_ts_cache: Dict[str, Optional[List[str]]] = {}
+
+
+def ts_flags(node_exe: Optional[str]) -> Optional[List[str]]:
     """Node 가 TypeScript 를 직접 실행할 수 있으면 필요한 옵션 목록(없으면 []), 못 하면 None"""
-    if not NODE:
+    if not node_exe:
         return None
+    if node_exe in _ts_cache:
+        return _ts_cache[node_exe]
     try:
-        v = subprocess.run([NODE, "--version"], capture_output=True, text=True, timeout=5).stdout.strip().lstrip("v")
+        v = subprocess.run([node_exe, "--version"], capture_output=True, text=True, timeout=5).stdout.strip().lstrip("v")
         major, minor = (int(x) for x in v.split(".")[:2])
     except Exception:
         return None
     if major > 23 or (major == 23 and minor >= 6) or (major == 22 and minor >= 18):
-        return []
-    if major == 22 and minor >= 6:
-        return ["--experimental-strip-types"]
-    return None
+        res: Optional[List[str]] = []
+    elif major == 22 and minor >= 6:
+        res = ["--experimental-strip-types"]
+    else:
+        res = None
+    _ts_cache[node_exe] = res
+    return res
 
 
 TS_FLAGS: Optional[List[str]] = None
@@ -116,7 +157,8 @@ ALIASES = {"py": "python", "python3": "python", "js": "javascript", "node": "jav
            "cs": "csharp", "c#": "csharp", "rb": "ruby", "sh": "bash", "shell": "bash", "golang": "go", "rs": "rust", "pl": "perl"}
 
 
-def available() -> Dict[str, bool]:
+def installed() -> Dict[str, bool]:
+    """이 서버에 도구가 설치돼 있는 언어 (공개 여부와 상관없이)"""
     if time.monotonic() - _tools_at > TOOLS_RECHECK_SECONDS:
         refresh_tools()
     return {
@@ -124,6 +166,11 @@ def available() -> Dict[str, bool]:
         "c": bool(GCC), "cpp": bool(GPP), "csharp": bool(CSC or (MCS and MONO) or DOTNET_CSHARP), "ruby": bool(RUBY), "php": bool(PHP), "perl": bool(PERL),
         "bash": bool(BASH) and not IS_WINDOWS, "go": bool(GO), "rust": bool(RUSTC),
     }
+
+
+def available() -> Dict[str, bool]:
+    """사용자가 실제로 실행할 수 있는 언어 = 설치돼 있고 + 관리자가 공개한 것"""
+    return {k: ok and registry.is_enabled(k) for k, ok in installed().items()}
 
 
 def decode_bytes(data: bytes) -> str:
@@ -144,8 +191,9 @@ def _clean_env(workdir: str) -> Dict[str, str]:
     env = {"PATH": tool_path(), "HOME": workdir, "TMPDIR": workdir, "TEMP": workdir, "TMP": workdir,
            "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1",
            "GOCACHE": gocache if os.path.isdir(gocache) else os.path.join(workdir, ".gocache"), "GOPATH": os.path.join(workdir, ".gopath"), "GOFLAGS": "-mod=mod", "NO_COLOR": "1"}
-    if DOTNET_CSHARP:
-        env.update({"DOTNET_ROOT": DOTNET_CSHARP["root"], "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_HOME": workdir,
+    di = dotnet_info(tool("dotnet"))
+    if di:
+        env.update({"DOTNET_ROOT": di["root"], "DOTNET_NOLOGO": "1", "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_HOME": workdir,
                     "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1", "DOTNET_EnableDiagnostics": "0"})
     if IS_WINDOWS:
         for k in ("SystemRoot", "SYSTEMROOT", "COMSPEC", "PATHEXT", "WINDIR"):
@@ -283,20 +331,21 @@ def java_class_mismatch(code: str, file_name: Optional[str]) -> Optional[Tuple[s
 
 
 def csharp_commands(tmp: str, cs_name: str = "Program.cs") -> Tuple[List[str], List[str]]:
-    """(컴파일 명령, 실행 명령). Windows csc → Mono(mcs) → .NET SDK 순서로 쓸 수 있는 것을 고른다"""
+    """(컴파일 명령, 실행 명령). Windows csc → Mono(mcs) → .NET SDK(선택한 버전) 순서로 쓸 수 있는 것을 고른다"""
     if CSC:
         return [CSC, "/nologo", "/utf8output", "/out:Program.exe", cs_name], [os.path.join(tmp, "Program.exe")]
+    dn = tool("dotnet")
+    d = dotnet_info(dn) if dn else None
+    if d and dn:
+        refs = sorted(glob.glob(os.path.join(d["refdir"], "*.dll")))
+        with open(os.path.join(tmp, "refs.rsp"), "w", encoding="utf-8") as f:
+            f.write("\n".join("-r:" + r for r in refs) + "\n")
+        with open(os.path.join(tmp, "Program.runtimeconfig.json"), "w", encoding="utf-8") as f:
+            f.write('{"runtimeOptions":{"tfm":"%s","framework":{"name":"Microsoft.NETCore.App","version":"%s"}}}' % (d["tfm"], d["runtime"]))
+        return [dn, d["csc"], "-nologo", "-target:exe", "-out:Program.dll", "@refs.rsp", cs_name], [dn, "Program.dll"]
     if MCS and MONO:
         return [MCS, "-out:Program.exe", cs_name], [MONO, "Program.exe"]
-    d = DOTNET_CSHARP
-    if not d or not DOTNET:
-        raise FileNotFoundError("C# 컴파일러")
-    refs = sorted(glob.glob(os.path.join(d["refdir"], "*.dll")))
-    with open(os.path.join(tmp, "refs.rsp"), "w", encoding="utf-8") as f:
-        f.write("\n".join("-r:" + r for r in refs) + "\n")
-    with open(os.path.join(tmp, "Program.runtimeconfig.json"), "w", encoding="utf-8") as f:
-        f.write('{"runtimeOptions":{"tfm":"%s","framework":{"name":"Microsoft.NETCore.App","version":"%s"}}}' % (d["tfm"], d["runtime"]))
-    return [DOTNET, d["csc"], "-nologo", "-target:exe", "-out:Program.dll", "@refs.rsp", cs_name], [DOTNET, "Program.dll"]
+    raise FileNotFoundError("C# 컴파일러")
 
 
 class LocalSandboxRunner:
@@ -322,7 +371,8 @@ class LocalSandboxRunner:
         return CodeRunResponse(status="Accepted" if rc == 0 else "Runtime Error", stdout=((out + note) if out else (note.strip() or None)), stderr=err or None,
                                execution_time=elapsed, memory_used=mem, exit_code=rc)
 
-    async def execute(self, source_code: str, language: str, stdin: str = "", cpu_time_limit: Optional[float] = None, memory_limit: Optional[int] = None) -> CodeRunResponse:
+    async def execute(self, source_code: str, language: str, stdin: str = "", cpu_time_limit: Optional[float] = None, memory_limit: Optional[int] = None,
+                      runtime_version: Optional[str] = None) -> CodeRunResponse:
         raw = (language or "").lower().strip()
         lang = ALIASES.get(raw, raw)
         timeout = min(max(0.5, cpu_time_limit or settings.DEFAULT_TIMEOUT_SECONDS), settings.MAX_TIMEOUT_SECONDS)
@@ -333,9 +383,14 @@ class LocalSandboxRunner:
             return CodeRunResponse(status="Error", error=f"이 서버에는 {LABELS[lang]} 실행 환경이 설치돼 있지 않아요. 지금 실행할 수 있는 언어: {', '.join(LABELS[k] for k in self.get_supported_languages())}")
         if len(source_code) > 200_000:
             return CodeRunResponse(status="Error", error="코드가 너무 길어요. (최대 20만 자)")
+        bad = check_runtime(lang, runtime_version)
+        if bad:
+            return CodeRunResponse(status="Error", error=bad)
+        rt = registry.runtime_for_lang(lang)
         tmp = tempfile.mkdtemp(prefix=f"{lang}_run_")
         try:
-            return await getattr(self, "_run_" + lang)(source_code, stdin, timeout, mem_kb, tmp)
+            with runtime_override({rt: runtime_version} if (rt and runtime_version) else None):
+                return await getattr(self, "_run_" + lang)(source_code, stdin, timeout, mem_kb, tmp)
         except FileNotFoundError as e:
             return CodeRunResponse(status="Error", error=f"실행 도구를 찾지 못했어요: {e.filename or e}")
         except Exception as e:      # 샌드박스 자체의 문제는 서버를 죽이지 않고 알려준다
@@ -353,10 +408,10 @@ class LocalSandboxRunner:
         return await self._script(tmp, "main.py", code, [PYTHON_EXEC, "-u", "-B"], stdin, timeout)
 
     async def _run_javascript(self, code, stdin, timeout, mem, tmp):
-        return await self._script(tmp, "main.js", code, [NODE], stdin, timeout)
+        return await self._script(tmp, "main.js", code, [tool("node")], stdin, timeout)
 
     async def _run_typescript(self, code, stdin, timeout, mem, tmp):
-        return await self._script(tmp, "main.ts", code, [NODE] + (TS_FLAGS or []), stdin, timeout)
+        return await self._script(tmp, "main.ts", code, [tool("node")] + (ts_flags(tool("node")) or []), stdin, timeout)
 
     async def _run_ruby(self, code, stdin, timeout, mem, tmp):
         return await self._script(tmp, "main.rb", code, [RUBY], stdin, timeout)
@@ -398,8 +453,8 @@ class LocalSandboxRunner:
         with open(os.path.join(tmp, file_name), "w", encoding="utf-8") as f:
             f.write(code)
         heap = max(64, min(int(mem / 1024), 512))
-        return await self._compiled(tmp, "Java", [JAVAC, "-encoding", "UTF-8", "-d", ".", file_name],
-                                    [JAVA, f"-Xmx{heap}m", "-XX:+UseSerialGC", "-Xshare:auto", "-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8", "-cp", ".", full],
+        return await self._compiled(tmp, "Java", [tool("javac"), "-encoding", "UTF-8", "-d", ".", file_name],
+                                    [tool("java"), f"-Xmx{heap}m", "-XX:+UseSerialGC", "-Xshare:auto", "-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-Dsun.stderr.encoding=UTF-8", "-cp", ".", full],
                                     stdin, timeout, 24500)
 
     async def _run_csharp(self, code, stdin, timeout, mem, tmp):
@@ -412,13 +467,13 @@ class LocalSandboxRunner:
         with open(os.path.join(tmp, "main.go"), "w", encoding="utf-8") as f:
             f.write(code)
         exe = os.path.join(tmp, "prog.exe" if IS_WINDOWS else "prog")
-        return await self._compiled(tmp, "Go", [GO, "build", "-o", exe, "main.go"], [exe], stdin, timeout)
+        return await self._compiled(tmp, "Go", [tool("go"), "build", "-o", exe, "main.go"], [exe], stdin, timeout)
 
     async def _run_rust(self, code, stdin, timeout, mem, tmp):
         with open(os.path.join(tmp, "main.rs"), "w", encoding="utf-8") as f:
             f.write(code)
         exe = os.path.join(tmp, "prog.exe" if IS_WINDOWS else "prog")
-        return await self._compiled(tmp, "Rust", [RUSTC, "-O", "-o", exe, "main.rs"], [exe], stdin, timeout)
+        return await self._compiled(tmp, "Rust", [tool("rustc"), "-O", "-o", exe, "main.rs"], [exe], stdin, timeout)
 
 
 local_sandbox_runner = LocalSandboxRunner()

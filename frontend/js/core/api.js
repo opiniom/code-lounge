@@ -73,16 +73,27 @@ async function checkBackendHealth() {
 
 
 /* 이 서버가 실제로 실행할 수 있는 언어 목록 (/health). 잠깐 기억해 두고 다시 묻지 않는다 */
-var WS_RUN_CACHE = { at: 0, langs: null };
-async function wsRunSupported() {
-  if (WS_RUN_CACHE.langs && Date.now() - WS_RUN_CACHE.at < 60000) return WS_RUN_CACHE.langs;
+/* 서버에서 실제로 실행할 수 있는 언어와 버전 (GET /api/languages: 관리자가 공개했고 서버에 설치된 것만). 잠깐 기억해 두고 다시 묻지 않는다 */
+var WS_RUN_CACHE = { at: 0, langs: null, info: {} };
+async function wsRunLoad(force) {
+  if (!force && WS_RUN_CACHE.langs && Date.now() - WS_RUN_CACHE.at < 30000) return WS_RUN_CACHE;
   try {
-    var res = await fetch(API_BASE + '/health', { signal: AbortSignal.timeout(4000) });
-    var d = await res.json();
-    if (Array.isArray(d.supported_languages)) { WS_RUN_CACHE = { at: Date.now(), langs: d.supported_languages.map(function(x){ return String(x).toLowerCase(); }) }; return WS_RUN_CACHE.langs; }
+    var res = await fetch(API_BASE + '/api/languages', { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      var d = await res.json(), info = {};
+      (d.languages || []).forEach(function(l){ info[l.id] = l; });
+      WS_RUN_CACHE = { at: Date.now(), langs: Object.keys(info), info: info };
+      return WS_RUN_CACHE;
+    }
+  } catch(e){}
+  try {                                       // 옛 서버(목록 API 없음)와의 호환
+    var h = await fetch(API_BASE + '/health', { signal: AbortSignal.timeout(4000) }), hd = await h.json();
+    if (Array.isArray(hd.supported_languages)) { WS_RUN_CACHE = { at: Date.now(), langs: hd.supported_languages.map(function(x){ return String(x).toLowerCase(); }), info: {} }; return WS_RUN_CACHE; }
   } catch(e){}
   return null;
 }
+async function wsRunSupported() { var c = await wsRunLoad(false); return c ? c.langs : null; }
+function wsLangInfo(lang) { return (WS_RUN_CACHE.info || {})[lang] || null; }
 /* 실행하지 않고 이유만 실행 콘솔에 알려 준다. actions = [{label, fn}] 이면 바로 고칠 수 있는 버튼도 붙인다 */
 function wsRunNotice(title, detail, actions) {
   var termPanel = document.getElementById('wsTerminalPanel'); if (termPanel) termPanel.classList.remove('collapsed');

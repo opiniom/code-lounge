@@ -591,6 +591,7 @@ function renderFileContent(key, keepCursor) {
   wsRenderConflict();
   if (typeof wsPresCursors === 'function') wsPresCursors();   // 새 파일 내용이 들어온 뒤 팀원 커서 위치를 다시 맞춘다
   wsLiveAttach(key, !!keepCursor);                             // 글자 단위 실시간 공동 편집에 붙는다
+  wsRtUpdate();                                                // 이 파일의 언어에 버전이 여러 개면 선택 박스를 보여 준다
 }
 
 /* ======================================================================
@@ -1355,18 +1356,18 @@ async function runCode() {
   var lang = wsRunLang(currentFileKey);
   if (!lang) {
     var ex = wsExt(fobj.path || fobj.tab);
-    wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','rb','php','pl','sh','go','rs','html'].map(function(e){ return '.' + e; }).join(' '));
+    if (WS_CODE_EXT.indexOf(ex) >= 0) { wsLangAlert(wsExtLabel(ex), ex); return; }          // kt · swift · lua … 프로그래밍 언어인데 아직 지원하지 않는 경우
+    wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','html'].map(function(e){ return '.' + e; }).join(' '));
     return;
   }
   var supportedLangs = await wsRunSupported();
-  if (supportedLangs && supportedLangs.indexOf(lang) < 0) {
-    wsRunNotice(WS_RUN_LABEL[lang] + ' 실행 환경이 이 서버에 없어요', '이 서버에서 지금 실행할 수 있는 언어: ' + (supportedLangs.map(function(l){ return WS_RUN_LABEL[l] || l; }).join(', ') || '없음') + '\n(서버에 ' + WS_RUN_LABEL[lang] + ' 를 설치하면 실행할 수 있어요)');
-    return;
-  }
+  if (supportedLangs && supportedLangs.indexOf(lang) < 0) { wsLangAlert(WS_RUN_LABEL[lang] || lang, wsExt(fobj.path || fobj.tab)); return; }      // 서버가 지원하지 않는 언어 (PC · 모바일 · PWA 공통)
   if (!authToken) {
     wsRunNotice('로그인하면 코드를 실행할 수 있어요', '코드 실행은 로그인한 사용자만 쓸 수 있어요.');
     return;
   }
+  // 자바 Spring(웹 서버 앱)은 ▶ 실행으로 돌릴 수 없다: 라이브러리 내려받기·빌드·서버 포트가 필요해서 일반 실행과 구조가 달라요
+  if (lang === 'java' && /@SpringBootApplication|import\s+org\.springframework\./.test(code)) { wsLangAlert('Java Spring', 'java', 'spring'); return; }
   // 자바: 파일 이름과 public 클래스 이름이 다르면 실행하지 않고 어느 쪽을 맞출지 묻는다
   var nameIssue = wsJavaNameIssue(currentFileKey);
   if (nameIssue) {
@@ -1422,6 +1423,7 @@ async function runCode() {
       action: 'start',
       language: lang,
       file_name: fobj.path || fobj.tab,
+      runtime_version: wsRtChosen(lang) || undefined,          // 사용자가 고른 언어 버전 (없으면 서버 기본 버전)
       source_code: code
     }));
     focusLiveInput();
@@ -1984,3 +1986,56 @@ function wsQuickKeysInit() {
   monacoEditor.onDidBlurEditorText(function() { setTimeout(function() { if (!monacoEditor.hasTextFocus()) show(false); }, 150); });
   if (window.visualViewport) { visualViewport.addEventListener('resize', place); visualViewport.addEventListener('scroll', place); }
 }
+
+/* =========================================================
+   실행 환경: 언어 버전 선택 · 지원하지 않는 언어 안내
+   서버에는 관리자가 정한 핵심 언어만 있다 (HTML·CSS 는 사용자 브라우저에서 미리보기로). 같은 언어의 버전이 여러 개 설치돼 있으면
+   ▶ 실행 옆 선택 박스로 고른다 (고른 버전은 기억해 둔다). 서버에 없는 언어로 실행하면 '언어 지원이 되지 않습니다' 안내창을 띄운다.
+   ========================================================= */
+var WS_CODE_EXT = ['kt', 'kts', 'swift', 'lua', 'r', 'dart', 'scala', 'sql', 'vb', 'pas', 'hs', 'ex', 'exs', 'clj', 'jl', 'm', 'mm', 'asm', 'groovy', 'f90', 'cob', 'pl6'];
+var WS_EXT_LABEL = { kt:'Kotlin', kts:'Kotlin', swift:'Swift', lua:'Lua', r:'R', dart:'Dart', scala:'Scala', sql:'SQL', vb:'Visual Basic', pas:'Pascal', hs:'Haskell', ex:'Elixir', exs:'Elixir', clj:'Clojure', jl:'Julia', m:'Objective-C', mm:'Objective-C', asm:'Assembly', groovy:'Groovy', f90:'Fortran', cob:'COBOL' };
+function wsExtLabel(ex) { return WS_EXT_LABEL[ex] || ('.' + ex); }
+function wsRtKey(rt) { return 'sync_rt_' + rt; }
+function wsRtChosen(lang) {
+  var info = wsLangInfo(lang); if (!info || !info.runtime || !info.versions || info.versions.length < 2) return null;
+  var want = null; try { want = localStorage.getItem(wsRtKey(info.runtime)); } catch (e) {}
+  return (want && info.versions.some(function(v) { return v.id === want; })) ? want : info.default;
+}
+function wsRtChange() {
+  var sel = document.getElementById('wsRuntimeSel'); if (!sel || !sel.dataset.rt) return;
+  try { localStorage.setItem(wsRtKey(sel.dataset.rt), sel.value); } catch (e) {}
+  pushToast('🔧', '실행 버전을 바꿨어요', sel.options[sel.selectedIndex].text);
+}
+/* 지금 열린 파일의 언어에 버전이 여러 개면 선택 박스를 보여 준다 */
+async function wsRtUpdate() {
+  var sel = document.getElementById('wsRuntimeSel'); if (!sel) return;
+  var lang = currentFileKey ? wsRunLang(currentFileKey) : null;
+  var c = lang ? await wsRunLoad(false) : null, info = lang ? wsLangInfo(lang) : null;
+  if (!info || !info.runtime || !info.versions || info.versions.length < 2) { sel.hidden = true; sel.dataset.rt = ''; return; }
+  var cur = wsRtChosen(lang);
+  sel.innerHTML = '';
+  info.versions.forEach(function(v) { var o = document.createElement('option'); o.value = v.id; o.textContent = (WS_RUN_LABEL[lang] || lang) + ' ' + v.label.replace(/ \(기본 포함\)$/, '').replace(/ \(이전 방식 설치\)$/, '') + (v.active ? ' · 기본' : ''); sel.appendChild(o); });
+  sel.value = cur; sel.dataset.rt = info.runtime; sel.hidden = false;
+  sel.title = '이 파일을 실행할 ' + (WS_RUN_LABEL[lang] || lang) + ' 버전을 고르세요';
+}
+/* '언어 지원이 되지 않습니다' 안내창 (PC · 모바일 · PWA 공통). why: 'spring' 이면 Spring 전용 설명 */
+async function wsLangAlert(label, ext, why) {
+  var c = await wsRunLoad(false), sup = c && c.langs ? c.langs : [];
+  var m = document.getElementById('wsLangModal'); if (!m) { pushToast('ℹ️', '언어 지원이 되지 않습니다', label); return; }
+  m.querySelector('.wl-title').textContent = why === 'spring' ? 'Spring 앱은 실행을 지원하지 않아요' : '언어 지원이 되지 않습니다';
+  var body = m.querySelector('.wl-body'); body.innerHTML = '';
+  function p(t, cls) { var e = document.createElement('p'); if (cls) e.className = cls; e.textContent = t; body.appendChild(e); return e; }
+  if (why === 'spring') {
+    p('Spring(Boot)은 웹 서버를 띄우는 프레임워크라서 ▶ 실행으로는 돌릴 수 없어요. 라이브러리 내려받기·빌드·서버 포트가 필요해서, 한 번 실행하고 끝나는 일반 Java 코드와 구조가 달라요.');
+    p('일반 Java 문법(클래스·객체·컬렉션 등)은 Spring 없이 .java 파일로 바로 실행해 볼 수 있어요.', 'wl-sub');
+  } else {
+    p('"' + label + '" 는(은) 이 서비스에서 아직 지원하지 않는 언어예요.');
+  }
+  var h = document.createElement('div'); h.className = 'wl-chips'; h.innerHTML = '';
+  sup.forEach(function(id) { var s = document.createElement('span'); s.className = 'wl-chip'; s.textContent = WS_RUN_LABEL[id] || id; h.appendChild(s); });
+  ['HTML', 'CSS'].forEach(function(t) { var s = document.createElement('span'); s.className = 'wl-chip web'; s.textContent = t + ' (미리보기)'; h.appendChild(s); });
+  var t = document.createElement('div'); t.className = 'wl-lbl'; t.textContent = '지금 실행할 수 있는 언어'; body.appendChild(t); body.appendChild(h);
+  p('필요한 언어가 있으면 관리자에게 요청해 주세요.', 'wl-sub');
+  m.classList.add('open');
+}
+function wsLangAlertClose() { var m = document.getElementById('wsLangModal'); if (m) m.classList.remove('open'); }

@@ -81,15 +81,23 @@ cd code-lounge
 
 - **실행 언어:** 파일 확장자로 정해져요 — Python(.py) · JavaScript(.js) · TypeScript(.ts) · Java(.java) · C(.c) · C++(.cpp) · C#(.cs) · Ruby(.rb) · PHP(.php) · Perl(.pl) · Bash(.sh) · Go(.go) · Rust(.rs). **서버에 설치된 도구만** 자동으로 실행 가능 목록에 올라가고(`/health`), 없는 언어는 가짜 결과 없이 "이 서버에는 ○○ 실행 환경이 없어요"라고 알려줘요. `.md`·`.txt` 같은 파일은 실행하지 않아요(예전처럼 몰래 Python 으로 돌려서 오류가 나지 않아요).
 - **Java:** 클래스 이름이 `Main` 이 아니어도, `public` 이 없어도, `package` 가 있어도 실행돼요(`main` 이 있는 클래스를 찾아요).
-- **배포 서버(Docker) — 언어는 터미널에서 나중에 설치해요(재빌드·재시작 없음):** 이미지에는 기본 언어(Python · JavaScript · TypeScript(Node 22) · Java · C · C++ · Ruby · PHP · Perl · Bash)만 들어 있고, 큰 언어는 서버 터미널에서 필요할 때 설치해요.
-  ```bash
-  docker compose -f docker-compose.prod.yml exec app install-lang list          # 설치 현황
-  docker compose -f docker-compose.prod.yml exec app install-lang go            # Go (최신)
-  docker compose -f docker-compose.prod.yml exec app install-lang rust           # Rust  (버전 지정: rust 1.85.0)
-  docker compose -f docker-compose.prod.yml exec app install-lang dotnet         # C# (.NET SDK)
-  docker compose -f docker-compose.prod.yml exec app install-lang remove go      # 삭제
-  ```
-  설치한 언어는 `./langs`(컨테이너 안 `/opt/langs`, 도커 볼륨)에 저장돼서 **컨테이너를 새로 만들어도 남아요.** 서버가 10초 안에 자동으로 알아봐서 `/health` 의 `supported_languages` 와 워크스페이스 ▶ 실행에 바로 나타나요. 공식 배포처(go.dev · static.rust-lang.org · dot.net)에서 HTTPS 로 받고 체크섬을 확인해요. 디스크는 Go 약 250MB · Rust 약 500MB · .NET 약 1GB 쓰니 여유를 확인하세요(`./langs` 는 깃허브에 올라가지 않아요). 새 언어(예: Kotlin)를 지원 목록에 넣는 건 코드 수정이 필요해요. 실행되는 코드에는 서버의 환경변수(비밀키)를 넘기지 않고, 시간·출력 크기를 제한해요.
+- **배포 서버(Docker) — 핵심 언어만 두고, 나머지는 관리자 페이지에서 관리해요.**
+  - **이미지에 들어 있는 것:** Python 3.13 · Node.js 24 LTS(JavaScript/TypeScript) · Java(JDK) · C/C++(gcc) · Bash. **HTML · CSS 는 서버가 아니라 사용자 브라우저에서 미리보기로 동작**해서 설치가 필요 없어요.
+  - **사용자에게 열어 둘 언어는 관리자가 정해요.** 처음에는 핵심 언어(Python · JavaScript · TypeScript · Java · C · C++ · C#)만 공개되고, Ruby · PHP · Perl · Bash · Go · Rust 는 서버에 설치돼 있어도 **관리자가 켜기 전에는 목록에서 숨겨져요**(공개하지 않은 언어로 ▶ 실행하면 "언어 지원이 되지 않습니다" 안내창).
+  - **관리자 페이지 → 언어 관리** (`/app/admin`): 언어별 공개/비공개 켜기·끄기, 런타임(Node · Java · C#(.NET) · Go · Rust)의 **설치 · 업데이트 · 삭제 · 기본 버전 지정**, 설치 진행 로그, 남은 디스크가 있어요(변경은 최고관리자만). 설치할 수 있는 버전(예: Java 21 LTS · 25 LTS, Node 22 · 24 LTS)은 공식 사이트에서 불러와요. 이미지에 포함된 Python · C · C++ 는 서버를 다시 빌드할 때 갱신돼요.
+  - **같은 언어의 여러 버전을 나란히 설치**할 수 있고(`./langs/java/21.0.5`, `./langs/java/17.0.13` …), 버전이 2개 이상이면 워크스페이스 **▶ 실행 옆 선택 박스**에서 사용자가 고르고(고른 버전은 브라우저가 기억), 안 고르면 관리자가 정한 기본 버전으로 실행돼요. 목록 API: `GET /api/languages`.
+  - **서버 터미널에서도 똑같이** (재빌드·재시작 없음):
+    ```bash
+    docker compose -f docker-compose.prod.yml exec app install-lang list               # 설치 현황(버전 포함)
+    docker compose -f docker-compose.prod.yml exec app install-lang available java      # 설치할 수 있는 버전
+    docker compose -f docker-compose.prod.yml exec app install-lang java 21             # Java 21 설치 (node · go · rust · dotnet 도 같은 방식)
+    docker compose -f docker-compose.prod.yml exec app install-lang default java 21.0.5 # 기본 버전
+    docker compose -f docker-compose.prod.yml exec app install-lang remove java 17.0.13
+    ```
+    설치한 언어는 `./langs`(컨테이너 안 `/opt/langs`, 도커 볼륨)에 저장돼서 **컨테이너를 새로 만들어도 남아요.** 서버가 10초 안에 자동으로 알아봐요. 공식 배포처(nodejs.org · adoptium.net · go.dev · static.rust-lang.org · dot.net)에서 HTTPS 로 받고 체크섬을 확인해요. 디스크는 Go 약 250MB · Rust 약 500MB · Node 약 200MB · JDK 약 300MB · .NET 약 1GB 쓰니 여유를 확인하세요(`./langs` 는 깃허브에 올라가지 않아요). 옛 방식(버전 폴더 없이 `./langs/go/bin/go`)으로 설치한 것도 `legacy` 버전으로 인식해요.
+  - **Java Spring 은 ▶ 실행으로 돌릴 수 없어요**(웹 서버를 띄우는 프레임워크라 빌드·의존성·포트가 필요). Spring 코드를 실행하면 안내창이 떠요. 일반 Java 문법은 그대로 실행돼요.
+  - **내 PC에 설치한 언어로 실행**하는 기능은 아직 없어요(브라우저가 PC 프로그램을 직접 실행할 수 없어서 연결 프로그램이 필요해요 — 필요하면 별도 단계로 추가).
+  - 새 언어(예: Kotlin)를 지원 목록에 넣는 건 코드 수정이 필요해요. 실행되는 코드에는 서버의 환경변수(비밀키)를 넘기지 않고, 시간·출력 크기를 제한해요.
   - *개발 컴퓨터에서 이미지를 직접 빌드할 때 `Unable to connect to deb.debian.org` 가 나면* 인터넷이 잠깐 끊긴 것이라 다시 실행하면 돼요(Dockerfile 에 apt 재시도 설정이 들어 있어요).
 - **⚠️ 보안:** 이 샌드박스는 서버 안에서 코드를 직접 돌려요(컨테이너/VM 수준의 완전한 격리가 아니에요). 누구나 접속하는 공개 서버에서는 `PUBLIC_MODE=true` 로 실행을 끄거나, Judge0 같은 별도 격리 환경을 쓰는 것을 권장해요.
 - **파일 탐색기(VS Code 방식):** 폴더를 누르면 그 폴더가 선택되고, 위의 **새 파일 / 새 폴더** 버튼(또는 폴더에 마우스를 올렸을 때 나오는 버튼)을 누르면 **그 폴더 안에 입력칸**이 바로 생겨요 — 이름만 입력하면 돼요. 빈 곳을 누르면 맨 위(루트)가 선택돼요. 빈 폴더는 보이지 않는 `.gitkeep` 파일로 유지돼요. 폰·태블릿에서는 이름 바꾸기·삭제 버튼이 항상 보여요.

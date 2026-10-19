@@ -11,6 +11,7 @@ class CodeRunRequest(BaseModel):
     stdin: Optional[str] = Field(default="", description="표준 입력(stdin) 데이터")
     cpu_time_limit: Optional[float] = Field(default=None, description="CPU 실행 제한 시간(초, 최대 10초)")
     memory_limit: Optional[int] = Field(default=None, description="메모리 제한(KB, 최대 512MB = 524288KB)")
+    runtime_version: Optional[str] = Field(default=None, max_length=40, description="사용할 언어 버전 id (GET /api/languages 의 versions[].id). 비우면 서버 기본 버전")
 
 class CodeRunResponse(BaseModel):
     status: str = Field(..., description="실행 상태 (Accepted, Time Limit Exceeded 등)")

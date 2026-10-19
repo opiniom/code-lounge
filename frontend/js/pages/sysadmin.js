@@ -12,10 +12,11 @@ var SA_TABS = [
   { k:'crawler', t:'크롤러', i:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.5 3.5 5.3 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.3-3.5-8.5s1-6 3.5-8.5Z"/>' },
   { k:'announce', t:'공지', i:'<path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>' },
   { k:'audit', t:'감사 로그', i:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>' },
+  { k:'langs', t:'언어 관리', i:'<path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/>' },
   { k:'system', t:'시스템', i:'<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>' }
 ];
 var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'user.delete':'계정 삭제(탈퇴 처리)', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
-  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
+  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'lang.enable':'언어 공개', 'lang.disable':'언어 비공개', 'lang.install':'언어 설치', 'lang.default':'언어 기본 버전 지정', 'lang.remove':'언어 버전 삭제', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
 var SA_CATS = { question:'질문', recruit:'팀원 모집', showcase:'프로젝트 자랑', share:'정보 공유', free:'자유', comment:'댓글' };
 
 /* ----- 작은 도구들 ----- */
@@ -206,7 +207,7 @@ function saShow(k){
   saLeave(); SA.tab = k;
   document.querySelectorAll('#saNav button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-k') === k); });
   var main = document.getElementById('saMain'); saLoading(main);
-  var fn = { dash:saDash, users:saUsers, withdrawals:saWithdrawals, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, announce:saAnnounce, audit:saAudit, system:saSystem }[k];
+  var fn = { dash:saDash, users:saUsers, withdrawals:saWithdrawals, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, announce:saAnnounce, audit:saAudit, langs:saLangs, system:saSystem }[k];
   saCloseDrawer();
   fn(main);
   window.scrollTo(0, 0);
@@ -531,6 +532,88 @@ function saSystem(main){
       ['외부 공유 모드', fl.PUBLIC_MODE ? '켜짐' : '꺼짐', !fl.PUBLIC_MODE], ['행사 자동 수집', fl.EVENT_CRAWL_ENABLED ? '켜짐' : '꺼짐', fl.EVENT_CRAWL_ENABLED], ['개발용 이메일 로그인', fl.ALLOW_DEV_LOGIN ? '켜짐 (위험)' : '꺼짐', !fl.ALLOW_DEV_LOGIN], ['최고관리자 지정(ADMIN_EMAILS)', fl.ADMIN_EMAILS_SET ? '설정됨' : '미설정', fl.ADMIN_EMAILS_SET]
     ].map(function(x){ return saH('li', {}, [saH('div', {}, [saH('b', { text:x[0] })]), saChip(x[1], x[2] ? 'ok' : 'warn')]); }))]));
   }).catch(function(e){ main.innerHTML = ''; main.appendChild(saEmpty(e.message)); });
+}
+
+/* ----- 언어 관리: 워크스페이스 ▶ 실행에서 쓸 수 있는 언어 · 버전 ----- */
+var SA_LANG_NOTE = { java:'Java 21 LTS · 25 LTS 처럼 여러 버전을 나란히 설치하면 사용자가 실행할 때 고를 수 있어요.', node:'JavaScript · TypeScript 실행에 쓰여요 (TypeScript 는 Node 22.18 이상에서 바로 실행).',
+  dotnet:'C# 실행에 쓰여요 (용량이 커서 약 1GB).', go:'', rust:'' };
+function saLangs(main){
+  saApi('/languages').then(function(o){ saLangsDraw(main, o); }).catch(function(e){ main.innerHTML = ''; main.appendChild(saEmpty(e.message)); });
+}
+function saLangsDraw(main, o){
+  main.innerHTML = '';
+  var sup = saIsSuper();
+  var live = o.languages.filter(function(l){ return l.available; }).length;
+  main.appendChild(saH('div', { class:'sa-stats' }, [
+    saStat('사용자에게 열린 언어', live, '서버 실행 ' + live + '개 + HTML · CSS', 'green'),
+    saStat('설치된 서버 언어', o.languages.filter(function(l){ return l.installed; }).length, '비공개 포함', ''),
+    saStat('남은 디스크', 0, o.langs_dir, '')
+  ]));
+  main.querySelectorAll('.sa-stat-v')[2].textContent = o.free_mb == null ? '—' : saBytes(o.free_mb * 1048576);
+  main.appendChild(saH('div', { class:'sa-note', text:'모든 언어를 서버에 둘 필요는 없어요. 핵심 언어만 공개하고, 필요할 때 켜거나 설치하세요. 공개하지 않은 언어로 ▶ 실행하면 사용자에게 "언어 지원이 되지 않습니다" 안내가 나와요. HTML · CSS 는 서버가 아니라 사용자 브라우저에서 동작해서 설치가 필요 없어요.' + (sup ? '' : ' (변경은 최고관리자만 할 수 있어요)') }));
+
+  // 1) 공개할 언어
+  var rows = o.languages.map(function(l){
+    var sw = saH('button', { type:'button', class:'sa-seg-btn' + (l.enabled ? ' on' : ''), disabled:!sup || !l.installed, title:!l.installed ? '서버에 설치돼 있지 않아요' : (l.enabled ? '눌러서 비공개로' : '눌러서 공개'), text:l.enabled ? '공개' : '비공개',
+      onclick:function(){ saPost('/languages/' + l.id + '/enabled', { enabled:!l.enabled }).then(function(r){ saLangsDraw(main, r); pushToast('✅', l.label + (l.enabled ? ' 비공개로' : ' 공개로') + ' 바꿨어요', ''); }).catch(saErr); } });
+    return saH('li', {}, [saH('div', {}, [saH('b', { text:l.label }), saH('span', { class:'sa-faint', text:'  ' + (l.core ? '핵심 언어' : '추가 언어') + (l.runtime ? ' · 버전 선택 가능' : '') })]),
+      saH('div', { class:'sa-rowact' }, [l.installed ? saChip('설치됨', 'ok') : saChip('설치 안 됨', 'warn'), sw])]);
+  });
+  o.browser.forEach(function(b){ rows.push(saH('li', {}, [saH('div', {}, [saH('b', { text:b.label }), saH('span', { class:'sa-faint', text:'  사용자 브라우저에서 실행 (미리보기) · 설치 불필요' })]), saChip('항상 공개', 'ok')])); });
+  main.appendChild(saPanel('사용자에게 열어 둘 언어', '핵심 언어는 처음부터 공개돼요', [saH('ul', { class:'sa-list' }, rows)]));
+
+  // 2) 설치·버전 (런타임별)
+  o.runtimes.forEach(function(rt){ main.appendChild(saRuntimeCard(main, rt, sup, o)); });
+  main.appendChild(saH('div', { class:'sa-note', text:'Python · C · C++ · Bash 는 이미지에 포함돼 있고, 서버를 다시 빌드(docker compose build --pull)할 때 최신으로 갱신돼요.' }));
+  if(o.job && o.job.status === 'running') saLangsPoll(main, o.job.id);
+}
+function saRuntimeCard(main, rt, sup, o){
+  var vers = rt.versions;
+  var list = vers.length ? saH('ul', { class:'sa-list tight' }, vers.map(function(v){
+    var acts = [];
+    if(v.active) acts.push(saChip('기본 버전', 'ok'));
+    else if(sup) acts.push(saH('button', { type:'button', class:'btn', text:'기본으로', onclick:function(){ saPost('/languages/runtimes/' + rt.id + '/default', { version:v.id }).then(function(r){ saLangsDraw(main, r); }).catch(saErr); } }));
+    if(sup && v.id !== 'image') acts.push(saH('button', { type:'button', class:'btn sa-danger', text:'삭제', onclick:function(){
+      saConfirm({ title:rt.label + ' ' + (v.version || v.id) + ' 를 삭제할까요?', msg:'이 버전을 쓰는 사용자의 실행은 기본 버전으로 바뀌어요. 다시 설치할 수 있어요.', ok:'삭제', danger:true }, function(){
+        saPost('/languages/runtimes/' + rt.id + '/remove', { version:v.id }).then(function(r){ saLangsDraw(main, r); pushToast('🗑️', '삭제했어요', rt.label + ' ' + (v.version || v.id)); }).catch(saErr); }); } }));
+    return saH('li', {}, [saH('div', {}, [saH('b', { text:v.label }), v.source === 'image' ? saH('span', { class:'sa-faint', text:'  이미지에 포함 (재빌드로 갱신)' }) : null]), saH('div', { class:'sa-rowact' }, acts)]);
+  })) : saH('div', { class:'sa-faint', style:'padding:6px 2px;', text:'설치된 버전이 없어요.' });
+  var inst = null;
+  if(sup){
+    var sel = saH('select', { class:'sa-input', 'aria-label':'설치할 버전' }, [saH('option', { value:'', text:'설치할 버전을 불러오는 중…' })]);
+    var btn = saH('button', { type:'button', class:'btn primary', text:'설치', disabled:true });
+    saApi('/languages/runtimes/' + rt.id + '/available').then(function(a){
+      sel.innerHTML = ''; (a.versions || []).forEach(function(v){ sel.appendChild(saH('option', { value:v.version, text:v.label })); });
+      if(!a.versions.length) sel.appendChild(saH('option', { value:'', text:'(목록 없음 — 최신 버전)' }));
+      btn.disabled = false;
+    }).catch(function(){ sel.innerHTML = ''; sel.appendChild(saH('option', { value:'', text:'최신 버전' })); btn.disabled = false; });
+    btn.onclick = function(){
+      saConfirm({ title:rt.label + ' ' + (sel.value || '최신') + ' 를 설치할까요?', msg:'공식 사이트에서 내려받아 서버에 설치해요. 몇 분 걸릴 수 있고, 설치하는 동안에도 서비스는 그대로 동작해요.', ok:'설치' }, function(){
+        btn.disabled = true;
+        saPost('/languages/runtimes/' + rt.id + '/install', { version:sel.value || null }).then(function(j){ saLangsPoll(main, j.id); }).catch(function(e){ btn.disabled = false; saErr(e); });
+      });
+    };
+    inst = saH('div', { class:'sa-form sa-form-row', style:'margin-top:10px;' }, [sel, btn]);
+  }
+  return saPanel(rt.label, SA_LANG_NOTE[rt.id] || '', [list, inst, saH('div', { class:'sa-faint', style:'margin-top:6px; font-size:11.5px;', text:'서버 터미널에서도 설치할 수 있어요: install-lang ' + rt.id }), saH('pre', { class:'sa-joblog', id:'saJob_' + rt.id, hidden:true })]);
+}
+/* 설치 진행 상황: 2초마다 확인해서 로그를 보여 주고, 끝나면 목록을 새로 그린다 */
+function saLangsPoll(main, jobId){
+  SA.timers.langs && clearInterval(SA.timers.langs);
+  var tick = function(){
+    saApi('/languages/jobs/' + jobId).then(function(j){
+      var box = document.getElementById('saJob_' + j.runtime);
+      if(box){ box.hidden = false; box.textContent = j.log.join('\n'); box.scrollTop = box.scrollHeight; }
+      document.querySelectorAll('.sa-panel .btn.primary').forEach(function(b){ if(b.textContent === '설치') b.disabled = j.status === 'running'; });
+      if(j.status !== 'running'){
+        clearInterval(SA.timers.langs); delete SA.timers.langs;
+        if(j.status === 'done') pushToast('✅', '설치가 끝났어요', j.runtime + ' ' + (j.result || ''));
+        else pushToast('⚠️', '설치에 실패했어요', j.error || '');
+        saApi('/languages').then(function(o){ saLangsDraw(main, o); var b2 = document.getElementById('saJob_' + j.runtime); if(b2){ b2.hidden = false; b2.textContent = j.log.join('\n'); } });
+      }
+    }).catch(function(){ clearInterval(SA.timers.langs); delete SA.timers.langs; });
+  };
+  SA.timers.langs = setInterval(tick, 2000); tick();
 }
 
 /* ----- 접근 표시 (메뉴 · 배지) ----- */

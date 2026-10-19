@@ -292,3 +292,17 @@
   .pv-chrome{padding:4px 8px;} .pv-bar{padding:2px 8px;}
   .pv-btn{width:30px; height:30px;} .pv-addr{height:30px;} .pv-dev{min-height:26px; padding:3px 10px;}
 }
+
+/* ---- 실행 언어 버전 선택 박스 ---- */
+.ws-rt-sel{max-width:190px; padding:5px 8px; border-radius:6px; border:1px solid var(--vscode-border); background:var(--vscode-bg); color:var(--vscode-tab-active-text); font-size:11.5px; font-weight:600; cursor:pointer; min-height:30px; text-overflow:ellipsis;}
+.ws-rt-sel[hidden]{display:none;}
+.ws-shell.pv-open .ws-rt-sel{max-width:120px;}
+@media (max-width:520px){ .ws-rt-sel{max-width:130px; font-size:12px;} }
+/* ---- '언어 지원이 되지 않습니다' 안내창 ---- */
+.wl-card{width:min(440px, calc(92vw / var(--ui-zoom, 1)));}
+.wl-body p{margin:0 0 10px; font-size:13.5px; line-height:1.65;}
+.wl-body .wl-sub{font-size:12px; color:var(--text-faint);}
+.wl-lbl{font-size:11.5px; font-weight:700; color:var(--text-faint); margin:12px 0 6px; letter-spacing:.02em;}
+.wl-chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;}
+.wl-chip{padding:4px 10px; border-radius:999px; background:rgba(79,70,229,.1); color:#4f46e5; font-size:12px; font-weight:600;}
+.wl-chip.web{background:rgba(22,163,74,.12); color:#16a34a;}

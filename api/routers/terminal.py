@@ -1,7 +1,7 @@
 """실시간 대화형 터미널 (WebSocket /ws/terminal).
 
 워크스페이스의 '▶ 실행' 버튼: 프로그램이 돌아가는 동안 키보드 입력(input)을 stdin 으로 바로 넘겨 주고, 출력은 실시간으로 흘려보낸다.
-통신(클라이언트 → 서버): {action:"start", language, source_code, file_name?} · {action:"input", data} · {action:"stop"}
+통신(클라이언트 → 서버): {action:"start", language, source_code, file_name?, runtime_version?} · {action:"input", data} · {action:"stop"}
 통신(서버 → 클라이언트): {type:"stdout"|"stderr", data} · {type:"exit", code, data?}
 
 안전장치 (서버에서 사용자 코드를 직접 돌리는 기능이라 꼭 필요하다):
@@ -57,9 +57,9 @@ def _prepare(lang: str, code: str, tmp: str, fname: Optional[str] = None) -> Tup
     if lang == "python":
         return _script(tmp, nm("main.py"), code, [sb.PYTHON_EXEC, "-u", "-B"])
     if lang == "javascript":
-        return _script(tmp, nm("main.js"), code, [sb.NODE])
+        return _script(tmp, nm("main.js"), code, [sb.tool("node")])
     if lang == "typescript":
-        return _script(tmp, nm("main.ts"), code, [sb.NODE] + (sb.TS_FLAGS or []))
+        return _script(tmp, nm("main.ts"), code, [sb.tool("node")] + (sb.ts_flags(sb.tool("node")) or []))
     if lang == "ruby":
         rb = nm("main.rb")
         with open(os.path.join(tmp, rb), "w", encoding="utf-8", newline="\n") as f:
@@ -87,7 +87,7 @@ def _prepare(lang: str, code: str, tmp: str, fname: Optional[str] = None) -> Tup
             file_name = stem                    # public 클래스가 없으면 파일 이름이 뭐든 되고, 있으면 아래 start 에서 이름이 같은지 먼저 확인한다
         with open(os.path.join(tmp, file_name), "w", encoding="utf-8") as f:
             f.write(code)
-        return [sb.JAVAC, "-encoding", "UTF-8", "-d", ".", file_name], [sb.JAVA, "-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-cp", ".", full]
+        return [sb.tool("javac"), "-encoding", "UTF-8", "-d", ".", file_name], [sb.tool("java"), "-Dfile.encoding=UTF-8", "-Dsun.stdout.encoding=UTF-8", "-cp", ".", full]
     if lang == "csharp":
         cs = nm("Program.cs")
         with open(os.path.join(tmp, cs), "w", encoding="utf-8") as f:
@@ -97,12 +97,12 @@ def _prepare(lang: str, code: str, tmp: str, fname: Optional[str] = None) -> Tup
         go = nm("main.go")
         with open(os.path.join(tmp, go), "w", encoding="utf-8") as f:
             f.write(code)
-        return [sb.GO, "build", "-o", exe, go], [exe]
+        return [sb.tool("go"), "build", "-o", exe, go], [exe]
     if lang == "rust":
         rs = nm("main.rs")
         with open(os.path.join(tmp, rs), "w", encoding="utf-8") as f:
             f.write(code)
-        return [sb.RUSTC, "-O", "-o", exe, rs], [exe]
+        return [sb.tool("rustc"), "-O", "-o", exe, rs], [exe]
     return None, []
 
 
@@ -230,9 +230,16 @@ async def websocket_terminal(websocket: WebSocket):
                                             f"→ 파일 이름({mm[1]}.java)과 public 클래스 이름({mm[0]})이 달라요. 둘 중 하나를 같게 맞춰 주세요.\x1b[0m\n")
                         await say("exit", "", code=1)
                         continue
+                rv = str(msg.get("runtime_version") or "")[:40] or None            # 사용자가 고른 버전 (없으면 서버 기본 버전)
+                bad = sb.check_runtime(lang, rv)
+                if bad:
+                    await say("stderr", bad + "\n"); await say("exit", "", code=1)
+                    continue
+                rt = sb.registry.runtime_for_lang(lang)
                 tmp = tempfile.mkdtemp(prefix="cl_term_"); state["tmp"] = tmp
-                env = sb._clean_env(tmp); env["PYTHONUNBUFFERED"] = "1"
-                comp, run = _prepare(lang, code, tmp, fname)
+                with sb.runtime_override({rt: rv} if (rt and rv) else None):
+                    env = sb._clean_env(tmp); env["PYTHONUNBUFFERED"] = "1"
+                    comp, run = _prepare(lang, code, tmp, fname)
                 if comp:
                     await say("stdout", f"\x1b[36m[{sb.LABELS[lang]} 컴파일 중...]\x1b[0m\n")
                     try:
