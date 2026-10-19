@@ -381,5 +381,6 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
   - **네이버:** developers.naver.com → 내 애플리케이션 → 해당 앱 → **멤버 관리**에 로그인할 사람의 네이버 ID 를 추가하거나(최대 인원 제한 있음), **API 설정에서 검수(서비스 승인)를 요청**해 일반 사용자도 쓰게 하세요.
   - **구글:** console.cloud.google.com → API 및 서비스 → **OAuth 동의 화면** → 게시 상태가 **'테스트'** 이면 등록한 **테스트 사용자**만 로그인돼요. **'앱 게시(프로덕션으로 푸시)'** 를 누르면 누구나 로그인할 수 있어요(이메일·프로필만 쓰므로 별도 심사 없이 바로 가능).
   - 허용된 리디렉션 주소가 `https://(도메인)/api/auth/google/callback`, `https://(도메인)/api/auth/naver/callback` 와 정확히 같은지도 확인하세요.
+- **`token_exchange_failed` / `naver_profile_failed` 가 PC 에서만 나오던 원인(해결됨):** 소셜 로그인 코드는 **한 번만** 쓸 수 있는데, PC 브라우저(서비스 워커의 '화면 이동 미리 요청'이 켜진 상태)가 로그인 마무리 주소를 **두 번** 요청해서 두 번째가 거부됐어요. 그래서 ① 서비스 워커의 미리 요청을 껐고(`frontend/sw.js`) ② 서버는 같은 코드가 두 번 와도 구글·네이버를 **한 번만** 호출하고 같은 결과를 돌려줘요(`api/routers/auth.py`). 배포 전 PC 에서 급하게 로그인하려면 브라우저 주소창에 `chrome://serviceworker-internals` → `duresync.cloud` 의 **Unregister**(또는 사이트 데이터 삭제) 후 다시 로그인하세요.
 - PC 에서만 안 되고 폰에서는 되는 경우: PC 브라우저가 **다른 네이버/구글 계정**으로 이미 로그인돼 있을 수 있어요. 시크릿 창에서 시도해 보세요.
 - 테스트: `tests/test_oauth_errors.py`

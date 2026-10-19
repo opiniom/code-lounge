@@ -24,7 +24,7 @@ self.addEventListener('activate', function (event) {
   event.waitUntil((async function () {
     const keys = await caches.keys();
     await Promise.all(keys.filter(function (k) { return k.indexOf('duresync-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));   // 이전 버전 보관분 정리
-    if (self.registration.navigationPreload) { try { await self.registration.navigationPreload.enable(); } catch (e) {} }   // 화면 이동 때 서버 요청을 서비스 워커 시작과 동시에 보낸다(더 빠름)
+    if (self.registration.navigationPreload) { try { await self.registration.navigationPreload.disable(); } catch (e) {} }   // 끈다: 켜 두면 서비스 워커가 맡지 않는 주소(/api/auth/…/callback)로 이동할 때 같은 요청이 두 번 나가서, 한 번만 쓸 수 있는 소셜 로그인 코드가 두 번째에 거부된다
     await self.clients.claim();
   })());
 });
@@ -48,8 +48,6 @@ self.addEventListener('fetch', function (event) {
   if (req.mode === 'navigate') {
     event.respondWith((async function () {
       try {
-        const pre = await event.preloadResponse;
-        if (pre) return pre;
         return await fetch(req);
       } catch (e) {
         const off = await caches.match('/static/offline.html');

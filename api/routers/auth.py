@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import re
 import secrets
+import time
 import urllib.parse
 from typing import Optional
 import httpx
@@ -39,6 +41,35 @@ def _fail(provider: str, step: str, detail: str):
     return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={provider}_{step}&reason={urllib.parse.quote(detail[:120])}")
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+# ---- 같은 로그인 코드의 중복 요청 방어 ----
+# 소셜 로그인 코드는 한 번만 쓸 수 있다. 브라우저가 같은 주소를 두 번 요청하면(서비스 워커·더블클릭·확장 프로그램 등) 두 번째가 거부되고,
+# 브라우저는 그 실패 응답을 화면에 보여 준다. 그래서 같은 코드는 제공자를 한 번만 호출하고, 먼저 만든 결과를 그대로 돌려준다.
+_OAUTH_DONE: dict = {}
+_OAUTH_LOCKS: dict = {}
+_OAUTH_TTL = 60.0
+
+
+async def _once(provider: str, code: Optional[str], work):
+    if not code:
+        return await work()
+    key = f"{provider}:{code}"
+    now = time.time()
+    for k in [k for k, (t, _) in _OAUTH_DONE.items() if now - t > _OAUTH_TTL]:
+        _OAUTH_DONE.pop(k, None)
+        _OAUTH_LOCKS.pop(k, None)
+    hit = _OAUTH_DONE.get(key)
+    if hit:
+        return RedirectResponse(hit[1])
+    lock = _OAUTH_LOCKS.setdefault(key, asyncio.Lock())
+    async with lock:                                              # 동시에 두 번 오면 두 번째는 첫 번째가 끝나길 기다렸다가 같은 결과를 받는다
+        hit = _OAUTH_DONE.get(key)
+        if hit:
+            return RedirectResponse(hit[1])
+        resp = await work()
+        _OAUTH_DONE[key] = (time.time(), resp.headers["location"])
+        return resp
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -156,7 +187,11 @@ async def google_callback(
     error: Optional[str] = None, 
     db: AsyncSession = Depends(get_db)
 ):
-    """Google OAuth 2.0 콜백 처리 및 JWT 발급"""
+    """Google OAuth 2.0 콜백 처리 및 JWT 발급 (같은 코드가 두 번 와도 구글은 한 번만 호출)"""
+    return await _once("google", None if error else code, lambda: _google_callback(code, error, db))
+
+
+async def _google_callback(code: Optional[str], error: Optional[str], db: AsyncSession):
     if error or not code:
         return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={error or 'cancelled'}")
     
@@ -246,7 +281,11 @@ async def naver_callback(
     error: Optional[str] = None, 
     db: AsyncSession = Depends(get_db)
 ):
-    """Naver 로그인 콜백 처리 및 JWT 발급"""
+    """Naver 로그인 콜백 처리 및 JWT 발급 (같은 코드가 두 번 와도 네이버는 한 번만 호출)"""
+    return await _once("naver", None if error else code, lambda: _naver_callback(code, state, error, db))
+
+
+async def _naver_callback(code: Optional[str], state: Optional[str], error: Optional[str], db: AsyncSession):
     if error or not code:
         return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={error or 'cancelled'}")
     

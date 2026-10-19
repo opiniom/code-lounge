@@ -33,12 +33,14 @@ class H(logging.Handler):
 logging.getLogger("oauth").addHandler(H()); logging.getLogger("oauth").setLevel(logging.INFO)
 def parse(resp):
     loc = resp.headers["location"]; q = urllib.parse.parse_qs(urllib.parse.urlparse(loc).query); return loc, {k: v[0] for k, v in q.items()}
-async def naver(script):
+_n = [0]
+def fresh(): _n[0] += 1; return f"code{_n[0]}"        # 로그인 코드는 한 번만 쓸 수 있으니 판마다 새 코드를 쓴다
+async def naver(script, code=None):
     auth.httpx.AsyncClient = fake_client(script)
-    return parse(await auth.naver_callback(code="c", state="s", error=None, db=None))
-async def google(script):
+    return parse(await auth.naver_callback(code=code or fresh(), state="s", error=None, db=None))
+async def google(script, code=None):
     auth.httpx.AsyncClient = fake_client(script)
-    return parse(await auth.google_callback(code="c", error=None, db=None))
+    return parse(await auth.google_callback(code=code or fresh(), error=None, db=None))
 
 async def main():
     # 네이버: 토큰 단계에서 200 인데 오류를 담아 보내는 경우 (예전에는 'Bearer None' 으로 프로필을 불러 profile_failed 로 보였다)
@@ -64,7 +66,29 @@ async def main():
     # 취소/거부(제공자가 error 를 붙여 돌려보냄)
     r = await auth.google_callback(code=None, error="access_denied", db=None)
     chk("구글: 허용 안 된 사용자(access_denied)는 그 코드로 안내", "social_error=access_denied" in r.headers["location"])
+async def dup():
+    """같은 코드가 두 번 오는 경우(서비스 워커·더블클릭 등): 제공자를 한 번만 호출하고 두 번 다 같은 결과"""
+    calls = []
+    class Slow:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, **k): calls.append(url); await asyncio.sleep(0.2); return Resp(400, {"error": "invalid_grant"})
+        async def get(self, url, **k): raise AssertionError
+    auth.httpx.AsyncClient = Slow
+    a, b = await asyncio.gather(auth.google_callback(code="DUPCODE", error=None, db=None), auth.google_callback(code="DUPCODE", error=None, db=None))
+    chk("같은 코드가 동시에 두 번 와도 구글은 한 번만 호출한다", len(calls) == 1, calls)
+    chk("두 요청이 똑같은 결과를 받는다 (두 번째만 실패하는 일이 없다)", a.headers["location"] == b.headers["location"], (a.headers["location"], b.headers["location"]))
+    c = await auth.google_callback(code="DUPCODE", error=None, db=None)
+    chk("조금 뒤 다시 와도 같은 결과 (제공자를 또 부르지 않는다)", len(calls) == 1 and c.headers["location"] == a.headers["location"])
+    d = await auth.google_callback(code="OTHER", error=None, db=None)
+    chk("다른 코드는 따로 처리한다", len(calls) == 2)
+    old = auth._OAUTH_TTL; auth._OAUTH_TTL = 0.0; await asyncio.sleep(0.01)
+    await auth.google_callback(code="DUPCODE", error=None, db=None)
+    auth._OAUTH_TTL = old
+    chk("시간이 지나면(60초) 결과를 지운다", len(calls) == 3, len(calls))
 asyncio.run(main())
+asyncio.run(dup())
 bad = [x for x in R if not x[1]]
 for n, ok, ex in R:
     if not ok: print("FAIL:", n, "→", ex)
