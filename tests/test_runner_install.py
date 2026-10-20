@@ -49,6 +49,11 @@ try:
     chk("윈도우 스크립트: 파이썬 확인(py -3 → python, 스토어 가짜 python 제외) · 한글 깨짐 방지 · 연결 코드 전달", "Get-Command py" in ps and "'-3'" in ps and "WindowsApps" in ps and "OutputEncoding" in ps and "PYTHONIOENCODING" in ps and "--install-autostart" in ps and "DURESYNC_TOKEN" in ps + "" or "DURESYNC_TOKEN" in ps, "")
     chk("  ㄴ 내려받기는 임시 파일(.part)로 받고 끝나면 바꿔 넣는다 + 실패 안내가 있다", ".part" in ps and "[오류] 러너를 내려받지 못했어요" in ps and "[필요] 파이썬" in ps and "winget install Python.Python.3.12" in ps)
     chk("  ㄴ 스크립트가 함수로 감싸져 있어서 한 줄(irm | iex)로 받아도 끝까지 받은 뒤에만 실행된다", ps.lstrip().startswith("#") and "function Install-DureSyncRunner" in ps and ps.rstrip().endswith("Install-DureSyncRunner"))
+    # 화면: '내 PC' 버튼이 처음부터 보이게 하는 시작 코드와 버튼 두 곳(편집기 위 · 프로젝트 줄)이 있다
+    js = open(os.path.join(ROOT, "frontend", "js", "pages", "workspace-runner.js"), encoding="utf-8").read(); html = open(os.path.join(ROOT, "frontend", "index.html"), encoding="utf-8").read()
+    chk("화면: 시작 코드(runnerInit)가 있고 페이지가 열릴 때 실행된다 (없으면 버튼이 숨겨진 채로 남는다)", "function runnerInit()" in js and re.search(r"DOMContentLoaded', runnerInit\)|setTimeout\(runnerInit", js))
+    chk("  ㄴ '내 PC' 버튼이 편집기 위쪽과 프로젝트 줄 두 곳에 있다 (파일을 열지 않아도 보임)", 'id="wsRunnerBtn"' in html and 'id="wsRunnerBtnTop"' in html and html.count("ws-runner-btn") >= 2)
+    chk("  ㄴ workspace-runner.js 가 화면 묶음(manifest)에 들어 있다", "js/pages/workspace-runner.js" in open(os.path.join(ROOT, "frontend", "manifest.json"), encoding="utf-8").read())
     # 연결 코드 옵션 (러너 직접)
     h5 = os.path.join(TMP, "h5"); os.makedirs(h5)
     run = lambda *a, **k: subprocess.run([sys.executable, runner, *a], capture_output=True, text=True, env=dict(os.environ, HOME=h5, USERPROFILE=h5, **k), timeout=30)

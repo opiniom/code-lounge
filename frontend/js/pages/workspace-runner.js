@@ -134,8 +134,9 @@ async function wsRtUpdate() {
 
 /* 상태 표시: 편집기 위쪽 버튼의 점, 열려 있는 안내창 */
 function runnerPaint() {
-  var b = document.getElementById('wsRunnerBtn');
-  if (b) { var live = !!RUNNER.ok && runnerEnabled(); b.hidden = !runnerDeviceOk(); b.classList.toggle('on', live); b.classList.toggle('off', !runnerEnabled()); b.title = !runnerEnabled() ? '내 PC 실행 꺼짐 (서버로만 실행) · 눌러서 설정' : (RUNNER.ok ? '내 PC 러너 연결됨 · 눌러서 설정' : '내 컴퓨터에 설치한 언어로 실행'); }
+  var live = !!RUNNER.ok && runnerEnabled(), title = !runnerEnabled() ? '내 PC 실행 꺼짐 (서버로만 실행) · 눌러서 설정' : (RUNNER.ok ? '내 PC 러너 연결됨 · 눌러서 설정' : '내 컴퓨터에 설치한 언어로 실행');
+  var bs = document.querySelectorAll('.ws-runner-btn');                  // 편집기 위쪽 버튼 + 프로젝트 줄 버튼(파일을 안 열어도 보이게)
+  for (var i = 0; i < bs.length; i++) { var b = bs[i]; b.hidden = !runnerDeviceOk(); b.classList.toggle('on', live); b.classList.toggle('off', !runnerEnabled()); b.title = title; }
   if (typeof wsRtUpdate === 'function') wsRtUpdate();
   var m = document.getElementById('runnerModal'); if (m && m.classList.contains('open')) runnerRenderModal();
 }
@@ -296,3 +297,7 @@ async function runnerGate(key, code) {
   f.runnerOkHash = h; f.othersEdit = false;
   return true;
 }
+
+/* 시작: PC 에서는 '내 PC' 버튼을 보이고, 전에 연결한 적이 있으면 상태를 확인한다 */
+function runnerInit() { runnerPaint(); if (runnerDeviceOk() && runnerToken()) runnerProbe(false); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runnerInit); else setTimeout(runnerInit, 0);
