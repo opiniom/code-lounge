@@ -709,6 +709,11 @@ def autostart_uninstall():
 
 
 def main():
+    for st in (sys.stdout, sys.stderr):                    # 윈도우 한국어 콘솔(cp949)은 일부 기호를 못 찍어서 죽으므로, 못 찍는 글자는 ? 로 바꿔서라도 계속 간다
+        try:
+            st.reconfigure(errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser(description="DureSync 러너: 내 컴퓨터에 설치한 언어로 워크스페이스 코드를 실행합니다.")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--allow-origin", action="append", default=[], help="믿을 웹사이트 주소를 더 추가 (예: http://localhost:8000)")
@@ -727,7 +732,7 @@ def main():
         print(token); return 0
     origins = [o.rstrip("/") for o in ALLOWED_ORIGINS + a.allow_origin if o and not o.startswith("__")]
     if not origins:
-        print("✗ 믿을 웹사이트가 정해지지 않았어요. 웹사이트에서 내려받은 파일을 쓰거나 --allow-origin 으로 주소를 알려 주세요."); return 2
+        print("[오류] 믿을 웹사이트가 정해지지 않았어요. 웹사이트에서 내려받은 파일을 쓰거나 --allow-origin 으로 주소를 알려 주세요."); return 2
     if a.install_autostart:
         return autostart_install(a, a.dry_run)
     runner = Runner(a.port, origins, token, max(5, a.max_seconds), a.allow_no_origin)
@@ -739,7 +744,7 @@ def main():
         except OSError as e:
             print("러너가 이미 켜져 있어요 (포트 %d). 이 창은 닫아도 돼요." % a.port); return 0
         print("=" * 62)
-        print("  DureSync 러너 %s  —  내 컴퓨터에서 코드를 실행해요" % RUNNER_VERSION)
+        print("  DureSync 러너 %s  - 내 컴퓨터에서 코드를 실행해요" % RUNNER_VERSION)
         print("=" * 62)
         print("  연결 코드 :  %s      (웹사이트의 '내 PC 연결'에 입력하세요)" % token)
         print("  믿는 사이트:  %s" % ", ".join(origins))
@@ -747,8 +752,8 @@ def main():
         for lang, items in runner.inv.items():
             print("    · %-11s %s" % (LABELS.get(lang, lang), ", ".join(i["version"] or "?" for i in items)))
         if not runner.inv:
-            print("    (없음 — Python · Node · Java · gcc 등을 설치한 뒤 다시 켜 주세요)")
-        print("  멈추려면 Ctrl+C.  ⚠ 코드는 내 컴퓨터에서 내 권한으로 실행돼요. 믿을 수 있는 코드만 실행하세요.")
+            print("    (없음 - Python · Node · Java · gcc 등을 설치한 뒤 다시 켜 주세요)")
+        print("  멈추려면 Ctrl+C.  [주의] 코드는 내 컴퓨터에서 내 권한으로 실행돼요. 믿을 수 있는 코드만 실행하세요.")
         print("=" * 62, flush=True)
         async with server:
             await server.serve_forever()

@@ -134,6 +134,14 @@ chk("--uninstall-autostart: 켜져 있지 않으면 그렇게 알려 준다", r.
 # 이미 러너가 켜져 있는데 또 켜면(자동 시작과 겹침) 정상 종료(0)로 조용히 끝난다
 r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--port", str(PORT), "--allow-origin", ORIGIN], env=env, capture_output=True, text=True, timeout=30)
 chk("이미 켜져 있을 때 한 번 더 켜면 에러 없이(0) 끝난다 → 자동 시작이 무한 재시작하지 않는다", r.returncode == 0 and "이미 켜져 있어요" in r.stdout, r.stdout + r.stderr)
+# ---- 윈도우 한국어 콘솔(cp949)·영문 콘솔(cp1252)에서도 시작 화면을 찍다가 죽지 않는다
+for enc in ("cp949", "cp1252", "ascii"):
+    e2 = dict(env, PYTHONIOENCODING=enc)
+    pr = subprocess.Popen([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--port", "47397", "--allow-origin", ORIGIN], env=e2, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    up = wait_up(47397); time.sleep(0.5); pr.terminate()
+    try: out = pr.communicate(timeout=8)[0].decode(enc, "replace")
+    except Exception: pr.kill(); out = ""
+    chk(f"콘솔 글자 표(%s)에서도 러너가 정상으로 켜지고 시작 화면이 나온다" % enc, up and "Traceback" not in out and "연결 코드" in out or (up and "Traceback" not in out and "?" in out), out[-200:])
 for p in (srv, srv2):
     p.terminate()
     try: p.wait(5)
