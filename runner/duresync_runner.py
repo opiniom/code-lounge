@@ -695,16 +695,17 @@ def autostart_uninstall():
     home = os.path.expanduser("~")
     plan = autostart_plan(platform.system(), home, sys.executable or "python3", os.path.join(home, ".duresync-runner", "duresync_runner.py"), [],
                           uid=_uid(), has_systemd=bool(shutil.which("systemctl")), appdata=os.environ.get("APPDATA"))
+    found = [f for f in plan["remove"] if os.path.exists(f)]
+    if not found:                                                        # 등록한 적이 없으면 운영체제 설정(launchctl 등)을 건드리지 않는다
+        print("자동 시작이 켜져 있지 않았어요."); return 0
     for cmd in plan["stop"]:
         try:
             subprocess.run(cmd, capture_output=True, text=True, timeout=20)
         except Exception:
             pass
-    n = 0
-    for f in plan["remove"]:
-        if os.path.exists(f):
-            os.remove(f); n += 1
-    print("자동 시작을 껐어요." if n else "자동 시작이 켜져 있지 않았어요.")
+    for f in found:
+        os.remove(f)
+    print("자동 시작을 껐어요.")
     return 0
 
 
