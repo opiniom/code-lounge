@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.0"
+RUNNER_VERSION = "1.2.1"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -631,12 +631,12 @@ def autostart_plan(system, home, py, script, args, uid=0, has_systemd=True, appd
                 "stop": [["launchctl", "bootout", "gui/%d/%s" % (uid, AUTOSTART_LABEL)]],
                 "remove": [plist], "note": "맥: 로그인할 때마다 자동으로 켜져요 (로그: %s)" % logp}
     if system == "Windows":
+        # 예전 방식(시작프로그램 폴더의 .vbs)은 한글 사용자 이름이 든 경로를 못 읽어서 "지정된 파일을 찾을 수 없습니다" 오류가 났다.
+        # 그래서 유니코드를 그대로 쓰는 레지스트리 Run 키(로그인 때 실행)를 쓰고, 옛 .vbs 는 지운다.
         startup = os.path.join(appdata or os.path.join(home, "AppData", "Roaming"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-        vbs = os.path.join(startup, "DureSync Runner.vbs")
-        quoted = " ".join('""%s""' % a for a in argv)                 # VBScript 문자열 안의 큰따옴표는 두 번
-        body = 'CreateObject("WScript.Shell").Run "%s", 0, False\r\n' % quoted
-        return {"files": [(vbs, body)], "start": [["wscript", vbs]], "stop": [], "remove": [vbs],
-                "note": "윈도우: 로그인할 때마다 창 없이 자동으로 켜져요. 끄려면 --uninstall-autostart 후 작업 관리자에서 python 을 끝내거나 다시 시작하세요."}
+        return {"files": [], "registry": {"key": r"Software\Microsoft\Windows\CurrentVersion\Run", "name": "DureSyncRunner", "value": subprocess.list2cmdline(argv)},
+                "start": [argv], "stop": [], "remove": [os.path.join(startup, "DureSync Runner.vbs")],
+                "note": "윈도우: 로그인할 때마다 창 없이 자동으로 켜져요. 끄려면 --uninstall-autostart (이미 켜진 러너는 다시 시작하면 꺼져요)."}
     if has_systemd:
         unit = os.path.join(home, ".config", "systemd", "user", "duresync-runner.service")
         qa = " ".join('"%s"' % a.replace('"', '\\"') for a in argv)
@@ -687,13 +687,32 @@ def autostart_install(a, dry=False):
         os.makedirs(os.path.dirname(f), exist_ok=True)
         with open(f, "w", encoding="utf-8", newline="") as fh:
             fh.write(body)
-    for cmd in ([] if getattr(a, "no_start", False) else plan["start"]):
+    if system == "Windows":
+        for f in plan["remove"]:                                           # 옛 방식(.vbs)이 남아 있으면 지운다 (안 지우면 오류 창이 계속 뜬다)
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
-            if r.returncode and not (len(cmd) > 1 and cmd[1] == "bootout"):
-                print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
+            import winreg
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, plan["registry"]["key"]) as k:
+                winreg.SetValueEx(k, plan["registry"]["name"], 0, winreg.REG_SZ, plan["registry"]["value"])
         except Exception as e:
-            print("  ! %s 실패: %s" % (cmd[0], e))
+            print("  ! 자동 시작 등록 실패: %s" % e)
+        if not getattr(a, "no_start", False):                              # 지금 바로 창 없이 켠다
+            try:
+                subprocess.Popen(plan["start"][0], creationflags=0x00000008 | 0x00000200, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+            except Exception as e:
+                print("  ! 러너를 켜지 못했어요: %s" % e)
+    else:
+        for cmd in ([] if getattr(a, "no_start", False) else plan["start"]):
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+                if r.returncode and not (len(cmd) > 1 and cmd[1] == "bootout"):
+                    print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
+            except Exception as e:
+                print("  ! %s 실패: %s" % (cmd[0], e))
     print("")
     print("[완료] 설치가 끝났어요! 이제 컴퓨터를 켤 때마다 러너가 알아서 켜져요.")
     print("       브라우저(DureSync 사이트)로 돌아가세요. 잠시 뒤 '연결됨'으로 바뀌어요.")
@@ -704,10 +723,20 @@ def autostart_install(a, dry=False):
 
 def autostart_uninstall():
     home = os.path.expanduser("~")
-    plan = autostart_plan(platform.system(), home, sys.executable or "python3", os.path.join(home, ".duresync-runner", "duresync_runner.py"), [],
+    system = platform.system()
+    plan = autostart_plan(system, home, sys.executable or "python3", os.path.join(home, ".duresync-runner", "duresync_runner.py"), [],
                           uid=_uid(), has_systemd=bool(shutil.which("systemctl")), appdata=os.environ.get("APPDATA"))
     found = [f for f in plan["remove"] if os.path.exists(f)]
-    if not found:                                                        # 등록한 적이 없으면 운영체제 설정(launchctl 등)을 건드리지 않는다
+    reg = False
+    if system == "Windows" and plan.get("registry"):
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, plan["registry"]["key"], 0, winreg.KEY_ALL_ACCESS) as k:
+                winreg.QueryValueEx(k, plan["registry"]["name"])
+                winreg.DeleteValue(k, plan["registry"]["name"]); reg = True
+        except Exception:
+            pass
+    if not found and not reg:                                            # 등록한 적이 없으면 운영체제 설정(launchctl 등)을 건드리지 않는다
         print("자동 시작이 켜져 있지 않았어요."); return 0
     for cmd in plan["stop"]:
         try:

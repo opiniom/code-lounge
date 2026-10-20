@@ -115,10 +115,13 @@ chk("  ㄴ 정상 종료(이미 켜져 있음)면 다시 켜지 않는다 (무�
 chk("  ㄴ 시작·끄기 명령이 사용자(uid) 범위", ["launchctl", "bootstrap", "gui/501", mac["files"][0][0]] in mac["start"] and ["launchctl", "bootout", "gui/501/cloud.duresync.runner"] in mac["stop"])
 sp = M.autostart_plan("Darwin", "/Users/내 폴더 & <a>", "/usr/bin/python3", "/x/러너 a.py", ARGS)
 chk("  ㄴ 공백·&·< 가 들어간 경로도 plist 가 깨지지 않는다", plistlib.loads(sp["files"][0][1].encode())["ProgramArguments"][1] == "/x/러너 a.py")
-win = M.autostart_plan("Windows", "C:\\Users\\me", "C:\\Py\\pythonw.exe", "C:\\Users\\me\\.duresync-runner\\duresync_runner.py", ARGS, appdata="C:\\Users\\me\\AppData\\Roaming")
-vb = win["files"][0][1]
-chk("윈도우: 시작프로그램 폴더에 창 없이(0) 실행하는 스크립트를 만든다", "Startup" in win["files"][0][0] and vb.startswith('CreateObject("WScript.Shell").Run "') and vb.rstrip().endswith(", 0, False"), vb)
-chk("  ㄴ 파이썬·러너 경로·믿는 사이트가 큰따옴표로 감싸져 들어간다", '""C:\\Py\\pythonw.exe""' in vb and '""https://duresync.cloud""' in vb, vb)
+win = M.autostart_plan("Windows", "C:\\Users\\홍길동", "C:\\Users\\홍길동\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe", "C:\\Users\\홍길동\\.duresync-runner\\duresync_runner.py", ARGS, appdata="C:\\Users\\홍길동\\AppData\\Roaming")
+rg = win["registry"]
+chk("윈도우: 로그인 때 실행되도록 레지스트리 Run 키에 등록한다 (한글 사용자 이름이 든 경로도 유니코드 그대로 → '지정된 파일을 찾을 수 없습니다' 오류가 나지 않는다)", rg["key"].endswith("CurrentVersion\\Run") and rg["name"] == "DureSyncRunner" and "홍길동" in rg["value"], rg)
+chk("  ㄴ 등록 명령: 파이썬(창 없는 pythonw)·러너 경로·믿는 사이트가 모두 들어간다", rg["value"].startswith("C:\\Users\\홍길동\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe") and "duresync_runner.py" in rg["value"] and "https://duresync.cloud" in rg["value"], rg["value"])
+chk("  ㄴ 예전 방식의 .vbs(시작프로그램 폴더)는 지울 목록에 들어 있고 더는 만들지 않는다 (옛 오류 창 제거)", win["files"] == [] and any(x.endswith("DureSync Runner.vbs") and "Startup" in x for x in win["remove"]), win["remove"])
+winsp = M.autostart_plan("Windows", "C:\\Users\\a b", "C:\\Program Files\\Python312\\pythonw.exe", "C:\\Users\\a b\\.duresync-runner\\duresync_runner.py", ARGS)
+chk("  ㄴ 공백이 든 경로(Program Files · 'a b')는 따옴표로 감싸진다", winsp["registry"]["value"].startswith('"C:\\Program Files\\Python312\\pythonw.exe" "C:\\Users\\a b\\.duresync-runner\\duresync_runner.py"'), winsp["registry"]["value"])
 lin = M.autostart_plan("Linux", "/home/me", "/usr/bin/python3", "/home/me/.duresync-runner/duresync_runner.py", ARGS, has_systemd=True)
 u = lin["files"][0][1]
 chk("리눅스: systemd 사용자 서비스(로그인 때 켜짐, 실패하면 재시작)", "ExecStart=\"/usr/bin/python3\" \"/home/me/.duresync-runner/duresync_runner.py\" \"--port\"" in u and "WantedBy=default.target" in u and "Restart=on-failure" in u and ["systemctl", "--user", "enable", "--now", "duresync-runner.service"] in lin["start"], u)
