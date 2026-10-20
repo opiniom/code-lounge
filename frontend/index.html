@@ -976,6 +976,15 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="runnerConfirmModal" role="alertdialog" aria-modal="true" aria-labelledby="rcTitle">
+    <div class="share-modal rc-card">
+      <div class="mh"><h3 class="rc-title" id="rcTitle">내 컴퓨터에서 실행할까요?</h3></div>
+      <div class="rc-body"></div>
+      <label class="rc-remember" hidden><input type="checkbox"> <span>이 안내를 다시 보지 않기</span></label>
+      <div class="rc-actions"><button class="btn rc-no" type="button">취소</button><button class="btn primary rc-ok" type="button">실행</button></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="projManageModal" onclick="if(event.target===this)closeProjManage()">
     <div class="share-modal" style="width:min(460px, calc(92vw / var(--ui-zoom)));">
       <div class="mh"><h3>프로젝트 관리</h3><button class="icon-btn" onclick="closeProjManage()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>

@@ -1018,7 +1018,7 @@ function wsPoll(){
         if (f.live) { f.baseUpdatedAt = r.updated_at; }                 // 실시간으로 받고 있는 파일은 글자 단위로 이미 반영돼 있다
         else if (!f.dirty && !f.saving) {
           f.raw = r.content; f.baseUpdatedAt = r.updated_at; f.updatedBy = r.updated_by;
-          if (r.updated_by !== me) { changed.push(r.path); who[r.updated_by || '팀원'] = 1; }
+          if (r.updated_by !== me) { changed.push(r.path); who[r.updated_by || '팀원'] = 1; f.othersEdit = true; }
           if (key === currentFileKey) renderFileContent(key, true);
         } else if (r.updated_by !== me) { f.conflict = r; if (key === currentFileKey) { wsRenderConflict(); wsUpdateSaveStatus(); } }
       }
@@ -1378,6 +1378,9 @@ async function runCode() {
       wsNameFixButtons(currentFileKey, true));
     return;
   }
+
+  // 내 PC 에서 실행하기 전 확인 (처음 한 번 안내 · 팀원이 고친 코드면 동의)
+  if (isLocal && !(await runnerGate(currentFileKey, code))) return;
 
   // 터미널 패널 열기 및 대화형 탭 활성화
   var termPanel = document.getElementById('wsTerminalPanel');

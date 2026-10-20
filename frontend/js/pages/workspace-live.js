@@ -276,6 +276,7 @@ function wsLiveOnOp(s, m) {
     s.buf = t2[1];
     s.rev = m.rev;
     if (t2[0].length) { wsLiveShift(s, t2[0]); if (!s.detached) wsLiveApply(t2[0], m); }
+    var fo = files[s.key]; if (fo && R.length) fo.othersEdit = true;           // 팀원이 고친 파일 (내 PC 에서 실행하기 전에 확인을 받는다)
   }
   if (m.crc != null && !wsLivePending() && !s.detached && window.monaco && monacoEditor) {
     var v = monacoEditor.getModel().getValue();
