@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.1.0"
+RUNNER_VERSION = "1.2.0"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -583,15 +583,23 @@ class Runner:
         return proc, tmp, [asyncio.ensure_future(watch())]
 
 
-def load_token(reset=False):
+TOKEN_RE = re.compile(r"^[A-Za-z0-9-]{16,64}$")
+
+
+def load_token(reset=False, preset=None):
+    """연결 코드: 파일(~/.duresync-runner/token)에 저장. preset(웹이 정해 준 코드)이 있으면 그걸로 맞춘다 → 사용자가 코드를 입력할 필요가 없다"""
     d = _home(".duresync-runner")
     os.makedirs(d, exist_ok=True)
     p = os.path.join(d, "token")
-    if not reset and os.path.exists(p):
+    t = None
+    if preset and TOKEN_RE.match(preset.strip()):
+        t = preset.strip().upper()
+    elif not reset and os.path.exists(p):
         t = open(p, encoding="utf-8").read().strip()
         if len(t) >= 16:
             return t
-    t = "-".join(secrets.token_hex(2) for _ in range(4)).upper()
+    if not t:
+        t = "-".join(secrets.token_hex(2) for _ in range(4)).upper()
     fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(t)
@@ -679,15 +687,18 @@ def autostart_install(a, dry=False):
         os.makedirs(os.path.dirname(f), exist_ok=True)
         with open(f, "w", encoding="utf-8", newline="") as fh:
             fh.write(body)
-    for cmd in plan["start"]:
+    for cmd in ([] if getattr(a, "no_start", False) else plan["start"]):
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
             if r.returncode and not (len(cmd) > 1 and cmd[1] == "bootout"):
                 print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
         except Exception as e:
             print("  ! %s 실패: %s" % (cmd[0], e))
-    print("완료! 지금부터 컴퓨터를 켤 때마다 러너가 알아서 켜져요. 연결 코드:  %s" % load_token())
-    print("(끄려면:  python3 %s --uninstall-autostart)" % dest)
+    print("")
+    print("[완료] 설치가 끝났어요! 이제 컴퓨터를 켤 때마다 러너가 알아서 켜져요.")
+    print("       브라우저(DureSync 사이트)로 돌아가세요. 잠시 뒤 '연결됨'으로 바뀌어요.")
+    print("       (직접 입력해야 하면 연결 코드:  %s)" % load_token())
+    print("       (끄고 싶을 때:  python3 %s --uninstall-autostart)" % dest)
     return 0
 
 
@@ -710,6 +721,8 @@ def autostart_uninstall():
 
 
 def main():
+    if sys.version_info < (3, 7):
+        print("[필요] 파이썬 3.7 이상이 필요해요. https://www.python.org/downloads/ 에서 새 버전을 설치해 주세요."); return 1
     for st in (sys.stdout, sys.stderr):                    # 윈도우 한국어 콘솔(cp949)은 일부 기호를 못 찍어서 죽으므로, 못 찍는 글자는 ? 로 바꿔서라도 계속 간다
         try:
             st.reconfigure(errors="replace")
@@ -723,12 +736,14 @@ def main():
     ap.add_argument("--reset-token", action="store_true", help="연결 코드를 새로 만들기")
     ap.add_argument("--install-autostart", action="store_true", help="컴퓨터를 켤 때마다 러너가 자동으로 켜지게 하기")
     ap.add_argument("--uninstall-autostart", action="store_true", help="자동 시작 끄기")
+    ap.add_argument("--token", default=os.environ.get("DURESYNC_TOKEN", ""), help="(웹사이트 한 줄 설치가 쓴다) 연결 코드를 이 값으로 맞추기")
+    ap.add_argument("--no-start", action="store_true", help="(테스트용) 자동 시작 파일만 만들고 지금 바로 켜지는 않기")
     ap.add_argument("--dry-run", action="store_true", help="(자동 시작 미리보기) 아무것도 바꾸지 않고 무엇을 할지만 보여 주기")
     ap.add_argument("--allow-no-origin", action="store_true", help="(개발·테스트용) Origin 이 없는 클라이언트도 허용")
     a = ap.parse_args()
     if a.uninstall_autostart:
         return autostart_uninstall()
-    token = load_token(a.reset_token)
+    token = load_token(a.reset_token, a.token or None)
     if a.show_token:
         print(token); return 0
     origins = [o.rstrip("/") for o in ALLOWED_ORIGINS + a.allow_origin if o and not o.startswith("__")]

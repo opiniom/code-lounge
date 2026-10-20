@@ -132,13 +132,18 @@ cd code-lounge
 
 ### 🖥️ 내 PC 에서 실행 (러너)
 
-서버에 없는 언어(Ruby·Kotlin 등)나 서버와 다른 버전은 **내 컴퓨터에 설치한 것**으로 실행할 수 있어요. 브라우저는 내 컴퓨터의 프로그램을 직접 켤 수 없어서, 작은 연결 프로그램(**러너**, Python 파일 하나)을 켜 둡니다.
+서버에 없는 언어(Ruby·Kotlin 등)나 서버와 다른 버전은 **내 컴퓨터에 설치한 것**으로 실행할 수 있어요. 브라우저는 내 컴퓨터의 프로그램을 직접 켤 수 없어서, 작은 연결 프로그램(**러너**, Python 파일 하나)을 내 컴퓨터에 설치해 둡니다. 설치는 **한 줄 복사 → 터미널에 붙여넣기**가 전부예요.
 
-1. 워크스페이스 위쪽 **🖥️ 내 PC** 버튼 → **러너 내려받기** (`duresync_runner.py`, 설치할 것 없음 · Python 3.7 이상)
-2. 터미널에서 `python3 duresync_runner.py` (Windows 는 `py duresync_runner.py`) → 화면에 **연결 코드**와 내 컴퓨터에서 찾은 언어(Python · Node · Java 여러 버전 · gcc/clang · .NET · Go · Rust · Ruby · PHP · Perl · Bash)가 나와요.
-3. 웹의 **내 PC** 창에 연결 코드를 입력 (처음 한 번). 연결되면 버튼 옆 점이 초록색이에요.
-   - **(추천) 자동 시작:** `python3 duresync_runner.py --install-autostart` 를 한 번만 실행하면 컴퓨터를 켤 때마다 러너가 알아서 켜져요(맥 LaunchAgent · 윈도우 시작프로그램(창 없이) · 리눅스 systemd/autostart). 끄기: `--uninstall-autostart`, 미리보기: `--dry-run`. 러너 파일은 `~/.duresync-runner/` 에 복사돼서 내려받은 폴더를 지워도 계속 동작해요.
-   - **언어 자동 인식:** 러너를 켠 뒤에 새로 설치한 언어도 ▶ 실행하면 러너가 알아서 다시 찾아요(재시작·'다시 검색' 불필요). 고른 버전이 지워졌으면 몰래 다른 버전으로 돌리지 않고 이유를 알려 줘요.
+1. 워크스페이스 위쪽 **🖥️ 내 PC** 버튼을 눌러요. 맥/윈도우/리눅스 탭(자동 선택)에 **터미널 여는 법**(맥: `⌘+Space` → "터미널" / 윈도우: 윈도우 키 → "PowerShell")과 **한 줄 설치 명령**이 나와요.
+2. 그 한 줄을 복사해서 터미널에 붙여넣고 Enter. **어느 폴더에서 실행해도 돼요.** (러너 내려받기 · `~/.duresync-runner` 설치 · 컴퓨터를 켤 때마다 자동 시작 등록을 한꺼번에 해요)
+   - 맥·리눅스: `curl -fsSL https://사이트/runner/install.sh | DURESYNC_TOKEN=코드 sh`
+   - 윈도우(PowerShell): `$env:DURESYNC_TOKEN='코드'; irm https://사이트/runner/install.ps1 | iex`
+   - 연결 코드는 **사이트가 정해서 명령에 넣어 줘요**(직접 입력 불필요).
+3. 끝. 창이 2.5초마다 확인해서 **알아서 "✓ 연결됨"**으로 바뀌고, 연결되면 설치 안내는 숨고 내 컴퓨터에서 찾은 언어 목록·스위치만 보여요. 안 될 때를 위해 창 안에 **"자주 나오는 에러와 해결법"**(파이썬 없음 · 내려받기 실패 · 연결 안 됨 · 코드 불일치)이 있어요.
+   - 파이썬이 없으면 스크립트가 **무엇을 설치해야 하는지** 알려 주고 끝나요(윈도우는 `winget install Python.Python.3.12` 도 안내).
+   - 새로 설치한 언어는 ▶ 실행할 때 러너가 **알아서 다시 찾아요**(재시작·'다시 검색' 불필요). 고른 버전이 지워졌으면 몰래 다른 버전으로 돌리지 않고 이유를 알려 줘요.
+   - 같은 와이파이를 써도 상관없어요. 러너는 **각자 자기 컴퓨터 안(127.0.0.1)**에서만 열려서, 컴퓨터마다 한 번씩 설치하면 돼요.
+   - 끄기·지우기: `python3 ~/.duresync-runner/duresync_runner.py --uninstall-autostart` (윈도우: `py "$env:USERPROFILE\.duresync-runner\duresync_runner.py" --uninstall-autostart`). 수동 실행/옵션: `duresync_runner.py` `--install-autostart` `--token` `--port` `--allow-origin` `--max-seconds` `--show-token` `--reset-token` `--dry-run` `--no-start`.
 4. 같은 언어가 서버와 내 PC 에 모두 있거나 버전이 여러 개면 ▶ 실행 옆 **선택 박스**에서 `서버 · Java 25 / 내 PC · Java 17` 처럼 고르면 돼요(고른 것은 기억). 서버와 내 PC 어디에도 없으면 **"언어 지원이 되지 않습니다"** 안내창이 떠요.
 
 - **PC 브라우저 전용** (크롬·엣지·파이어폭스). **폰·태블릿·설치형 앱(PWA)** 에서는 서버가 지원하는 언어만 실행돼요(그 외는 "언어 지원이 되지 않습니다"). 사파리는 https 사이트에서 내 컴퓨터(127.0.0.1)로의 연결을 막아서 쓸 수 없어요.
@@ -146,7 +151,7 @@ cd code-lounge
 - **실행 전 확인:** 내 PC 로 처음 실행할 때 "서버처럼 격리되지 않아요" 안내가 뜨고(다시 보지 않기 가능), **팀원이 고친 코드**(마지막 저장자가 내가 아니거나 실시간 편집으로 바뀐 코드)는 실행할 때마다 *"팀원이 고친 코드예요 — 확인했어요, 실행"* 동의를 받아요(같은 코드를 이미 확인했으면 다시 묻지 않아요). 서버에도 있는 언어는 기본이 **서버(격리)** 예요.
 - **내 PC 실행 사용 스위치:** 🖥️ 내 PC 창 맨 위 스위치를 끄면 러너가 켜져 있어도 항상 서버로만 실행돼요(이 브라우저에만 저장).
 - **보안:** 러너는 내 컴퓨터(127.0.0.1)에서만 열리고, 사이트에서 내려받은 러너는 **그 사이트 주소(`PUBLIC_BASE_URL`/접속 주소)의 요청만** 받아요(Origin·Host 확인). 거기에 **연결 코드**(내 컴퓨터 `~/.duresync-runner/token`)를 아는 브라우저만 연결돼요. 다른 사이트의 스크립트나 같은 와이파이의 다른 컴퓨터는 쓸 수 없어요. 옵션: `--port` · `--allow-origin 주소` · `--max-seconds` · `--show-token` · `--reset-token`.
-- 구성: `runner/duresync_runner.py`(러너 원본, 표준 라이브러리만 사용) · `GET /runner/duresync_runner.py`(내려받기, 사이트 주소를 넣어서 줘요) · `GET /api/runner`(최신 버전 확인) · `frontend/js/pages/workspace-runner.js`(화면) · `tests/test_runner.py`.
+- 구성: `runner/duresync_runner.py`(러너 원본, 표준 라이브러리만 사용) · `GET /runner/duresync_runner.py`(내려받기, 사이트 주소를 넣어서 줘요) · `GET /runner/install.sh` · `GET /runner/install.ps1`(한 줄 설치 스크립트) · `tests/test_runner_install.py` · `GET /api/runner`(최신 버전 확인) · `frontend/js/pages/workspace-runner.js`(화면) · `tests/test_runner.py`.
 
 ### 🔒 나만 보는 AI 대화
 

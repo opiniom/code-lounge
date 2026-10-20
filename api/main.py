@@ -314,6 +314,36 @@ async def runner_download(request: Request):
     return Response(body, media_type="text/x-python; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="duresync_runner.py"', "Cache-Control": "no-cache"})
 
 
+def _runner_base(request: Request) -> str:
+    """설치 스크립트가 러너를 내려받을 사이트 주소 (운영: PUBLIC_BASE_URL, 개발: 지금 접속한 localhost 주소)"""
+    host = (request.headers.get("host") or "").split(":")[0]
+    if host in ("localhost", "127.0.0.1"):
+        return f"{request.url.scheme}://{request.headers.get('host')}"
+    base = (settings.PUBLIC_BASE_URL or "").strip().rstrip("/")
+    return base or f"{request.url.scheme}://{request.headers.get('host')}"
+
+
+def _runner_install_script(name: str, request: Request) -> Response:
+    try:
+        with open(os.path.join(os.path.dirname(_RUNNER_FILE), name), "r", encoding="utf-8") as fh:
+            body = fh.read()
+    except OSError:
+        raise HTTPException(status_code=404, detail="설치 파일을 찾을 수 없어요.")
+    return Response(body.replace("__BASE__", _runner_base(request)), media_type="text/plain; charset=utf-8", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/runner/install.sh", tags=["Runner"], include_in_schema=False)
+async def runner_install_sh(request: Request):
+    """맥·리눅스 한 줄 설치:  curl -fsSL 사이트/runner/install.sh | DURESYNC_TOKEN=코드 sh"""
+    return _runner_install_script("install.sh", request)
+
+
+@app.get("/runner/install.ps1", tags=["Runner"], include_in_schema=False)
+async def runner_install_ps1(request: Request):
+    """윈도우 한 줄 설치:  $env:DURESYNC_TOKEN='코드'; irm 사이트/runner/install.ps1 | iex"""
+    return _runner_install_script("install.ps1", request)
+
+
 @app.get("/", tags=["UI"], include_in_schema=False)
 @app.get("/ui", tags=["UI"], include_in_schema=False)
 @app.get("/app", tags=["UI"], include_in_schema=False)

@@ -141,83 +141,121 @@ function runnerPaint() {
 }
 
 /* ===== 안내·설정 창 ===== */
-var RUNNER_MODAL_NOTE = '';
+var RUNNER_MODAL_NOTE = '', RUNNER_UI = { os: null, since: 0, poll: null, sig: '', was: false };
+/* 연결 코드는 사이트가 정해서 한 줄 설치 명령에 넣어 준다 → 사용자가 코드를 보고 입력할 일이 없다 */
+function runnerEnsureToken() {
+  var t = runnerToken(); if (t) return t;
+  var a = new Uint8Array(8); (window.crypto || window.msCrypto).getRandomValues(a);
+  var h = ''; for (var i = 0; i < a.length; i++) h += ('0' + a[i].toString(16)).slice(-2);
+  t = (h.slice(0, 4) + '-' + h.slice(4, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16)).toUpperCase();
+  runnerSetToken(t); return t;
+}
+function runnerInstallCmd(os) {
+  var base = (typeof API_BASE === 'string' && API_BASE) || location.origin, t = runnerEnsureToken();
+  return os === 'win' ? "$env:DURESYNC_TOKEN='" + t + "'; irm " + base + '/runner/install.ps1 | iex' : 'curl -fsSL ' + base + '/runner/install.sh | DURESYNC_TOKEN=' + t + ' sh';
+}
 function runnerOpenModal(note) {
   var m = document.getElementById('runnerModal'); if (!m) return;
-  RUNNER_MODAL_NOTE = note || '';
-  m.classList.add('open'); runnerRenderModal();
-  runnerLatest().then(function() { if (m.classList.contains('open')) runnerRenderModal(); });
-  if (runnerDeviceOk()) runnerProbe(true);
+  RUNNER_MODAL_NOTE = note || ''; RUNNER_UI.os = RUNNER_UI.os || runnerOsHint(); RUNNER_UI.since = Date.now(); RUNNER_UI.sig = '';
+  m.classList.add('open'); runnerRenderModal(true);
+  runnerLatest().then(function() { if (m.classList.contains('open')) runnerRenderModal(true); });
+  if (runnerDeviceOk()) { runnerProbe(true); runnerStartPoll(); }
 }
-function runnerCloseModal() { var m = document.getElementById('runnerModal'); if (m) m.classList.remove('open'); }
+function runnerCloseModal() { var m = document.getElementById('runnerModal'); if (m) m.classList.remove('open'); clearInterval(RUNNER_UI.poll); RUNNER_UI.poll = null; }
+/* 창이 열려 있고 아직 연결 전이면 2.5초마다 확인해서, 터미널에 붙여넣자마자 '연결됨'으로 바뀐다 */
+function runnerStartPoll() {
+  clearInterval(RUNNER_UI.poll);
+  RUNNER_UI.poll = setInterval(function() {
+    var m = document.getElementById('runnerModal');
+    if (!m || !m.classList.contains('open')) { clearInterval(RUNNER_UI.poll); RUNNER_UI.poll = null; return; }
+    if (!(RUNNER.last && RUNNER.last.ok)) runnerProbe(true);
+  }, 2500);
+}
 function runnerCopy(text, btn) {
   function ok() { if (btn) { var o = btn.textContent; btn.textContent = '복사됨 ✓'; setTimeout(function() { btn.textContent = o; }, 1400); } }
   try { navigator.clipboard.writeText(text).then(ok, function() {}); } catch (e) {}
 }
-function runnerRenderModal() {
+function runnerRenderModal(force) {
   var body = document.querySelector('#runnerModal .rn-body'); if (!body) return;
-  var keep = document.getElementById('runnerCodeInput'), typed = keep ? keep.value : '';
+  var last = RUNNER.last || { ok: false, why: 'down' }, latest = RUNNER.latest && RUNNER.latest.version, on = runnerEnabled();
+  var waited = !last.ok && Date.now() - RUNNER_UI.since > 25000;
+  var sig = [last.ok, last.why, on, RUNNER_UI.os, latest, waited, RUNNER.info && JSON.stringify(RUNNER.info.runtimes || {}), RUNNER_MODAL_NOTE].join('|');
+  if (!force && sig === RUNNER_UI.sig) return;
+  RUNNER_UI.sig = sig;
+  if (last.ok && !RUNNER_UI.was) { try { if (RUNNER_UI.was === false && RUNNER_UI.since && Date.now() - RUNNER_UI.since > 1500) pushToast('🖥️', '내 PC에 연결됐어요', '이제 내 컴퓨터에 설치한 언어로 실행할 수 있어요.'); } catch (e) {} }
+  RUNNER_UI.was = !!last.ok;
   body.innerHTML = '';
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-  function add(n) { body.appendChild(n); return n; }
+  function add(n, parent) { (parent || body).appendChild(n); return n; }
+  function codeBox(text, parent) {
+    var cb = el('div', 'rn-code'); cb.appendChild(el('code', null, text));
+    var cp = el('button', 'rn-copy', '복사'); cp.type = 'button'; cp.onclick = function() { runnerCopy(text, cp); }; cb.appendChild(cp); add(cb, parent); return cb;
+  }
   if (!runnerDeviceOk()) {
     add(el('div', 'rn-status warn', '이 기기(폰·태블릿)에서는 내 PC 실행을 쓸 수 없어요'));
-    add(el('p', 'rn-p', '폰과 태블릿에서는 설치한 프로그램을 연결할 수 없어서 서버가 지원하는 언어만 실행할 수 있어요. 내 컴퓨터(PC)의 크롬·엣지·파이어폭스에서 열어 주세요.'));
+    add(el('p', 'rn-p', '폰과 태블릿에서는 서버가 지원하는 언어만 실행할 수 있어요. 내 컴퓨터(PC)의 크롬·엣지·파이어폭스에서 열면 내 컴퓨터에 설치한 언어로도 실행할 수 있어요.'));
     return;
   }
   if (RUNNER_MODAL_NOTE) add(el('p', 'rn-note', RUNNER_MODAL_NOTE));
-  var sw = add(el('label', 'rn-switch')); var cbx = el('input'); cbx.type = 'checkbox'; cbx.checked = runnerEnabled();
-  cbx.onchange = function() { runnerSetEnabled(cbx.checked); pushToast('🖥️', cbx.checked ? '내 PC 실행을 켰어요' : '내 PC 실행을 껐어요', cbx.checked ? '설치한 언어를 다시 쓸 수 있어요.' : '이제 서버로만 실행돼요. (러너 프로그램은 그대로 켜져 있어요)'); };
-  sw.appendChild(cbx); sw.appendChild(el('span', null, '내 PC 실행 사용')); sw.appendChild(el('small', null, runnerEnabled() ? '켜짐: 서버에 없는 언어·버전은 내 컴퓨터로 실행' : '꺼짐: 항상 서버로만 실행'));
-  var last = RUNNER.last || { ok: false, why: 'down' }, st;
-  if (!runnerEnabled()) st = ['warn', '내 PC 실행이 꺼져 있어요 (서버로만 실행). 위 스위치를 켜면 다시 쓸 수 있어요.'];
-  else if (last.ok) st = ['ok', '✓ 연결됨 · 러너 ' + (RUNNER.info.version || '') + ' · ' + (RUNNER.info.os || '')];
-  else if (last.why === 'token' || last.why === 'notoken') st = ['warn', last.why === 'token' ? '연결 코드가 달라요. 러너 화면에 나온 코드를 다시 입력해 주세요.' : '러너는 켜져 있어요. 아래에 연결 코드를 입력해 주세요.'];
-  else if (last.why === 'blocked') st = ['bad', '이 브라우저가 내 컴퓨터(127.0.0.1)로의 연결을 막고 있어요. 크롬·엣지·파이어폭스에서 열어 주세요. (사파리는 막을 수 있어요)'];
-  else st = ['bad', '러너가 꺼져 있어요. 아래 순서대로 켜 주세요.'];
-  add(el('div', 'rn-status ' + st[0], st[1]));
-  var latest = RUNNER.latest && RUNNER.latest.version;
-  if (last.ok && latest && runnerVerLt(RUNNER.info.version, latest)) add(el('p', 'rn-note', '새 러너 버전(' + latest + ')이 있어요. 아래 [러너 내려받기]로 받아서 다시 켜 주세요.'));
-
-  var os = runnerOsHint(), cmd = os === 'win' ? 'py duresync_runner.py' : 'python3 duresync_runner.py';
-  var steps = add(el('ol', 'rn-steps'));
-  var s1 = el('li'); s1.appendChild(el('b', null, '러너 내려받기 '));
-  var dl = el('a', 'btn primary rn-dl', '⬇ 러너 내려받기 (duresync_runner.py)'); dl.href = API_BASE + '/runner/duresync_runner.py'; dl.setAttribute('download', 'duresync_runner.py'); s1.appendChild(dl);
-  s1.appendChild(el('div', 'rn-faint', '설치할 것은 없고 Python 3.7 이상만 있으면 돼요. 파일 하나예요.')); steps.appendChild(s1);
-  var s2 = el('li'); s2.appendChild(el('b', null, '내려받은 폴더에서 터미널(명령 프롬프트)을 열고 실행'));
-  var cb = el('div', 'rn-code'); cb.appendChild(el('code', null, cmd)); var cp = el('button', 'rn-copy', '복사'); cp.type = 'button'; cp.onclick = function() { runnerCopy(cmd, cp); }; cb.appendChild(cp); s2.appendChild(cb);
-  s2.appendChild(el('div', 'rn-faint', '켜면 화면에 "연결 코드"와 내 컴퓨터에서 찾은 언어가 나와요. 쓰는 동안 이 창을 켜 두세요. (Ctrl+C 로 끔) 아래 4번 "자동으로 켜기"를 하면 이 창도 필요 없어요.')); steps.appendChild(s2);
-  var s3 = el('li'); s3.appendChild(el('b', null, '화면에 나온 연결 코드를 입력'));
-  var row = el('div', 'rn-row'); var inp = el('input', 'rn-input'); inp.id = 'runnerCodeInput'; inp.type = 'text'; inp.placeholder = '예: 22F0-2D0A-2223-F30B'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.value = typed || runnerToken();
-  var go = el('button', 'btn primary', '연결'); go.type = 'button';
-  go.onclick = function() { var v = inp.value.trim().toUpperCase(); runnerSetToken(v); go.disabled = true; go.textContent = '확인 중…'; runnerProbe(true).then(function(r) { go.disabled = false; go.textContent = '연결'; if (r.ok) pushToast('🖥️', '내 PC에 연결됐어요', '이제 내 컴퓨터에 설치한 언어로 실행할 수 있어요.'); }); };
-  inp.onkeydown = function(e) { if (e.key === 'Enter') go.click(); };
-  row.appendChild(inp); row.appendChild(go); s3.appendChild(row); steps.appendChild(s3);
-  var s4 = el('li'); s4.appendChild(el('b', null, '(추천) 컴퓨터를 켤 때 자동으로 켜기 — 한 번만'));
-  var ac = os === 'win' ? 'py duresync_runner.py --install-autostart' : 'python3 duresync_runner.py --install-autostart';
-  var cb2 = el('div', 'rn-code'); cb2.appendChild(el('code', null, ac)); var cp2 = el('button', 'rn-copy', '복사'); cp2.type = 'button'; cp2.onclick = function() { runnerCopy(ac, cp2); }; cb2.appendChild(cp2); s4.appendChild(cb2);
-  s4.appendChild(el('div', 'rn-faint', '이렇게 하면 다음부터 러너를 직접 켤 필요가 없어요. 끄려면 같은 명령에서 --install-autostart 를 --uninstall-autostart 로 바꾸세요.')); steps.appendChild(s4);
-
-  if (last.ok) {                                                      // 찾은 언어 목록
+  var os = RUNNER_UI.os || 'mac';
+  /* ---- 연결됨 ---- */
+  if (last.ok) {
+    var sw = add(el('label', 'rn-switch')); var cbx = el('input'); cbx.type = 'checkbox'; cbx.checked = on;
+    cbx.onchange = function() { runnerSetEnabled(cbx.checked); pushToast('🖥️', cbx.checked ? '내 PC 실행을 켰어요' : '내 PC 실행을 껐어요', cbx.checked ? '설치한 언어를 다시 쓸 수 있어요.' : '이제 서버로만 실행돼요. (러너 프로그램은 그대로 켜져 있어요)'); };
+    sw.appendChild(cbx); sw.appendChild(el('span', null, '내 PC 실행 사용')); sw.appendChild(el('small', null, on ? '켜짐: 서버에 없는 언어·버전은 내 컴퓨터로 실행해요' : '꺼짐: 항상 서버로만 실행해요'));
+    add(el('div', 'rn-status ' + (on ? 'ok' : 'warn'), on ? '✓ 연결됨 · 내 컴퓨터(' + (RUNNER.info.os || '') + ')의 언어를 쓸 수 있어요' : '연결은 돼 있지만 "내 PC 실행 사용"이 꺼져 있어요 (서버로만 실행)'));
+    if (latest && runnerVerLt(RUNNER.info.version, latest)) add(el('p', 'rn-note', '새 러너 버전(' + latest + ')이 있어요. 아래 "다시 설치"의 한 줄을 붙여넣으면 새 버전으로 바뀌어요.'));
     var rt = RUNNER.info.runtimes || {}, names = Object.keys(rt);
-    var h = add(el('div', 'rn-lbl', '내 컴퓨터에서 찾은 언어 (' + names.length + '개)'));
+    add(el('div', 'rn-lbl', '내 컴퓨터에서 찾은 언어 (' + names.length + '개)'));
     var box = add(el('div', 'rn-langs'));
     names.forEach(function(l) { var r = el('div', 'rn-lang'); r.appendChild(el('b', null, (WS_RUN_LABEL && WS_RUN_LABEL[l]) || l)); r.appendChild(el('span', null, rt[l].map(function(v) { return v.version || v.id; }).join(' · '))); box.appendChild(r); });
-    if (!names.length) box.appendChild(el('div', 'rn-faint', '아직 찾은 언어가 없어요. Python·Node·Java·gcc 등을 설치한 뒤 [다시 검색]을 눌러 주세요.'));
+    if (!names.length) box.appendChild(el('div', 'rn-faint', '아직 찾은 언어가 없어요. 파이썬·자바·gcc 등을 설치하면 ▶ 실행할 때 알아서 찾아요.'));
     var rs = add(el('button', 'btn', '🔄 다시 검색')); rs.type = 'button';
     rs.onclick = function() { rs.disabled = true; rs.textContent = '검색 중…'; runnerRefresh().then(function() { rs.disabled = false; rs.textContent = '🔄 다시 검색'; }); };
     add(el('p', 'rn-faint', '언어를 새로 설치했다면 ▶ 실행할 때 알아서 다시 찾아요. 이 버튼을 누르지 않아도 돼요.'));
     add(el('p', 'rn-p', '같은 언어가 서버에도 있고 내 PC 에도 있으면 ▶ 실행 옆 선택 박스에서 "서버 · Java 21 / 내 PC · Java 17" 처럼 어디서 어떤 버전으로 실행할지 고를 수 있어요.'));
+    var d = add(el('details', 'rn-more')); d.appendChild(el('summary', null, '다시 설치하거나 끄고 싶어요'));
+    add(el('p', 'rn-p', '다시 설치(새 버전으로 바꾸기, 컴퓨터를 바꿨을 때): 터미널에 아래 한 줄을 붙여넣으세요.'), d); codeBox(runnerInstallCmd(os), d);
+    add(el('p', 'rn-p', '완전히 끄고 지우기(자동 시작 해제):'), d);
+    codeBox(os === 'win' ? 'py "$env:USERPROFILE\\.duresync-runner\\duresync_runner.py" --uninstall-autostart' : 'python3 ~/.duresync-runner/duresync_runner.py --uninstall-autostart', d);
+    add(el('p', 'rn-faint', '잠깐만 쓰고 싶지 않다면 위의 "내 PC 실행 사용"만 꺼도 돼요.'), d);
+  } else {
+    /* ---- 아직 연결 전: 3단계 안내 ---- */
+    var st;
+    if (last.why === 'blocked') st = ['bad', '이 브라우저가 내 컴퓨터로의 연결을 막고 있어요. 크롬·엣지·파이어폭스에서 열어 주세요. (사파리는 막을 수 있어요)'];
+    else if (!on) st = ['warn', '내 PC 실행이 꺼져 있어요 (서버로만 실행). 연결한 뒤 켤 수 있어요.'];
+    else if (last.why === 'token') st = ['warn', '러너는 켜져 있는데 연결 코드가 달라요. 아래 한 줄을 다시 붙여넣으면 맞춰져요.'];
+    else st = ['bad', '아직 내 컴퓨터에 러너가 없어요. 아래 3단계로 설치해 주세요 (1분이면 돼요).'];
+    add(el('div', 'rn-status ' + st[0], st[1]));
+    var tabs = add(el('div', 'rn-tabs'));
+    [['mac', '맥'], ['win', '윈도우'], ['linux', '리눅스']].forEach(function(t) {
+      var b = el('button', 'rn-tab' + (os === t[0] ? ' on' : ''), t[1]); b.type = 'button'; b.onclick = function() { RUNNER_UI.os = t[0]; runnerRenderModal(true); }; tabs.appendChild(b);
+    });
+    var steps = add(el('ol', 'rn-steps'));
+    var s1 = el('li'); s1.appendChild(el('b', null, '터미널(검은 글자 창) 열기'));
+    s1.appendChild(el('div', 'rn-faint', os === 'win' ? '키보드의 윈도우 키(⊞)를 누르고  PowerShell  이라고 입력한 뒤 Enter 를 누르세요. 파란(또는 검은) 창이 열려요.' : (os === 'mac' ? '키보드에서 ⌘ Command + Space 를 함께 누르고  터미널  이라고 입력한 뒤 Enter 를 누르세요. 글자를 입력하는 창이 열려요.' : '터미널 앱을 열어 주세요. (보통 Ctrl+Alt+T)')));
+    steps.appendChild(s1);
+    var s2 = el('li'); s2.appendChild(el('b', null, '아래 한 줄을 복사해서 터미널에 붙여넣고 Enter'));
+    codeBox(runnerInstallCmd(os), s2);
+    s2.appendChild(el('div', 'rn-faint', (os === 'win' ? '붙여넣기: Ctrl+V (또는 창을 마우스 오른쪽 클릭). ' : '붙여넣기: ⌘V (리눅스는 Ctrl+Shift+V). ') + '어느 폴더에 있어도 괜찮아요. 아무것도 따로 받을 필요 없어요.'));
+    steps.appendChild(s2);
+    var s3 = el('li'); s3.appendChild(el('b', null, '끝! 이 창이 알아서 "연결됨"으로 바뀌어요'));
+    s3.appendChild(el('div', 'rn-faint', waited ? '아직 연결이 안 돼요. 터미널에 빨간 글자(에러)가 나왔다면 아래 "자주 나오는 에러"를 보세요. 에러가 없는데도 안 되면 이 페이지를 새로고침(Ctrl+Shift+R) 해 보세요.' : '⏳ 연결을 기다리는 중이에요… 터미널에 "[완료] 설치가 끝났어요!"가 나오면 잠시 뒤 자동으로 바뀌어요.'));
+    steps.appendChild(s3);
+    var tr = add(el('details', 'rn-more')); tr.open = waited; tr.appendChild(el('summary', null, '자주 나오는 에러와 해결법'));
+    var items = [
+      ['"파이썬이 없어요 / [필요] 파이썬 3.7 이상" 이라고 나와요', '러너는 파이썬이 있어야 켜져요. ' + (os === 'win' ? 'python.org/downloads 에서 설치(첫 화면 "Add python.exe to PATH" 체크)하거나 PowerShell 에 winget install Python.Python.3.12 를 입력하세요. 설치 후 PowerShell 을 닫았다가 새로 열고 위 한 줄을 다시 붙여넣으세요.' : 'python.org/downloads 에서 설치하세요. 맥은 터미널에 xcode-select --install 도 돼요. 설치 후 위 한 줄을 다시 붙여넣으세요.')],
+      ['"러너를 내려받지 못했어요" / "Could not resolve host" 라고 나와요', '인터넷 연결(와이파이)을 확인하고 한 줄을 다시 붙여넣으세요. 회사·학교 보안 프로그램이 막을 수도 있어요.'],
+      ['붙여넣었는데 아무 일도 안 일어나요', '한 줄 전체가 붙여넣어졌는지, 맨 끝에서 Enter 를 눌렀는지 확인하세요. 복사 버튼을 누르고 다시 붙여넣어 보세요.'],
+      ['설치는 끝났는데 계속 "러너가 없어요" 라고 나와요', '이 페이지를 Ctrl+Shift+R 로 새로고침하고 잠깐 기다려 보세요. 크롬·엣지·파이어폭스에서만 연결돼요(사파리 불가). VPN·보안 프로그램이 내 컴퓨터(127.0.0.1) 연결을 막는지도 확인하세요.'],
+      ['"연결 코드가 달라요" 라고 나와요', '위의 한 줄을 다시 붙여넣으면 코드가 자동으로 맞춰져요. (다른 브라우저로 연결하려는 경우에도 한 줄을 다시 실행하세요)']
+    ];
+    items.forEach(function(it) { var q = el('div', 'rn-q'); q.appendChild(el('b', null, it[0])); q.appendChild(el('div', 'rn-faint', it[1])); tr.appendChild(q); });
   }
   var safe = add(el('div', 'rn-safe'));
   safe.appendChild(el('b', null, '🔒 안전하게 쓰려면'));
-  [['러너는 내 컴퓨터(127.0.0.1)에서만 열려요. 같은 와이파이의 다른 컴퓨터는 접속할 수 없어요.'], ['DureSync 사이트에서 온 요청만 받고, 위의 연결 코드를 아는 브라우저만 연결돼요.'], ['코드는 내 컴퓨터에서 내 권한으로 실행돼요(서버처럼 격리되지 않아요). 믿을 수 있는 코드만 실행하세요.'], ['폰·태블릿·설치형 앱(PWA)에서는 쓸 수 없어요. 서버가 지원하는 언어만 실행돼요.']].forEach(function(t) { safe.appendChild(el('div', 'rn-li', '· ' + t[0])); });
+  ['러너는 내 컴퓨터(127.0.0.1)에서만 열려요. 같은 와이파이를 쓰는 다른 사람도 내 러너를 쓸 수 없어요. (각자 자기 컴퓨터에 설치해요)', 'DureSync 사이트에서 온 요청만 받고, 연결 코드를 아는 브라우저만 연결돼요.', '코드는 내 컴퓨터에서 내 권한으로 실행돼요(서버처럼 격리되지 않아요). 믿을 수 있는 코드만 실행하세요.', '폰·태블릿·설치형 앱(PWA)에서는 쓸 수 없어요. 서버가 지원하는 언어만 실행돼요.'].forEach(function(t) { safe.appendChild(el('div', 'rn-li', '· ' + t)); });
 }
-
-/* 시작: PC 에서는 '내 PC' 버튼을 보이고, 전에 연결한 적이 있으면 상태를 확인한다 */
-function runnerInit() { runnerPaint(); if (runnerDeviceOk() && runnerToken()) runnerProbe(false); }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runnerInit); else setTimeout(runnerInit, 0);
-
 
 /* ===== 내 PC 에서 실행하기 전의 확인 =====
    내 PC 실행은 서버처럼 격리되지 않아서, 처음 한 번은 안내를 보여 주고
