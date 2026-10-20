@@ -53,6 +53,7 @@ try:
     js = open(os.path.join(ROOT, "frontend", "js", "pages", "workspace-runner.js"), encoding="utf-8").read(); html = open(os.path.join(ROOT, "frontend", "index.html"), encoding="utf-8").read()
     chk("화면: 시작 코드(runnerInit)가 있고 페이지가 열릴 때 실행된다 (없으면 버튼이 숨겨진 채로 남는다)", "function runnerInit()" in js and re.search(r"DOMContentLoaded', runnerInit\)|setTimeout\(runnerInit", js))
     chk("  ㄴ '내 PC' 버튼이 편집기 위쪽과 프로젝트 줄 두 곳에 있다 (파일을 열지 않아도 보임)", 'id="wsRunnerBtn"' in html and 'id="wsRunnerBtnTop"' in html and html.count("ws-runner-btn") >= 2)
+    chk("  ㄴ 러너를 직접 켠 사람을 위해 '연결 코드 직접 입력' 칸이 있다 (코드가 달라요 상태에서는 바로 보인다)", "runnerCodeInput" in js and "연결 코드 직접 입력" in js and "if (last.why === 'token') codeRow(body)" in js)
     chk("  ㄴ workspace-runner.js 가 화면 묶음(manifest)에 들어 있다", "js/pages/workspace-runner.js" in open(os.path.join(ROOT, "frontend", "manifest.json"), encoding="utf-8").read())
     # 연결 코드 옵션 (러너 직접)
     h5 = os.path.join(TMP, "h5"); os.makedirs(h5)

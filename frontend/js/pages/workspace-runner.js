@@ -183,6 +183,7 @@ function runnerRenderModal(force) {
   var sig = [last.ok, last.why, on, RUNNER_UI.os, latest, waited, RUNNER.info && JSON.stringify(RUNNER.info.runtimes || {}), RUNNER_MODAL_NOTE].join('|');
   if (!force && sig === RUNNER_UI.sig) return;
   RUNNER_UI.sig = sig;
+  var keepEl = document.getElementById('runnerCodeInput'), typed = keepEl ? keepEl.value : '';
   if (last.ok && !RUNNER_UI.was) { try { if (RUNNER_UI.was === false && RUNNER_UI.since && Date.now() - RUNNER_UI.since > 1500) pushToast('🖥️', '내 PC에 연결됐어요', '이제 내 컴퓨터에 설치한 언어로 실행할 수 있어요.'); } catch (e) {} }
   RUNNER_UI.was = !!last.ok;
   body.innerHTML = '';
@@ -191,6 +192,20 @@ function runnerRenderModal(force) {
   function codeBox(text, parent) {
     var cb = el('div', 'rn-code'); cb.appendChild(el('code', null, text));
     var cp = el('button', 'rn-copy', '복사'); cp.type = 'button'; cp.onclick = function() { runnerCopy(text, cp); }; cb.appendChild(cp); add(cb, parent); return cb;
+  }
+  function codeRow(parent, opened) {                                   // 러너를 이미 직접 켰을 때: 러너 화면에 나온 연결 코드를 입력
+    var wrap = el('div', 'rn-codein');
+    wrap.appendChild(el('div', 'rn-faint', '러너를 직접 켰다면(터미널에 "연결 코드"가 나온 경우) 그 코드를 여기에 입력하세요.'));
+    var row = el('div', 'rn-row'); var inp = el('input', 'rn-input'); inp.id = 'runnerCodeInput'; inp.type = 'text'; inp.placeholder = '예: 22F0-2D0A-2223-F30B'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.value = typed || '';
+    var go = el('button', 'btn primary', '연결'); go.type = 'button';
+    go.onclick = function() {
+      var v = inp.value.trim().toUpperCase().replace(/\s+/g, '');
+      if (!/^[A-Z0-9-]{16,64}$/.test(v)) { pushToast('⚠️', '연결 코드 형식이 달라요', '터미널에 나온 코드(예: 22F0-2D0A-2223-F30B)를 그대로 입력해 주세요.'); return; }
+      runnerSetToken(v); go.disabled = true; go.textContent = '확인 중…';
+      runnerProbe(true).then(function(r) { go.disabled = false; go.textContent = '연결'; if (!r.ok) pushToast('⚠️', r.why === 'token' ? '코드가 달라요' : '러너에 연결하지 못했어요', r.why === 'token' ? '러너 화면에 나온 코드를 다시 확인해 주세요.' : '러너가 켜져 있는지 확인해 주세요.'); });
+    };
+    inp.onkeydown = function(e) { if (e.key === 'Enter') go.click(); };
+    row.appendChild(inp); row.appendChild(go); wrap.appendChild(row); parent.appendChild(wrap);
   }
   if (!runnerDeviceOk()) {
     add(el('div', 'rn-status warn', '이 기기(폰·태블릿)에서는 내 PC 실행을 쓸 수 없어요'));
@@ -225,9 +240,10 @@ function runnerRenderModal(force) {
     var st;
     if (last.why === 'blocked') st = ['bad', '이 브라우저가 내 컴퓨터로의 연결을 막고 있어요. 크롬·엣지·파이어폭스에서 열어 주세요. (사파리는 막을 수 있어요)'];
     else if (!on) st = ['warn', '내 PC 실행이 꺼져 있어요 (서버로만 실행). 연결한 뒤 켤 수 있어요.'];
-    else if (last.why === 'token') st = ['warn', '러너는 켜져 있는데 연결 코드가 달라요. 아래 한 줄을 다시 붙여넣으면 맞춰져요.'];
+    else if (last.why === 'token') st = ['warn', '러너는 켜져 있는데 연결 코드가 달라요. 러너 화면에 나온 코드를 아래에 입력하거나, 아래 한 줄을 다시 붙여넣어 주세요.'];
     else st = ['bad', '아직 내 컴퓨터에 러너가 없어요. 아래 3단계로 설치해 주세요 (1분이면 돼요).'];
     add(el('div', 'rn-status ' + st[0], st[1]));
+    if (last.why === 'token') codeRow(body);                           // 러너는 켜져 있는데 코드가 다르면 바로 입력할 수 있게
     var tabs = add(el('div', 'rn-tabs'));
     [['mac', '맥'], ['win', '윈도우'], ['linux', '리눅스']].forEach(function(t) {
       var b = el('button', 'rn-tab' + (os === t[0] ? ' on' : ''), t[1]); b.type = 'button'; b.onclick = function() { RUNNER_UI.os = t[0]; runnerRenderModal(true); }; tabs.appendChild(b);
@@ -243,13 +259,14 @@ function runnerRenderModal(force) {
     var s3 = el('li'); s3.appendChild(el('b', null, '끝! 이 창이 알아서 "연결됨"으로 바뀌어요'));
     s3.appendChild(el('div', 'rn-faint', waited ? '아직 연결이 안 돼요. 터미널에 빨간 글자(에러)가 나왔다면 아래 "자주 나오는 에러"를 보세요. 에러가 없는데도 안 되면 이 페이지를 새로고침(Ctrl+Shift+R) 해 보세요.' : '⏳ 연결을 기다리는 중이에요… 터미널에 "[완료] 설치가 끝났어요!"가 나오면 잠시 뒤 자동으로 바뀌어요.'));
     steps.appendChild(s3);
+    if (last.why !== 'token') { var dm = add(el('details', 'rn-more')); dm.appendChild(el('summary', null, '러너를 이미 켰는데 연결이 안 돼요 (연결 코드 직접 입력)')); codeRow(dm); }
     var tr = add(el('details', 'rn-more')); tr.open = waited; tr.appendChild(el('summary', null, '자주 나오는 에러와 해결법'));
     var items = [
       ['"파이썬이 없어요 / [필요] 파이썬 3.7 이상" 이라고 나와요', '러너는 파이썬이 있어야 켜져요. ' + (os === 'win' ? 'python.org/downloads 에서 설치(첫 화면 "Add python.exe to PATH" 체크)하거나 PowerShell 에 winget install Python.Python.3.12 를 입력하세요. 설치 후 PowerShell 을 닫았다가 새로 열고 위 한 줄을 다시 붙여넣으세요.' : 'python.org/downloads 에서 설치하세요. 맥은 터미널에 xcode-select --install 도 돼요. 설치 후 위 한 줄을 다시 붙여넣으세요.')],
       ['"러너를 내려받지 못했어요" / "Could not resolve host" 라고 나와요', '인터넷 연결(와이파이)을 확인하고 한 줄을 다시 붙여넣으세요. 회사·학교 보안 프로그램이 막을 수도 있어요.'],
       ['붙여넣었는데 아무 일도 안 일어나요', '한 줄 전체가 붙여넣어졌는지, 맨 끝에서 Enter 를 눌렀는지 확인하세요. 복사 버튼을 누르고 다시 붙여넣어 보세요.'],
       ['설치는 끝났는데 계속 "러너가 없어요" 라고 나와요', '이 페이지를 Ctrl+Shift+R 로 새로고침하고 잠깐 기다려 보세요. 크롬·엣지·파이어폭스에서만 연결돼요(사파리 불가). VPN·보안 프로그램이 내 컴퓨터(127.0.0.1) 연결을 막는지도 확인하세요.'],
-      ['"연결 코드가 달라요" 라고 나와요', '위의 한 줄을 다시 붙여넣으면 코드가 자동으로 맞춰져요. (다른 브라우저로 연결하려는 경우에도 한 줄을 다시 실행하세요)']
+      ['"연결 코드가 달라요" 라고 나와요', '러너 화면(터미널)에 나온 연결 코드를 위 입력칸에 넣고 [연결]을 누르거나, 위의 한 줄을 다시 붙여넣으면 코드가 자동으로 맞춰져요. (다른 브라우저로 연결하려는 경우에도 같아요)']
     ];
     items.forEach(function(it) { var q = el('div', 'rn-q'); q.appendChild(el('b', null, it[0])); q.appendChild(el('div', 'rn-faint', it[1])); tr.appendChild(q); });
   }
