@@ -13,6 +13,8 @@
   · 실행한 코드는 '내 컴퓨터에서, 내 권한으로' 돌아가요 (서버처럼 격리되지 않아요). 믿을 수 있는 코드만 실행하세요.
   · 한 번에 실행하는 시간·출력 크기를 제한해요.
 옵션:  --port 47321  --allow-origin https://내사이트  --max-seconds 300  --show-token  --reset-token
+자동 시작:  python3 duresync_runner.py --install-autostart     컴퓨터를 켤 때마다 알아서 켜져요 (끄기: --uninstall-autostart)
+언어 자동 인식:  언어를 새로 설치하면 ▶ 실행할 때 러너가 알아서 다시 찾아요 (다시 켜거나 '다시 검색'을 누를 필요 없어요)
 """
 import argparse
 import asyncio
@@ -32,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.0.0"
+RUNNER_VERSION = "1.1.0"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -409,12 +411,27 @@ class Runner:
         self.port, self.origins, self.token, self.max_seconds, self.allow_no_origin = port, set(origins), token, max_seconds, allow_no_origin
         self.inv = {}
         self.running = 0
+        self.scanned_at = 0.0
+        self._scanning = None
 
     def public_inv(self):
         return {lang: [{"id": i["id"], "version": i["version"], "label": i["label"]} for i in items] for lang, items in self.inv.items()}
 
     async def rescan(self):
-        self.inv = await asyncio.get_event_loop().run_in_executor(None, scan_tools)
+        """내 컴퓨터의 언어를 다시 찾는다 (동시에 여러 번 부르면 한 번만 찾고 같이 기다린다)"""
+        if self._scanning is None:
+            async def go():
+                try:
+                    self.inv = await asyncio.get_event_loop().run_in_executor(None, scan_tools)
+                    self.scanned_at = time.time()
+                finally:
+                    self._scanning = None
+            self._scanning = asyncio.ensure_future(go())
+        await asyncio.shield(self._scanning)
+
+    def has(self, lang, ver=None):
+        items = self.inv.get(lang) or []
+        return bool(items) and (not ver or any(i["id"] == ver for i in items))
 
     async def handle(self, reader, writer):
         ws = await handshake(reader, writer, self.port, self.origins, self.allow_no_origin)
@@ -433,6 +450,8 @@ class Runner:
             if first.get("action") != "hello" or not secrets.compare_digest(str(first.get("token", "")), self.token):
                 await ws.send({"type": "hello", "ok": False, "why": "token"}); await ws.close(4401); return
             await ws.send({"type": "hello", "ok": True, "version": RUNNER_VERSION, "os": platform.system(), "runtimes": self.public_inv(), "max_seconds": self.max_seconds})
+            if time.time() - self.scanned_at > 20:                         # 설치한 언어가 늘었을 수 있으니 뒤에서 조용히 다시 찾아 둔다
+                asyncio.ensure_future(self.rescan())
             while True:
                 msg = json.loads(await ws.recv())
                 act = msg.get("action")
@@ -471,6 +490,12 @@ class Runner:
     async def start(self, ws, msg):
         lang = str(msg.get("language", "")).lower()
         code = msg.get("source_code") or ""
+        ver = msg.get("runtime_version") or None
+        if not self.has(lang, ver) and time.time() - self.scanned_at > 2:    # 방금 설치했을 수 있다: 없다고 하기 전에 한 번 더 찾아 본다
+            try:
+                await self.rescan()
+            except Exception:
+                pass
         if lang not in self.inv:
             await ws.send({"type": "stderr", "data": "이 컴퓨터에서 %s 를 찾지 못했어요. 설치한 뒤 러너를 다시 시작하거나 '다시 검색'을 눌러 주세요.\n" % LABELS.get(lang, lang)})
             await ws.send({"type": "exit", "data": "", "code": 1}); return None, None, []
@@ -479,6 +504,9 @@ class Runner:
         if self.running >= 3:
             await ws.send({"type": "stderr", "data": "동시에 너무 많이 실행 중이에요.\n"}); await ws.send({"type": "exit", "data": "", "code": 1}); return None, None, []
         want = str(msg.get("runtime_version") or "")
+        if want and not self.has(lang, want):                              # 고른 버전이 지워졌다면 몰래 다른 버전으로 돌리지 않는다
+            await ws.send({"type": "stderr", "data": "이 컴퓨터에서 %s %s 를 찾지 못했어요 (지웠나요?). ▶ 옆 선택 박스에서 다른 버전을 골라 주세요.\n" % (LABELS.get(lang, lang), want)})
+            await ws.send({"type": "exit", "data": "", "code": 1}); return None, None, []
         item = next((i for i in self.inv[lang] if i["id"] == want), self.inv[lang][0])
         tmp = tempfile.mkdtemp(prefix="duresync_run_")
         try:
@@ -570,6 +598,116 @@ def load_token(reset=False):
     return t
 
 
+# ============================================================ 컴퓨터를 켤 때 자동으로 켜기
+AUTOSTART_LABEL = "cloud.duresync.runner"
+
+
+def _xml(t):
+    return str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def autostart_plan(system, home, py, script, args, uid=0, has_systemd=True, appdata=None):
+    """운영체제별로 '자동 시작'에 필요한 파일과 명령을 정한다 (실제로 쓰지는 않는다 → 테스트·미리보기에 쓴다).
+    {files:[(경로, 내용)], start:[명령…], stop:[명령…], remove:[경로…], note:'…'}"""
+    argv = [py, script] + list(args)
+    logp = os.path.join(home, ".duresync-runner", "runner.log")
+    if system == "Darwin":
+        plist = os.path.join(home, "Library", "LaunchAgents", AUTOSTART_LABEL + ".plist")
+        body = ('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict>\n'
+                "<key>Label</key><string>%s</string>\n<key>ProgramArguments</key><array>%s</array>\n<key>RunAtLoad</key><true/>\n"
+                "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>\n<key>ThrottleInterval</key><integer>15</integer>\n"
+                "<key>StandardOutPath</key><string>%s</string>\n<key>StandardErrorPath</key><string>%s</string>\n</dict></plist>\n"
+                % (AUTOSTART_LABEL, "".join("<string>%s</string>" % _xml(a) for a in argv), _xml(logp), _xml(logp)))
+        return {"files": [(plist, body)],
+                "start": [["launchctl", "bootout", "gui/%d/%s" % (uid, AUTOSTART_LABEL)], ["launchctl", "bootstrap", "gui/%d" % uid, plist]],
+                "stop": [["launchctl", "bootout", "gui/%d/%s" % (uid, AUTOSTART_LABEL)]],
+                "remove": [plist], "note": "맥: 로그인할 때마다 자동으로 켜져요 (로그: %s)" % logp}
+    if system == "Windows":
+        startup = os.path.join(appdata or os.path.join(home, "AppData", "Roaming"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+        vbs = os.path.join(startup, "DureSync Runner.vbs")
+        quoted = " ".join('""%s""' % a for a in argv)                 # VBScript 문자열 안의 큰따옴표는 두 번
+        body = 'CreateObject("WScript.Shell").Run "%s", 0, False\r\n' % quoted
+        return {"files": [(vbs, body)], "start": [["wscript", vbs]], "stop": [], "remove": [vbs],
+                "note": "윈도우: 로그인할 때마다 창 없이 자동으로 켜져요. 끄려면 --uninstall-autostart 후 작업 관리자에서 python 을 끝내거나 다시 시작하세요."}
+    if has_systemd:
+        unit = os.path.join(home, ".config", "systemd", "user", "duresync-runner.service")
+        qa = " ".join('"%s"' % a.replace('"', '\\"') for a in argv)
+        body = "[Unit]\nDescription=DureSync runner\n\n[Service]\nExecStart=%s\nRestart=on-failure\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n" % qa
+        return {"files": [(unit, body)],
+                "start": [["systemctl", "--user", "daemon-reload"], ["systemctl", "--user", "enable", "--now", "duresync-runner.service"]],
+                "stop": [["systemctl", "--user", "disable", "--now", "duresync-runner.service"]], "remove": [unit],
+                "note": "리눅스: 로그인할 때마다 자동으로 켜져요 (systemd --user)"}
+    desk = os.path.join(home, ".config", "autostart", "duresync-runner.desktop")
+    body = "[Desktop Entry]\nType=Application\nName=DureSync Runner\nExec=%s\nTerminal=false\n" % " ".join('"%s"' % a for a in argv)
+    return {"files": [(desk, body)], "start": [argv], "stop": [], "remove": [desk], "note": "리눅스: 로그인할 때마다 자동으로 켜져요"}
+
+
+def _app_args(a):
+    out = ["--port", str(a.port)]
+    for o in a.allow_origin:
+        out += ["--allow-origin", o]
+    if a.max_seconds != 300:
+        out += ["--max-seconds", str(a.max_seconds)]
+    return out
+
+
+def _uid():
+    return os.getuid() if hasattr(os, "getuid") else 0
+
+
+def autostart_install(a, dry=False):
+    home = os.path.expanduser("~")
+    d = os.path.join(home, ".duresync-runner")
+    dest = os.path.join(d, "duresync_runner.py")
+    py = sys.executable or "python3"
+    if IS_WINDOWS:                                                    # 창이 안 뜨도록 pythonw
+        pw = os.path.join(os.path.dirname(py), "pythonw.exe")
+        if os.path.exists(pw):
+            py = pw
+    system = platform.system()
+    plan = autostart_plan(system, home, py, dest, _app_args(a), uid=_uid(), has_systemd=bool(shutil.which("systemctl")), appdata=os.environ.get("APPDATA"))
+    print("자동 시작을 켜요:  " + plan["note"])
+    for f, _ in plan["files"]:
+        print("  · 만들 파일:", f)
+    if dry:
+        print("(미리보기: 실제로는 아무것도 바꾸지 않았어요)"); return 0
+    os.makedirs(d, exist_ok=True)
+    if os.path.abspath(__file__) != os.path.abspath(dest):             # 이 파일을 고정된 자리에 복사해 둔다 (내려받은 폴더를 지워도 계속 동작)
+        shutil.copyfile(os.path.abspath(__file__), dest)
+        os.chmod(dest, 0o700)
+    for f, body in plan["files"]:
+        os.makedirs(os.path.dirname(f), exist_ok=True)
+        with open(f, "w", encoding="utf-8", newline="") as fh:
+            fh.write(body)
+    for cmd in plan["start"]:
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            if r.returncode and not (len(cmd) > 1 and cmd[1] == "bootout"):
+                print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
+        except Exception as e:
+            print("  ! %s 실패: %s" % (cmd[0], e))
+    print("완료! 지금부터 컴퓨터를 켤 때마다 러너가 알아서 켜져요. 연결 코드:  %s" % load_token())
+    print("(끄려면:  python3 %s --uninstall-autostart)" % dest)
+    return 0
+
+
+def autostart_uninstall():
+    home = os.path.expanduser("~")
+    plan = autostart_plan(platform.system(), home, sys.executable or "python3", os.path.join(home, ".duresync-runner", "duresync_runner.py"), [],
+                          uid=_uid(), has_systemd=bool(shutil.which("systemctl")), appdata=os.environ.get("APPDATA"))
+    for cmd in plan["stop"]:
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        except Exception:
+            pass
+    n = 0
+    for f in plan["remove"]:
+        if os.path.exists(f):
+            os.remove(f); n += 1
+    print("자동 시작을 껐어요." if n else "자동 시작이 켜져 있지 않았어요.")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="DureSync 러너: 내 컴퓨터에 설치한 언어로 워크스페이스 코드를 실행합니다.")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -577,14 +715,21 @@ def main():
     ap.add_argument("--max-seconds", type=int, default=300, help="한 번 실행의 최대 시간(초)")
     ap.add_argument("--show-token", action="store_true", help="연결 코드만 보여 주고 끝내기")
     ap.add_argument("--reset-token", action="store_true", help="연결 코드를 새로 만들기")
+    ap.add_argument("--install-autostart", action="store_true", help="컴퓨터를 켤 때마다 러너가 자동으로 켜지게 하기")
+    ap.add_argument("--uninstall-autostart", action="store_true", help="자동 시작 끄기")
+    ap.add_argument("--dry-run", action="store_true", help="(자동 시작 미리보기) 아무것도 바꾸지 않고 무엇을 할지만 보여 주기")
     ap.add_argument("--allow-no-origin", action="store_true", help="(개발·테스트용) Origin 이 없는 클라이언트도 허용")
     a = ap.parse_args()
+    if a.uninstall_autostart:
+        return autostart_uninstall()
     token = load_token(a.reset_token)
     if a.show_token:
         print(token); return 0
     origins = [o.rstrip("/") for o in ALLOWED_ORIGINS + a.allow_origin if o and not o.startswith("__")]
     if not origins:
         print("✗ 믿을 웹사이트가 정해지지 않았어요. 웹사이트에서 내려받은 파일을 쓰거나 --allow-origin 으로 주소를 알려 주세요."); return 2
+    if a.install_autostart:
+        return autostart_install(a, a.dry_run)
     runner = Runner(a.port, origins, token, max(5, a.max_seconds), a.allow_no_origin)
 
     async def run():
@@ -592,7 +737,7 @@ def main():
         try:
             server = await asyncio.start_server(runner.handle, "127.0.0.1", a.port)
         except OSError as e:
-            print("✗ 포트 %d 를 열지 못했어요 (이미 러너가 켜져 있나요?): %s" % (a.port, e)); return 2
+            print("러너가 이미 켜져 있어요 (포트 %d). 이 창은 닫아도 돼요." % a.port); return 0
         print("=" * 62)
         print("  DureSync 러너 %s  —  내 컴퓨터에서 코드를 실행해요" % RUNNER_VERSION)
         print("=" * 62)

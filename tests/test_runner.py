@@ -73,6 +73,13 @@ async def main():
         out, code = await run(ws, "java", J, name="Test.java"); chk("Java: 파일 이름과 public 클래스가 다르면 실행하지 않고 이유를 알려 준다", "class Zeta is public" in out and "java-ok" not in out, out[:200])
     out, code = await run(ws, "python", "import time\nprint('started', flush=True)\ntime.sleep(60)", stop_after=1.5); chk("중지 버튼: 바로 종료 + 안내", "강제 중단" in out and code == -1, (out, code))
     out, code = await run(ws, "python", "x" * 600_000); chk("너무 긴 코드는 거절", "너무 길어요" in out, out[:60])
+    # ---- 언어 자동 인식: 러너를 켠 뒤에 설치한 언어도 ▶ 실행할 때 알아서 찾는다
+    if "php" not in inv:
+        php_fake = os.path.join(FAKE, "php")
+        open(php_fake, "w").write('#!/bin/sh\nif [ "$1" = "--version" ]; then echo "PHP 8.9.1 (cli)"; else echo FAKE_PHP_NEW; fi\n'); os.chmod(php_fake, 0o755)
+        out, code = await run(ws, "php", "<?php echo 1;"); chk("러너를 켠 뒤에 설치한 언어(php)도 ▶ 실행하면 자동으로 찾아서 실행된다", "FAKE_PHP_NEW" in out and code == 0, out[:160])
+        out, code = await run(ws, "php", "<?php echo 1;", ver="8.9.1"); chk("  ㄴ 그 버전(8.9.1)을 골라도 된다", "FAKE_PHP_NEW" in out, out[:120])
+    out, code = await run(ws, "javascript", "console.log(1)", ver="1.2.3"); chk("없는 버전을 요청하면(다시 찾아봐도 없음) 실행하지 않고 이유를 알려 준다", code is not None and "FAKE" not in out, (out, code))
     # ---- 연결이 끊기면 실행 중이던 프로세스도 정리
     pidfile = os.path.join(HOME, "pid.txt")
     await ws.send(json.dumps({"action": "start", "language": "python", "source_code": f"import os,time\nopen({pidfile!r},'w').write(str(os.getpid()))\ntime.sleep(60)"}))
@@ -96,6 +103,37 @@ tp = os.path.join(HOME, ".duresync-runner", "token")
 chk("연결 코드는 내 계정만 읽을 수 있는 파일(0600)에 저장된다", os.path.exists(tp) and (os.stat(tp).st_mode & 0o077) == 0, oct(os.stat(tp).st_mode) if os.path.exists(tp) else "없음")
 chk("다시 켜도 같은 코드가 유지된다", token() == TOK)
 chk("--reset-token 은 새 코드를 만든다", token("--reset-token") != TOK)
+# ---- 자동 시작: 운영체제별 파일 내용 (실제로 등록하지는 않고 계획만 확인)
+import importlib.util, plistlib
+spec = importlib.util.spec_from_file_location("duresync_runner_mod", os.path.join(ROOT, "runner", "duresync_runner.py")); M = importlib.util.module_from_spec(spec); spec.loader.exec_module(M)
+ARGS = ["--port", "47321", "--allow-origin", "https://duresync.cloud"]
+mac = M.autostart_plan("Darwin", "/Users/me", "/usr/bin/python3", "/Users/me/.duresync-runner/duresync_runner.py", ARGS, uid=501)
+pl = plistlib.loads(mac["files"][0][1].encode())
+chk("맥: LaunchAgent 가 올바른 plist 이고 로그인 때 켜진다(RunAtLoad)", pl["Label"] == "cloud.duresync.runner" and pl["RunAtLoad"] is True, pl)
+chk("  ㄴ 실행 명령에 파이썬·러너 경로·믿는 사이트가 그대로 들어간다", pl["ProgramArguments"] == ["/usr/bin/python3", "/Users/me/.duresync-runner/duresync_runner.py"] + ARGS, pl["ProgramArguments"])
+chk("  ㄴ 정상 종료(이미 켜져 있음)면 다시 켜지 않는다 (무한 재시작 없음)", pl["KeepAlive"] == {"SuccessfulExit": False})
+chk("  ㄴ 시작·끄기 명령이 사용자(uid) 범위", ["launchctl", "bootstrap", "gui/501", mac["files"][0][0]] in mac["start"] and ["launchctl", "bootout", "gui/501/cloud.duresync.runner"] in mac["stop"])
+sp = M.autostart_plan("Darwin", "/Users/내 폴더 & <a>", "/usr/bin/python3", "/x/러너 a.py", ARGS)
+chk("  ㄴ 공백·&·< 가 들어간 경로도 plist 가 깨지지 않는다", plistlib.loads(sp["files"][0][1].encode())["ProgramArguments"][1] == "/x/러너 a.py")
+win = M.autostart_plan("Windows", "C:\\Users\\me", "C:\\Py\\pythonw.exe", "C:\\Users\\me\\.duresync-runner\\duresync_runner.py", ARGS, appdata="C:\\Users\\me\\AppData\\Roaming")
+vb = win["files"][0][1]
+chk("윈도우: 시작프로그램 폴더에 창 없이(0) 실행하는 스크립트를 만든다", "Startup" in win["files"][0][0] and vb.startswith('CreateObject("WScript.Shell").Run "') and vb.rstrip().endswith(", 0, False"), vb)
+chk("  ㄴ 파이썬·러너 경로·믿는 사이트가 큰따옴표로 감싸져 들어간다", '""C:\\Py\\pythonw.exe""' in vb and '""https://duresync.cloud""' in vb, vb)
+lin = M.autostart_plan("Linux", "/home/me", "/usr/bin/python3", "/home/me/.duresync-runner/duresync_runner.py", ARGS, has_systemd=True)
+u = lin["files"][0][1]
+chk("리눅스: systemd 사용자 서비스(로그인 때 켜짐, 실패하면 재시작)", "ExecStart=\"/usr/bin/python3\" \"/home/me/.duresync-runner/duresync_runner.py\" \"--port\"" in u and "WantedBy=default.target" in u and "Restart=on-failure" in u and ["systemctl", "--user", "enable", "--now", "duresync-runner.service"] in lin["start"], u)
+lin2 = M.autostart_plan("Linux", "/home/me", "/usr/bin/python3", "/s.py", ARGS, has_systemd=False)
+chk("  ㄴ systemd 가 없으면 ~/.config/autostart/*.desktop 으로", lin2["files"][0][0].endswith(".config/autostart/duresync-runner.desktop") and "Exec=" in lin2["files"][0][1])
+# 미리보기(--dry-run)는 파일을 만들지 않는다
+r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--install-autostart", "--dry-run", "--allow-origin", ORIGIN], env=env, capture_output=True, text=True)
+chk("--install-autostart --dry-run: 무엇을 할지 보여 주고 아무것도 만들지 않는다", r.returncode == 0 and "미리보기" in r.stdout and not os.path.exists(os.path.join(HOME, "Library", "LaunchAgents")) and not os.path.exists(os.path.join(HOME, ".config", "systemd")), r.stdout + r.stderr)
+r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--install-autostart", "--dry-run"], env=env, capture_output=True, text=True)
+chk("믿을 사이트가 정해지지 않은 러너(개발용 원본)는 자동 시작을 등록하지 않는다", r.returncode == 2, r.stdout + r.stderr)
+r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--uninstall-autostart"], env=env, capture_output=True, text=True)
+chk("--uninstall-autostart: 켜져 있지 않으면 그렇게 알려 준다", r.returncode == 0 and "켜져 있지 않았어요" in r.stdout, r.stdout + r.stderr)
+# 이미 러너가 켜져 있는데 또 켜면(자동 시작과 겹침) 정상 종료(0)로 조용히 끝난다
+r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--port", str(PORT), "--allow-origin", ORIGIN], env=env, capture_output=True, text=True, timeout=30)
+chk("이미 켜져 있을 때 한 번 더 켜면 에러 없이(0) 끝난다 → 자동 시작이 무한 재시작하지 않는다", r.returncode == 0 and "이미 켜져 있어요" in r.stdout, r.stdout + r.stderr)
 for p in (srv, srv2):
     p.terminate()
     try: p.wait(5)

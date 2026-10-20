@@ -43,6 +43,24 @@ function runnerProbe(force) {
   });
   return RUNNER.probing;
 }
+/* 러너에게 내 컴퓨터의 언어를 다시 찾게 한다 (방금 설치한 언어를 알아보게). 성공하면 true */
+function runnerRefresh() {
+  return new Promise(function(resolve) {
+    var ws, done = false, timer = setTimeout(function() { fin(false); }, 25000);
+    function fin(ok) { if (done) return; done = true; clearTimeout(timer); try { ws.close(); } catch (e) {} resolve(ok); }
+    try { ws = new WebSocket(runnerUrl()); } catch (e) { return fin(false); }
+    ws.onopen = function() { ws.send(JSON.stringify({ action: 'hello', token: runnerToken() })); };
+    ws.onmessage = function(ev) {
+      try {
+        var m = JSON.parse(ev.data);
+        if (m.type === 'hello') { if (m.ok) ws.send(JSON.stringify({ action: 'inventory' })); else fin(false); }
+        else if (m.type === 'inventory') { if (RUNNER.info) RUNNER.info.runtimes = m.runtimes; RUNNER.last = { ok: true, info: RUNNER.info }; RUNNER.at = Date.now(); RUNNER.ok = true; fin(true); runnerPaint(); }
+      } catch (e) {}
+    };
+    ws.onerror = function() { fin(false); };
+    ws.onclose = function() { fin(false); };
+  });
+}
 function runnerLangs() { return (RUNNER.ok && RUNNER.info && RUNNER.info.runtimes) || {}; }
 function runnerLatest() {
   if (RUNNER.latest) return Promise.resolve(RUNNER.latest);
@@ -79,6 +97,9 @@ function wsRunChoice(lang, o) {
 async function wsRunTarget(lang) {
   if (runnerToken()) await runnerProbe(false);                        // 연결한 적이 있으면 내 PC 상태를 먼저 확인
   var o = await wsRunOptions(lang), v = wsRunChoice(lang, o);
+  if (!v && RUNNER.ok) {                                              // 서버에도 내 PC 목록에도 없다: 방금 설치했을 수 있으니 한 번 다시 찾아 본다
+    if (await runnerRefresh()) { o = await wsRunOptions(lang); v = wsRunChoice(lang, o); }
+  }
   if (!v) return null;
   return { kind: v.charAt(0) === 'l' ? 'local' : 'server', ver: v.slice(2) || null, options: o };
 }
@@ -158,13 +179,17 @@ function runnerRenderModal() {
   s1.appendChild(el('div', 'rn-faint', '설치할 것은 없고 Python 3.7 이상만 있으면 돼요. 파일 하나예요.')); steps.appendChild(s1);
   var s2 = el('li'); s2.appendChild(el('b', null, '내려받은 폴더에서 터미널(명령 프롬프트)을 열고 실행'));
   var cb = el('div', 'rn-code'); cb.appendChild(el('code', null, cmd)); var cp = el('button', 'rn-copy', '복사'); cp.type = 'button'; cp.onclick = function() { runnerCopy(cmd, cp); }; cb.appendChild(cp); s2.appendChild(cb);
-  s2.appendChild(el('div', 'rn-faint', '켜면 화면에 "연결 코드"와 내 컴퓨터에서 찾은 언어가 나와요. 쓰는 동안 이 창을 켜 두세요. (Ctrl+C 로 끔)')); steps.appendChild(s2);
+  s2.appendChild(el('div', 'rn-faint', '켜면 화면에 "연결 코드"와 내 컴퓨터에서 찾은 언어가 나와요. 쓰는 동안 이 창을 켜 두세요. (Ctrl+C 로 끔) 아래 4번 "자동으로 켜기"를 하면 이 창도 필요 없어요.')); steps.appendChild(s2);
   var s3 = el('li'); s3.appendChild(el('b', null, '화면에 나온 연결 코드를 입력'));
   var row = el('div', 'rn-row'); var inp = el('input', 'rn-input'); inp.id = 'runnerCodeInput'; inp.type = 'text'; inp.placeholder = '예: 22F0-2D0A-2223-F30B'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.value = typed || runnerToken();
   var go = el('button', 'btn primary', '연결'); go.type = 'button';
   go.onclick = function() { var v = inp.value.trim().toUpperCase(); runnerSetToken(v); go.disabled = true; go.textContent = '확인 중…'; runnerProbe(true).then(function(r) { go.disabled = false; go.textContent = '연결'; if (r.ok) pushToast('🖥️', '내 PC에 연결됐어요', '이제 내 컴퓨터에 설치한 언어로 실행할 수 있어요.'); }); };
   inp.onkeydown = function(e) { if (e.key === 'Enter') go.click(); };
   row.appendChild(inp); row.appendChild(go); s3.appendChild(row); steps.appendChild(s3);
+  var s4 = el('li'); s4.appendChild(el('b', null, '(추천) 컴퓨터를 켤 때 자동으로 켜기 — 한 번만'));
+  var ac = os === 'win' ? 'py duresync_runner.py --install-autostart' : 'python3 duresync_runner.py --install-autostart';
+  var cb2 = el('div', 'rn-code'); cb2.appendChild(el('code', null, ac)); var cp2 = el('button', 'rn-copy', '복사'); cp2.type = 'button'; cp2.onclick = function() { runnerCopy(ac, cp2); }; cb2.appendChild(cp2); s4.appendChild(cb2);
+  s4.appendChild(el('div', 'rn-faint', '이렇게 하면 다음부터 러너를 직접 켤 필요가 없어요. 끄려면 같은 명령에서 --install-autostart 를 --uninstall-autostart 로 바꾸세요.')); steps.appendChild(s4);
 
   if (last.ok) {                                                      // 찾은 언어 목록
     var rt = RUNNER.info.runtimes || {}, names = Object.keys(rt);
@@ -173,13 +198,8 @@ function runnerRenderModal() {
     names.forEach(function(l) { var r = el('div', 'rn-lang'); r.appendChild(el('b', null, (WS_RUN_LABEL && WS_RUN_LABEL[l]) || l)); r.appendChild(el('span', null, rt[l].map(function(v) { return v.version || v.id; }).join(' · '))); box.appendChild(r); });
     if (!names.length) box.appendChild(el('div', 'rn-faint', '아직 찾은 언어가 없어요. Python·Node·Java·gcc 등을 설치한 뒤 [다시 검색]을 눌러 주세요.'));
     var rs = add(el('button', 'btn', '🔄 다시 검색')); rs.type = 'button';
-    rs.onclick = function() {
-      rs.disabled = true; rs.textContent = '검색 중…';
-      var ws = new WebSocket(runnerUrl()), to = setTimeout(function() { try { ws.close(); } catch (e) {} }, 20000);
-      ws.onopen = function() { ws.send(JSON.stringify({ action: 'hello', token: runnerToken() })); };
-      ws.onmessage = function(ev) { var m = JSON.parse(ev.data); if (m.type === 'hello' && m.ok) ws.send(JSON.stringify({ action: 'inventory' })); else if (m.type === 'inventory') { clearTimeout(to); ws.close(); RUNNER.info.runtimes = m.runtimes; RUNNER.last = { ok: true, info: RUNNER.info }; runnerPaint(); } };
-      ws.onclose = function() { rs.disabled = false; rs.textContent = '🔄 다시 검색'; };
-    };
+    rs.onclick = function() { rs.disabled = true; rs.textContent = '검색 중…'; runnerRefresh().then(function() { rs.disabled = false; rs.textContent = '🔄 다시 검색'; }); };
+    add(el('p', 'rn-faint', '언어를 새로 설치했다면 ▶ 실행할 때 알아서 다시 찾아요. 이 버튼을 누르지 않아도 돼요.'));
     add(el('p', 'rn-p', '같은 언어가 서버에도 있고 내 PC 에도 있으면 ▶ 실행 옆 선택 박스에서 "서버 · Java 21 / 내 PC · Java 17" 처럼 어디서 어떤 버전으로 실행할지 고를 수 있어요.'));
   }
   var safe = add(el('div', 'rn-safe'));

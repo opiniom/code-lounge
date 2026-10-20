@@ -40,3 +40,6 @@ Thumbs.db
 *.pem
 *.key
 *.p12
+
+# 서버 데이터 백업 폴더(DB 포함)는 절대 올리지 않는다
+data_backup*/
