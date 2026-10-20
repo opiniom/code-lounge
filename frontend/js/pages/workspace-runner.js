@@ -1,0 +1,192 @@
+/* ---- 내 PC 실행: 내 컴퓨터에 설치한 언어로 워크스페이스 코드를 실행 ----
+   브라우저는 내 컴퓨터의 프로그램을 직접 실행할 수 없어서, 작은 연결 프로그램('러너', 사이트에서 내려받는 Python 파일 하나)을 내 컴퓨터에 켜 두면
+   ▶ 실행이 서버 대신 내 컴퓨터(127.0.0.1)의 러너로 코드를 보내고, 러너가 설치된 언어로 실행해서 결과를 돌려준다.
+   · PC 에서만 쓸 수 있다 (폰·태블릿·PWA 는 서버 언어만 — 서버에 없는 언어는 '언어 지원이 되지 않습니다' 안내).
+   · 서버와 내 PC 에 같은 언어가 있으면 ▶ 실행 옆 선택 박스에서 '서버 · Java 21 / 내 PC · Java 17' 처럼 고른다 (고른 것을 기억).
+   · 러너는 허락한 사이트에서 온 요청만 받고, 처음 한 번 '연결 코드'를 입력해야 한다. 코드는 내 컴퓨터에서 내 권한으로 실행된다(서버처럼 격리되지 않음). */
+var RUNNER = { port: 47321, ok: false, info: null, last: null, at: 0, probing: null, latest: null, MIN: '1.0.0' };
+
+/* 폰·태블릿에서는 내 PC 러너를 쓸 수 없다 */
+function runnerDeviceOk() {
+  var ua = navigator.userAgent || '', touchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return !(/Android|iPhone|iPad|iPod|Mobile/i.test(ua) || touchMac);
+}
+function runnerToken() { try { return localStorage.getItem('sync_runner_token') || ''; } catch (e) { return ''; } }
+function runnerSetToken(t) { try { if (t) localStorage.setItem('sync_runner_token', t); else localStorage.removeItem('sync_runner_token'); } catch (e) {} }
+function runnerUrl() { return 'ws://127.0.0.1:' + RUNNER.port + '/'; }
+function runnerOsHint() { var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || ''; return /win/i.test(p) ? 'win' : (/mac/i.test(p) ? 'mac' : 'linux'); }
+
+/* 러너가 켜져 있고 연결 코드가 맞는지 확인한다. 결과: {ok, info} 또는 {ok:false, why: 'device'|'notoken'|'token'|'down'|'blocked'} (20초 동안 기억) */
+function runnerProbe(force) {
+  if (!runnerDeviceOk()) return Promise.resolve({ ok: false, why: 'device' });
+  if (!force && RUNNER.last && Date.now() - RUNNER.at < 20000) return Promise.resolve(RUNNER.last);
+  if (RUNNER.probing) return RUNNER.probing;
+  RUNNER.probing = new Promise(function(resolve) {
+    var done = false, ws = null, timer = null;
+    function fin(r) {
+      if (done) return; done = true; clearTimeout(timer);
+      try { if (ws) ws.close(); } catch (e) {}
+      if (r.ok && r.info && r.info.runtimes) {
+        // 높은 버전이 앞에 오도록 러너가 정렬해서 준다
+      }
+      RUNNER.last = r; RUNNER.at = Date.now(); RUNNER.ok = !!r.ok; RUNNER.info = r.ok ? r.info : null; RUNNER.probing = null;
+      runnerPaint(); resolve(r);
+    }
+    timer = setTimeout(function() { fin({ ok: false, why: 'down' }); }, 3000);
+    try { ws = new WebSocket(runnerUrl()); } catch (e) { return fin({ ok: false, why: 'blocked' }); }          // 사파리처럼 https 페이지에서 ws://127.0.0.1 을 막는 브라우저
+    ws.onopen = function() { ws.send(JSON.stringify({ action: 'hello', token: runnerToken() })); };
+    ws.onmessage = function(ev) {
+      try { var m = JSON.parse(ev.data); if (m.type === 'hello') fin(m.ok ? { ok: true, info: m } : { ok: false, why: runnerToken() ? 'token' : 'notoken' }); } catch (e) {}
+    };
+    ws.onerror = function() { fin({ ok: false, why: 'down' }); };
+    ws.onclose = function() { fin({ ok: false, why: 'down' }); };
+  });
+  return RUNNER.probing;
+}
+function runnerLangs() { return (RUNNER.ok && RUNNER.info && RUNNER.info.runtimes) || {}; }
+function runnerLatest() {
+  if (RUNNER.latest) return Promise.resolve(RUNNER.latest);
+  return fetch(API_BASE + '/api/runner').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) { RUNNER.latest = d || { version: null }; return RUNNER.latest; }).catch(function() { return { version: null }; });
+}
+function runnerVerLt(a, b) {
+  var x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number);
+  for (var i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); }
+  return false;
+}
+
+/* ===== 실행 환경 선택 (서버 · 내 PC) ===== */
+function wsRunKey(lang) { return 'sync_run_' + lang; }
+/* 이 언어로 실행할 수 있는 곳들: {server:[{value,label,active}], local:[{value,label}]} */
+async function wsRunOptions(lang) {
+  var c = await wsRunLoad(false);
+  var info = wsLangInfo(lang), server = [], local = [], name = (typeof WS_RUN_LABEL !== 'undefined' && WS_RUN_LABEL[lang]) || lang;
+  if (!c || (c.langs && c.langs.indexOf(lang) >= 0) || info) {        // 서버 목록을 못 받았을 때(c 없음)는 서버로 시도한다
+    info = info || {};
+    if (info.versions && info.versions.length) info.versions.forEach(function(v) { server.push({ value: 's:' + v.id, label: '서버 · ' + name + ' ' + v.label.replace(/ \(기본 포함\)$/, '').replace(/ \(이전 방식 설치\)$/, ''), active: !!v.active }); });
+    else server.push({ value: 's:', label: '서버 · ' + name, active: true });
+  }
+  (runnerLangs()[lang] || []).forEach(function(v) { local.push({ value: 'l:' + v.id, label: '내 PC · ' + name + ' ' + v.label }); });
+  return { server: server, local: local };
+}
+function wsRunChoice(lang, o) {
+  var all = o.server.concat(o.local), want = null;
+  try { want = localStorage.getItem(wsRunKey(lang)); } catch (e) {}
+  if (want && all.some(function(x) { return x.value === want; })) return want;
+  var d = o.server.filter(function(x) { return x.active; })[0] || o.server[0] || o.local[0];
+  return d ? d.value : null;
+}
+/* ▶ 실행이 쓸 곳: {kind:'server'|'local', ver} — 서버에도 내 PC 에도 없으면 null */
+async function wsRunTarget(lang) {
+  if (runnerToken()) await runnerProbe(false);                        // 연결한 적이 있으면 내 PC 상태를 먼저 확인
+  var o = await wsRunOptions(lang), v = wsRunChoice(lang, o);
+  if (!v) return null;
+  return { kind: v.charAt(0) === 'l' ? 'local' : 'server', ver: v.slice(2) || null, options: o };
+}
+function wsRtChange() {
+  var sel = document.getElementById('wsRuntimeSel'); if (!sel || !sel.dataset.lang) return;
+  try { localStorage.setItem(wsRunKey(sel.dataset.lang), sel.value); } catch (e) {}
+  pushToast('🔧', '실행 환경을 바꿨어요', sel.options[sel.selectedIndex].text);
+}
+/* 지금 열린 파일의 언어로 실행할 곳이 둘 이상이면 선택 박스를 보여 준다 */
+async function wsRtUpdate() {
+  var sel = document.getElementById('wsRuntimeSel'); if (!sel) return;
+  var lang = currentFileKey ? wsRunLang(currentFileKey) : null;
+  if (!lang) { sel.hidden = true; sel.dataset.lang = ''; return; }
+  if (runnerToken() && runnerDeviceOk()) runnerProbe(false);
+  var o = await wsRunOptions(lang), n = o.server.length + o.local.length;
+  if (n < 2) { sel.hidden = true; sel.dataset.lang = ''; return; }
+  var cur = wsRunChoice(lang, o);
+  sel.innerHTML = '';
+  function group(label, items) {
+    if (!items.length) return;
+    var g = document.createElement('optgroup'); g.label = label;
+    items.forEach(function(x) { var op = document.createElement('option'); op.value = x.value; op.textContent = x.label.replace(/^(서버|내 PC) · /, '') + (x.active ? ' · 기본' : ''); g.appendChild(op); });
+    sel.appendChild(g);
+  }
+  group('서버', o.server); group('내 PC', o.local);
+  sel.value = cur; sel.dataset.lang = lang; sel.hidden = false;
+  sel.title = '이 파일을 실행할 곳과 버전을 고르세요';
+}
+
+/* 상태 표시: 편집기 위쪽 버튼의 점, 열려 있는 안내창 */
+function runnerPaint() {
+  var b = document.getElementById('wsRunnerBtn');
+  if (b) { b.hidden = !runnerDeviceOk(); b.classList.toggle('on', !!RUNNER.ok); b.title = RUNNER.ok ? '내 PC 러너 연결됨 · 눌러서 설정' : '내 컴퓨터에 설치한 언어로 실행'; }
+  if (typeof wsRtUpdate === 'function') wsRtUpdate();
+  var m = document.getElementById('runnerModal'); if (m && m.classList.contains('open')) runnerRenderModal();
+}
+
+/* ===== 안내·설정 창 ===== */
+var RUNNER_MODAL_NOTE = '';
+function runnerOpenModal(note) {
+  var m = document.getElementById('runnerModal'); if (!m) return;
+  RUNNER_MODAL_NOTE = note || '';
+  m.classList.add('open'); runnerRenderModal();
+  runnerLatest().then(function() { if (m.classList.contains('open')) runnerRenderModal(); });
+  if (runnerDeviceOk()) runnerProbe(true);
+}
+function runnerCloseModal() { var m = document.getElementById('runnerModal'); if (m) m.classList.remove('open'); }
+function runnerCopy(text, btn) {
+  function ok() { if (btn) { var o = btn.textContent; btn.textContent = '복사됨 ✓'; setTimeout(function() { btn.textContent = o; }, 1400); } }
+  try { navigator.clipboard.writeText(text).then(ok, function() {}); } catch (e) {}
+}
+function runnerRenderModal() {
+  var body = document.querySelector('#runnerModal .rn-body'); if (!body) return;
+  var keep = document.getElementById('runnerCodeInput'), typed = keep ? keep.value : '';
+  body.innerHTML = '';
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function add(n) { body.appendChild(n); return n; }
+  if (!runnerDeviceOk()) {
+    add(el('div', 'rn-status warn', '이 기기(폰·태블릿)에서는 내 PC 실행을 쓸 수 없어요'));
+    add(el('p', 'rn-p', '폰과 태블릿에서는 설치한 프로그램을 연결할 수 없어서 서버가 지원하는 언어만 실행할 수 있어요. 내 컴퓨터(PC)의 크롬·엣지·파이어폭스에서 열어 주세요.'));
+    return;
+  }
+  if (RUNNER_MODAL_NOTE) add(el('p', 'rn-note', RUNNER_MODAL_NOTE));
+  var last = RUNNER.last || { ok: false, why: 'down' }, st;
+  if (last.ok) st = ['ok', '✓ 연결됨 · 러너 ' + (RUNNER.info.version || '') + ' · ' + (RUNNER.info.os || '')];
+  else if (last.why === 'token' || last.why === 'notoken') st = ['warn', last.why === 'token' ? '연결 코드가 달라요. 러너 화면에 나온 코드를 다시 입력해 주세요.' : '러너는 켜져 있어요. 아래에 연결 코드를 입력해 주세요.'];
+  else if (last.why === 'blocked') st = ['bad', '이 브라우저가 내 컴퓨터(127.0.0.1)로의 연결을 막고 있어요. 크롬·엣지·파이어폭스에서 열어 주세요. (사파리는 막을 수 있어요)'];
+  else st = ['bad', '러너가 꺼져 있어요. 아래 순서대로 켜 주세요.'];
+  add(el('div', 'rn-status ' + st[0], st[1]));
+  var latest = RUNNER.latest && RUNNER.latest.version;
+  if (last.ok && latest && runnerVerLt(RUNNER.info.version, latest)) add(el('p', 'rn-note', '새 러너 버전(' + latest + ')이 있어요. 아래 [러너 내려받기]로 받아서 다시 켜 주세요.'));
+
+  var os = runnerOsHint(), cmd = os === 'win' ? 'py duresync_runner.py' : 'python3 duresync_runner.py';
+  var steps = add(el('ol', 'rn-steps'));
+  var s1 = el('li'); s1.appendChild(el('b', null, '러너 내려받기 '));
+  var dl = el('a', 'btn primary rn-dl', '⬇ 러너 내려받기 (duresync_runner.py)'); dl.href = API_BASE + '/runner/duresync_runner.py'; dl.setAttribute('download', 'duresync_runner.py'); s1.appendChild(dl);
+  s1.appendChild(el('div', 'rn-faint', '설치할 것은 없고 Python 3.7 이상만 있으면 돼요. 파일 하나예요.')); steps.appendChild(s1);
+  var s2 = el('li'); s2.appendChild(el('b', null, '내려받은 폴더에서 터미널(명령 프롬프트)을 열고 실행'));
+  var cb = el('div', 'rn-code'); cb.appendChild(el('code', null, cmd)); var cp = el('button', 'rn-copy', '복사'); cp.type = 'button'; cp.onclick = function() { runnerCopy(cmd, cp); }; cb.appendChild(cp); s2.appendChild(cb);
+  s2.appendChild(el('div', 'rn-faint', '켜면 화면에 "연결 코드"와 내 컴퓨터에서 찾은 언어가 나와요. 쓰는 동안 이 창을 켜 두세요. (Ctrl+C 로 끔)')); steps.appendChild(s2);
+  var s3 = el('li'); s3.appendChild(el('b', null, '화면에 나온 연결 코드를 입력'));
+  var row = el('div', 'rn-row'); var inp = el('input', 'rn-input'); inp.id = 'runnerCodeInput'; inp.type = 'text'; inp.placeholder = '예: 22F0-2D0A-2223-F30B'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.value = typed || runnerToken();
+  var go = el('button', 'btn primary', '연결'); go.type = 'button';
+  go.onclick = function() { var v = inp.value.trim().toUpperCase(); runnerSetToken(v); go.disabled = true; go.textContent = '확인 중…'; runnerProbe(true).then(function(r) { go.disabled = false; go.textContent = '연결'; if (r.ok) pushToast('🖥️', '내 PC에 연결됐어요', '이제 내 컴퓨터에 설치한 언어로 실행할 수 있어요.'); }); };
+  inp.onkeydown = function(e) { if (e.key === 'Enter') go.click(); };
+  row.appendChild(inp); row.appendChild(go); s3.appendChild(row); steps.appendChild(s3);
+
+  if (last.ok) {                                                      // 찾은 언어 목록
+    var rt = RUNNER.info.runtimes || {}, names = Object.keys(rt);
+    var h = add(el('div', 'rn-lbl', '내 컴퓨터에서 찾은 언어 (' + names.length + '개)'));
+    var box = add(el('div', 'rn-langs'));
+    names.forEach(function(l) { var r = el('div', 'rn-lang'); r.appendChild(el('b', null, (WS_RUN_LABEL && WS_RUN_LABEL[l]) || l)); r.appendChild(el('span', null, rt[l].map(function(v) { return v.version || v.id; }).join(' · '))); box.appendChild(r); });
+    if (!names.length) box.appendChild(el('div', 'rn-faint', '아직 찾은 언어가 없어요. Python·Node·Java·gcc 등을 설치한 뒤 [다시 검색]을 눌러 주세요.'));
+    var rs = add(el('button', 'btn', '🔄 다시 검색')); rs.type = 'button';
+    rs.onclick = function() {
+      rs.disabled = true; rs.textContent = '검색 중…';
+      var ws = new WebSocket(runnerUrl()), to = setTimeout(function() { try { ws.close(); } catch (e) {} }, 20000);
+      ws.onopen = function() { ws.send(JSON.stringify({ action: 'hello', token: runnerToken() })); };
+      ws.onmessage = function(ev) { var m = JSON.parse(ev.data); if (m.type === 'hello' && m.ok) ws.send(JSON.stringify({ action: 'inventory' })); else if (m.type === 'inventory') { clearTimeout(to); ws.close(); RUNNER.info.runtimes = m.runtimes; RUNNER.last = { ok: true, info: RUNNER.info }; runnerPaint(); } };
+      ws.onclose = function() { rs.disabled = false; rs.textContent = '🔄 다시 검색'; };
+    };
+    add(el('p', 'rn-p', '같은 언어가 서버에도 있고 내 PC 에도 있으면 ▶ 실행 옆 선택 박스에서 "서버 · Java 21 / 내 PC · Java 17" 처럼 어디서 어떤 버전으로 실행할지 고를 수 있어요.'));
+  }
+  var safe = add(el('div', 'rn-safe'));
+  safe.appendChild(el('b', null, '🔒 안전하게 쓰려면'));
+  [['러너는 내 컴퓨터(127.0.0.1)에서만 열려요. 같은 와이파이의 다른 컴퓨터는 접속할 수 없어요.'], ['DureSync 사이트에서 온 요청만 받고, 위의 연결 코드를 아는 브라우저만 연결돼요.'], ['코드는 내 컴퓨터에서 내 권한으로 실행돼요(서버처럼 격리되지 않아요). 믿을 수 있는 코드만 실행하세요.'], ['폰·태블릿·설치형 앱(PWA)에서는 쓸 수 없어요. 서버가 지원하는 언어만 실행돼요.']].forEach(function(t) { safe.appendChild(el('div', 'rn-li', '· ' + t[0])); });
+}
+
+/* 시작: PC 에서는 '내 PC' 버튼을 보이고, 전에 연결한 적이 있으면 상태를 확인한다 */
+function runnerInit() { runnerPaint(); if (runnerDeviceOk() && runnerToken()) runnerProbe(false); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runnerInit); else setTimeout(runnerInit, 0);

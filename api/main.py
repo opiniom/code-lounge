@@ -92,6 +92,7 @@ app = FastAPI(
 )
 
 import os
+import re
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -270,6 +271,49 @@ if os.path.isdir(UI_DIR):
 
 # 화면 주소: /app, /app/login, /app/workspace, /app/community/12 … 모두 같은 index.html 이 열리고,
 # 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ 와 /ui 는 예전 주소)
+# ---- 내 PC 러너: 웹사이트가 사용자에게 내려주는 작은 프로그램 (내 컴퓨터에 설치한 언어로 코드를 실행)
+_RUNNER_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runner", "duresync_runner.py")
+
+
+def _runner_origins(request: Request) -> list:
+    """러너가 믿을 웹사이트 주소: 설정된 공개 주소(PUBLIC_BASE_URL). 개발용 localhost 로 접속했을 때만 지금 접속한 주소도 믿는다 (운영 서버는 https 주소만)"""
+    out = []
+    base = (settings.PUBLIC_BASE_URL or "").strip().rstrip("/")
+    if base:
+        out.append(base)
+    host = (request.headers.get("host") or "").split(":")[0]
+    if host in ("localhost", "127.0.0.1"):
+        o = f"{request.url.scheme}://{request.headers.get('host')}"
+        if o not in out:
+            out.append(o)
+    return out
+
+
+@app.get("/api/runner", tags=["Runner"])
+async def runner_info():
+    """러너 프로그램의 최신 버전과 내려받는 주소 (화면이 '새 버전이 있어요' 안내에 쓴다)"""
+    ver = None
+    try:
+        with open(_RUNNER_FILE, "r", encoding="utf-8") as fh:
+            m = re.search(r'^RUNNER_VERSION = "([^"]+)"', fh.read(), re.M)
+            ver = m.group(1) if m else None
+    except OSError:
+        pass
+    return {"version": ver, "download": "/runner/duresync_runner.py", "port": 47321, "available": ver is not None}
+
+
+@app.get("/runner/duresync_runner.py", tags=["Runner"], include_in_schema=False)
+async def runner_download(request: Request):
+    try:
+        with open(_RUNNER_FILE, "r", encoding="utf-8") as fh:
+            body = fh.read()
+    except OSError:
+        raise HTTPException(status_code=404, detail="러너 파일을 찾을 수 없어요.")
+    origins = _runner_origins(request)
+    body = body.replace('ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]', "ALLOWED_ORIGINS = %s" % json.dumps(origins), 1)
+    return Response(body, media_type="text/x-python; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="duresync_runner.py"', "Cache-Control": "no-cache"})
+
+
 @app.get("/", tags=["UI"], include_in_schema=False)
 @app.get("/ui", tags=["UI"], include_in_schema=False)
 @app.get("/app", tags=["UI"], include_in_schema=False)

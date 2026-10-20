@@ -41,6 +41,7 @@
     "js/pages/events.js",
     "js/pages/workspace.js",
     "js/pages/workspace-presence.js",
+    "js/pages/workspace-runner.js",
     "js/pages/workspace-live.js",
     "js/core/api.js",
     "js/pages/chat.js",

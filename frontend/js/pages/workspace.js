@@ -1360,9 +1360,11 @@ async function runCode() {
     wsRunNotice('이 파일은 실행할 수 없어요', (ex ? '.' + ex : '확장자가 없는') + ' 파일은 코드로 실행되지 않아요.\n실행할 수 있는 파일: ' + ['py','js','ts','java','c','cpp','cs','html'].map(function(e){ return '.' + e; }).join(' '));
     return;
   }
-  var supportedLangs = await wsRunSupported();
-  if (supportedLangs && supportedLangs.indexOf(lang) < 0) { wsLangAlert(WS_RUN_LABEL[lang] || lang, wsExt(fobj.path || fobj.tab)); return; }      // 서버가 지원하지 않는 언어 (PC · 모바일 · PWA 공통)
-  if (!authToken) {
+  // 실행할 곳: 서버 또는 내 PC(러너). 둘 다 이 언어가 없으면 '언어 지원이 되지 않습니다' (폰·PWA 는 서버 언어만)
+  var target = await wsRunTarget(lang);
+  if (!target) { wsLangAlert(WS_RUN_LABEL[lang] || lang, wsExt(fobj.path || fobj.tab)); return; }
+  var isLocal = target.kind === 'local';
+  if (!isLocal && !authToken) {
     wsRunNotice('로그인하면 코드를 실행할 수 있어요', '코드 실행은 로그인한 사용자만 쓸 수 있어요.');
     return;
   }
@@ -1412,27 +1414,38 @@ async function runCode() {
     activeTermSocket = null;
   }
 
-  var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  var wsUrl = proto + '//' + location.host + '/ws/terminal?token=' + encodeURIComponent(authToken || '');
+  var wsUrl;
+  if (isLocal) wsUrl = runnerUrl();
+  else wsUrl = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws/terminal?token=' + encodeURIComponent(authToken || '');
+  if (isLocal) appendLiveOutput('// 내 PC 에서 실행 (' + (target.ver ? target.ver : '기본 버전') + ')\n', false);
 
-  var ws = new WebSocket(wsUrl);
+  var ws;
+  try { ws = new WebSocket(wsUrl); } catch (e) { appendLiveOutput('\n[내 PC 러너에 연결할 수 없어요]\n', true); finishRun(-1); return; }
   activeTermSocket = ws;
-
-  ws.onopen = function() {
+  var started = false;
+  function sendStart() {
+    started = true;
     ws.send(JSON.stringify({
       action: 'start',
       language: lang,
       file_name: fobj.path || fobj.tab,
-      runtime_version: wsRtChosen(lang) || undefined,          // 사용자가 고른 언어 버전 (없으면 서버 기본 버전)
+      runtime_version: target.ver || undefined,          // 사용자가 고른 언어 버전 (없으면 기본 버전)
       source_code: code
     }));
     focusLiveInput();
+  }
+  ws.onopen = function() {
+    if (isLocal) ws.send(JSON.stringify({ action: 'hello', token: runnerToken() }));     // 내 PC 러너는 연결 코드 확인 뒤에 시작한다
+    else sendStart();
   };
 
   ws.onmessage = function(ev) {
     try {
       var msg = JSON.parse(ev.data);
-      if (msg.type === 'stdout') {
+      if (msg.type === 'hello') {
+        if (msg.ok) { if (!started) sendStart(); }
+        else { appendLiveOutput('\n[연결 코드가 맞지 않아요. 상단의 🖥️ 내 PC 에서 다시 연결해 주세요]\n', true); runnerSetToken(''); RUNNER.last = null; finishRun(-1); try { ws.close(); } catch (e2) {} }
+      } else if (msg.type === 'stdout') {
         appendLiveOutput(msg.data, false);
       } else if (msg.type === 'stderr') {
         appendLiveOutput(msg.data, true);
@@ -1446,7 +1459,8 @@ async function runCode() {
   };
 
   ws.onerror = function() {
-    appendLiveOutput('\n[WebSocket 연결 오류가 발생했습니다]\n', true);
+    appendLiveOutput(isLocal ? '\n[내 PC 러너에 연결할 수 없어요. 러너가 켜져 있는지 확인해 주세요]\n' : '\n[WebSocket 연결 오류가 발생했습니다]\n', true);
+    if (isLocal) RUNNER.last = null;
     finishRun(-1);
   };
 
@@ -1989,35 +2003,13 @@ function wsQuickKeysInit() {
 
 /* =========================================================
    실행 환경: 언어 버전 선택 · 지원하지 않는 언어 안내
-   서버에는 관리자가 정한 핵심 언어만 있다 (HTML·CSS 는 사용자 브라우저에서 미리보기로). 같은 언어의 버전이 여러 개 설치돼 있으면
-   ▶ 실행 옆 선택 박스로 고른다 (고른 버전은 기억해 둔다). 서버에 없는 언어로 실행하면 '언어 지원이 되지 않습니다' 안내창을 띄운다.
+   서버에는 관리자가 정한 핵심 언어만 있다 (HTML·CSS 는 사용자 브라우저에서 미리보기로). 서버에 없는 언어는 PC 에서 내 컴퓨터에 설치한 것으로 실행할 수 있고(workspace-runner.js),
+   어디에도 없으면 '언어 지원이 되지 않습니다' 안내창을 띄운다 (폰·PWA 는 서버 언어만).
    ========================================================= */
 var WS_CODE_EXT = ['kt', 'kts', 'swift', 'lua', 'r', 'dart', 'scala', 'sql', 'vb', 'pas', 'hs', 'ex', 'exs', 'clj', 'jl', 'm', 'mm', 'asm', 'groovy', 'f90', 'cob', 'pl6'];
 var WS_EXT_LABEL = { kt:'Kotlin', kts:'Kotlin', swift:'Swift', lua:'Lua', r:'R', dart:'Dart', scala:'Scala', sql:'SQL', vb:'Visual Basic', pas:'Pascal', hs:'Haskell', ex:'Elixir', exs:'Elixir', clj:'Clojure', jl:'Julia', m:'Objective-C', mm:'Objective-C', asm:'Assembly', groovy:'Groovy', f90:'Fortran', cob:'COBOL' };
 function wsExtLabel(ex) { return WS_EXT_LABEL[ex] || ('.' + ex); }
-function wsRtKey(rt) { return 'sync_rt_' + rt; }
-function wsRtChosen(lang) {
-  var info = wsLangInfo(lang); if (!info || !info.runtime || !info.versions || info.versions.length < 2) return null;
-  var want = null; try { want = localStorage.getItem(wsRtKey(info.runtime)); } catch (e) {}
-  return (want && info.versions.some(function(v) { return v.id === want; })) ? want : info.default;
-}
-function wsRtChange() {
-  var sel = document.getElementById('wsRuntimeSel'); if (!sel || !sel.dataset.rt) return;
-  try { localStorage.setItem(wsRtKey(sel.dataset.rt), sel.value); } catch (e) {}
-  pushToast('🔧', '실행 버전을 바꿨어요', sel.options[sel.selectedIndex].text);
-}
-/* 지금 열린 파일의 언어에 버전이 여러 개면 선택 박스를 보여 준다 */
-async function wsRtUpdate() {
-  var sel = document.getElementById('wsRuntimeSel'); if (!sel) return;
-  var lang = currentFileKey ? wsRunLang(currentFileKey) : null;
-  var c = lang ? await wsRunLoad(false) : null, info = lang ? wsLangInfo(lang) : null;
-  if (!info || !info.runtime || !info.versions || info.versions.length < 2) { sel.hidden = true; sel.dataset.rt = ''; return; }
-  var cur = wsRtChosen(lang);
-  sel.innerHTML = '';
-  info.versions.forEach(function(v) { var o = document.createElement('option'); o.value = v.id; o.textContent = (WS_RUN_LABEL[lang] || lang) + ' ' + v.label.replace(/ \(기본 포함\)$/, '').replace(/ \(이전 방식 설치\)$/, '') + (v.active ? ' · 기본' : ''); sel.appendChild(o); });
-  sel.value = cur; sel.dataset.rt = info.runtime; sel.hidden = false;
-  sel.title = '이 파일을 실행할 ' + (WS_RUN_LABEL[lang] || lang) + ' 버전을 고르세요';
-}
+/* 실행 위치·버전 선택(서버 · 내 PC)은 workspace-runner.js */
 /* '언어 지원이 되지 않습니다' 안내창 (PC · 모바일 · PWA 공통). why: 'spring' 이면 Spring 전용 설명 */
 async function wsLangAlert(label, ext, why) {
   var c = await wsRunLoad(false), sup = c && c.langs ? c.langs : [];
@@ -2035,7 +2027,17 @@ async function wsLangAlert(label, ext, why) {
   sup.forEach(function(id) { var s = document.createElement('span'); s.className = 'wl-chip'; s.textContent = WS_RUN_LABEL[id] || id; h.appendChild(s); });
   ['HTML', 'CSS'].forEach(function(t) { var s = document.createElement('span'); s.className = 'wl-chip web'; s.textContent = t + ' (미리보기)'; h.appendChild(s); });
   var t = document.createElement('div'); t.className = 'wl-lbl'; t.textContent = '지금 실행할 수 있는 언어'; body.appendChild(t); body.appendChild(h);
-  p('필요한 언어가 있으면 관리자에게 요청해 주세요.', 'wl-sub');
+  if (runnerDeviceOk() && why !== 'spring') {        // PC: 내 컴퓨터에 설치한 언어로 실행할 수 있다
+    var a = document.createElement('div'); a.className = 'wl-actions';
+    var b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.textContent = '🖥️ 내 PC 에 설치한 언어로 실행';
+    b.onclick = function() { wsLangAlertClose(); runnerOpenModal('"' + label + '" 가 내 컴퓨터에 설치돼 있으면 러너를 켜서 바로 실행할 수 있어요.'); };
+    a.appendChild(b); body.appendChild(a);
+    p('내 컴퓨터에 ' + label + ' 를 설치하고 러너를 켜면 PC 에서 실행할 수 있어요. 폰·PWA 에서는 서버 언어만 실행돼요.', 'wl-sub');
+  } else if (why !== 'spring') {
+    p('폰·태블릿·설치형 앱(PWA)에서는 서버가 지원하는 언어만 실행할 수 있어요. 내 컴퓨터(PC)에서 열면 설치한 언어로도 실행할 수 있어요.', 'wl-sub');
+  } else {
+    p('필요한 언어가 있으면 관리자에게 요청해 주세요.', 'wl-sub');
+  }
   m.classList.add('open');
 }
 function wsLangAlertClose() { var m = document.getElementById('wsLangModal'); if (m) m.classList.remove('open'); }
