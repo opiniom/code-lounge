@@ -135,6 +135,9 @@
 .call-panel.open{opacity:1; pointer-events:auto; transform:translate(0,-50%);}
 body.chat-open .call-panel{right:calc(min(var(--chat-w), 88vw) + 12px);}
 @media (max-width:520px){ .call-panel{left:8px; right:8px !important; width:auto;} }
+.sfx-btn{font-size:14px; line-height:1; flex:0 0 auto;}
+.sfx-btn.off{opacity:.55;}
+.call-head .sfx-btn{margin-left:auto;}
 .call-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .call-title{display:flex; flex-direction:column; gap:2px; min-width:0;}
 .call-title b{font-size:14px;}

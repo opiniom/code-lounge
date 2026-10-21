@@ -29,6 +29,7 @@
   ],
   "js": [
     "js/core/theme.js",
+    "js/core/sfx.js",
     "js/core/router.js",
     "js/core/home-landing.js",
     "js/core/auth.js",

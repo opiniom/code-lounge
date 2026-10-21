@@ -1,7 +1,8 @@
 /* ---- 팀 통화방 (WebRTC: 팀원 브라우저끼리 직접 연결 → 지연 최소, 서버는 연결 신호만 중계) ----
    디스코드처럼 프로젝트마다 여러 방: '기본 통화방'은 프로젝트 이름을 따라가고, 나머지는 팀원이 만든다. */
 var call = { ws:null, sid:null, roomKey:null, selfId:null, peers:{}, pcs:{}, pendingIce:{}, stream:null, muted:false, joined:false, connecting:false,
-             rooms:[], relay:false, ice:null, statsTimer:null, meterTimer:null, rtt:null, ctx:null, analysers:{}, max:6, maxRooms:8 };
+             rooms:[], relay:false, ice:null, statsTimer:null, meterTimer:null, rtt:null, ctx:null, analysers:{}, max:6, maxRooms:8,
+             reconnecting:false, tries:0, lastRx:0, pingSentAt:0, pingTimer:null, retryTimer:null };
 function callOpen(){ return document.getElementById('callPanel').classList.contains('open'); }
 function toggleCall(){
   var panel = document.getElementById('callPanel');
@@ -9,15 +10,12 @@ function toggleCall(){
   if(callOpen()){ pollCallRoster(); }
   renderCall();
 }
-/* 통화방은 항상 '지금 채팅 중인 프로젝트'의 것만 보여준다.
-   프로젝트를 바꾸면: 통화 중이던 방에서 자동으로 나오고, 새 프로젝트의 통화방 목록으로 바뀐다 (다른 프로젝트와 섞이지 않게) */
+/* 통화방 목록은 '지금 채팅 중인 프로젝트'의 것을 보여 주되, 통화 중일 때는 통화 중인 프로젝트에 고정한다.
+   (디스코드처럼) 채팅·워크스페이스에서 프로젝트를 바꿔도 통화는 끊지 않는다. 예전에는 프로젝트가 바뀌면 통화에서 자동으로 나가졌다
+   — 폴더 가져오기 뒤 워크스페이스가 다른 프로젝트로 다시 열리거나, 워크스페이스에 들어갈 때 프로젝트가 달라지면 그랬다. */
+function callActiveSid(){ return ((call.joined || call.connecting || call.ws) && call.sid) ? call.sid : chatServerId(); }
 function callSyncProject(){
-  var sid = chatServerId();
-  if((call.joined || call.connecting || call.ws) && call.sid && call.sid !== sid){
-    var from = callProjectTitle();
-    leaveCall(true);
-    pushToast('📞', '통화방에서 나왔어요', '「' + from + '」 통화에서 나왔어요. 프로젝트를 바꿔서 「' + callProjectTitle() + '」의 통화방으로 바뀌었어요.', { duration:4200 });
-  }
+  var sid = callActiveSid();
   if(call.shownSid !== sid){ call.shownSid = sid; call.rooms = []; call.roomKey = call.joined ? call.roomKey : null; renderCall(); pollCallRoster(); }
 }
 function callColor(name){ return chatColor(name || '?'); }
@@ -57,7 +55,7 @@ function renderCall(){
       badge = document.getElementById('callBadge'), tab = document.getElementById('callTab'),
       create = document.getElementById('callCreate');
   if(!list) return;
-  var sid = chatServerId() || call.sid;
+  var sid = callActiveSid();
   var can = !!(calApiMode && sid);
   document.getElementById('callProj').textContent = can ? callProjectTitle() : '로그인 후 사용할 수 있어요';
   var rooms = can ? callRoomList() : [];
@@ -96,6 +94,7 @@ function renderCall(){
   // 상태 문구
   if(!calApiMode){ status.textContent = '로그인하면 프로젝트 팀원과 음성으로 바로 통화할 수 있어요.'; }
   else if(!sid){ status.textContent = '프로젝트를 만들면 팀원 전용 통화방을 쓸 수 있어요.'; }
+  else if(call.reconnecting){ status.textContent = '연결이 잠깐 끊겨서 다시 연결하는 중이에요…' + (call.tries > 1 ? ' (' + call.tries + '번째 시도)' : ''); }
   else if(call.connecting){ status.textContent = '연결하는 중…'; }
   else if(call.joined){ var n = callLivePeople().length; status.textContent = '「' + callRoomName(call.roomKey) + '」 ' + n + '명 통화 중' + (n === 1 ? ' · 팀원이 들어오면 바로 들려요' : ''); }
   else if(total){ status.textContent = total + '명이 통화 중이에요. 방을 골라 참여해 보세요!'; }
@@ -148,34 +147,84 @@ async function joinCall(roomKey){
     pushToast('🎤','마이크를 켜지 못했어요', callMicError(e));
     return;
   }
+  call.stream.getAudioTracks().forEach(function(t){ t.onended = function(){ if(call.stream) pushToast('🎤','마이크가 끊겼어요','마이크를 다시 연결한 뒤 통화방에서 나갔다가 다시 들어와 주세요.'); }; });
   // 연결 서버(STUN/TURN) 설정은 서버에서 받는다
   try { call.ice = await apiFetch('/api/call/ice'); call.relay = !!call.ice.relay; } catch(e){ call.ice = {iceServers:[{urls:'stun:stun.l.google.com:19302'}], relay:false}; }
-  var ws = new WebSocket(API_BASE.replace(/^http/, 'ws') + '/ws/call/' + sid + '/' + encodeURIComponent(roomKey));
-  call.ws = ws;
+  openCallSocket();
+}
+/* 신호용 웹소켓을 연다 (처음 들어갈 때, 그리고 연결이 끊겼을 때 다시 연결할 때). 마이크(call.stream)는 그대로 쓴다 */
+function openCallSocket(){
+  var ws = new WebSocket(API_BASE.replace(/^http/, 'ws') + '/ws/call/' + call.sid + '/' + encodeURIComponent(call.roomKey));
+  call.ws = ws; call.lastRx = Date.now();
   ws.onopen = function(){ ws.send(JSON.stringify({type:'auth', token:authToken})); };
-  ws.onmessage = function(ev){ try { handleCallMsg(JSON.parse(ev.data)); } catch(e){ console.error(e); } };
-  ws.onclose = function(){ if(call.ws === ws && (call.joined || call.connecting)) cleanupCall('통화방 연결이 끊겼어요.'); };
+  ws.onmessage = function(ev){ call.lastRx = Date.now(); try { handleCallMsg(JSON.parse(ev.data)); } catch(e){ console.error(e); } };
+  ws.onclose = function(ev){ if(call.ws === ws) callSocketLost(ev && ev.code); };
   ws.onerror = function(){};
 }
+/* 서버가 일부러 닫은 게 아니라(로그인 만료·방 삭제·다른 곳 접속은 메시지로 먼저 알려 준다) 연결이 그냥 끊긴 경우:
+   예전에는 바로 통화를 끝냈지만, 네트워크가 잠깐 흔들린 것일 수 있어서 마이크는 유지한 채 자동으로 다시 연결한다 */
+function callSocketLost(code){
+  if(call.ws){ try { call.ws.onclose = null; call.ws.close(); } catch(e){} }
+  call.ws = null;
+  if(!call.joined && !call.reconnecting){ cleanupCall('통화방에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.'); return; }
+  if(!call.stream){ cleanupCall('통화방 연결이 끊겼어요.'); return; }
+  startCallReconnect();
+}
+function startCallReconnect(){
+  if(!call.reconnecting){
+    call.reconnecting = true; call.tries = 0;
+    Object.keys(call.pcs).forEach(closePeer); call.peers = {};      // 다시 들어가면 새 번호를 받아서 팀원과 연결을 새로 맺는다
+    renderCall();
+  }
+  clearTimeout(call.retryTimer);
+  var n = ++call.tries;
+  if(n > 8){ cleanupCall('통화방 연결이 끊겼어요. 다시 들어와 주세요.'); return; }
+  var wait = n === 1 ? 200 : Math.min(500 * Math.pow(2, n - 2), 6000);
+  call.retryTimer = setTimeout(function(){ if(call.reconnecting && !call.ws){ renderCall(); openCallSocket(); } }, wait);
+}
+/* 연결이 조용히 죽은 것(와이파이 전환·절전 뒤 등)을 알아채기: 15초마다 ping, 45초 동안 아무 응답이 없으면 끊고 다시 연결 */
+function startCallKeepalive(){
+  clearInterval(call.pingTimer); call.pingSentAt = 0;
+  call.pingTimer = setInterval(function(){
+    if(!call.ws || call.ws.readyState !== 1) return;
+    var now = Date.now();
+    // 마지막 ping 에 20초가 지나도록 아무 응답(pong 포함)이 없으면 연결이 죽은 것.
+    // (백그라운드 탭은 타이머가 1분에 한 번만 돌 수 있어서, '몇 초 전에 응답이 없었다'가 아니라 'ping 을 보낸 뒤 응답이 없었다'로 판단한다)
+    var waiting = call.pingSentAt && call.lastRx < call.pingSentAt;          // 보낸 ping 에 아직 아무 응답이 없다
+    if(waiting && now - call.pingSentAt > 20000){ callSocketLost(4000); return; }
+    if(!waiting) call.pingSentAt = now;                                        // 응답을 기다리는 중에는 '처음 보낸 시각'을 유지해야 20초를 셀 수 있다
+    callSend({type:'ping', t:now});
+  }, 15000);
+}
+/* 인터넷이 다시 연결되거나 화면으로 돌아왔을 때, 끊겨 있으면 바로 다시 연결 */
+function callNudge(){ if(call.reconnecting && !call.ws){ clearTimeout(call.retryTimer); call.tries = Math.min(call.tries, 3); startCallReconnect(); } else if(call.joined && call.ws && call.ws.readyState > 1){ callSocketLost(4000); } }
+window.addEventListener('online', callNudge);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden){ callNudge(); if(call.joined && call.ws && call.ws.readyState === 1){ if(!(call.pingSentAt && call.lastRx < call.pingSentAt)) call.pingSentAt = Date.now(); callSend({type:'ping', t:Date.now()}); } } });
 function callSend(obj){ if(call.ws && call.ws.readyState === 1) call.ws.send(JSON.stringify(obj)); }
 function handleCallMsg(m){
   if(m.type === 'welcome'){
-    call.selfId = m.id; call.max = m.max || 6; call.roomKey = m.room || call.roomKey; call.joined = true; call.connecting = false; call.peers = {};
+    var again = call.reconnecting;
+    call.selfId = m.id; call.max = m.max || 6; call.roomKey = m.room || call.roomKey; call.joined = true; call.connecting = false; call.reconnecting = false; call.tries = 0; call.peers = {};
     (m.peers || []).forEach(function(p){ call.peers[p.id] = {name:p.name, muted:p.muted, state:'connecting'}; });
     // 새로 들어온 쪽이 기존 참가자 모두에게 연결을 건다
     (m.peers || []).forEach(function(p){ createPeer(p.id, true); });
     if(call.muted) callSend({type:'state', muted:true});
-    startCallLoops(); renderCall();
-    pushToast('📞','통화방에 들어왔어요', callRoomName(call.roomKey));
+    startCallLoops(); startCallKeepalive(); renderCall();
+    if(again) pushToast('📞','다시 연결됐어요', callRoomName(call.roomKey), { duration:2200 });
+    else { sfxPlay('join'); pushToast('📞','통화방에 들어왔어요', callRoomName(call.roomKey)); }
   } else if(m.type === 'peer-joined'){
     call.peers[m.peer.id] = {name:m.peer.name, muted:m.peer.muted, state:'connecting'};
+    sfxPlay('peerjoin');
     renderCall();
   } else if(m.type === 'peer-left'){
+    if(call.peers[m.id]) sfxPlay('peerleave');
     closePeer(m.id); delete call.peers[m.id]; renderCall();
   } else if(m.type === 'state'){
     if(call.peers[m.id]){ call.peers[m.id].muted = !!m.muted; renderCall(); }
   } else if(m.type === 'signal'){
     handleCallSignal(m.from, m.data);
+  } else if(m.type === 'pong'){
+    // 연결이 살아 있다는 확인 (lastRx 는 메시지를 받을 때마다 이미 갱신된다)
   } else if(m.type === 'kicked' || m.type === 'error'){
     cleanupCall(m.message || '통화방에서 나왔어요.');
   }
@@ -315,21 +364,27 @@ function toggleMute(){
   call.muted = !call.muted;
   if(call.stream) call.stream.getAudioTracks().forEach(function(t){ t.enabled = !call.muted; });
   callSend({type:'state', muted:call.muted});
+  sfxPlay(call.muted ? 'mute' : 'unmute');
   renderCall();
 }
 function cleanupCall(message){
+  var wasIn = call.joined || call.reconnecting;
   stopCallLoops();
+  clearInterval(call.pingTimer); call.pingTimer = null; clearTimeout(call.retryTimer); call.retryTimer = null;
   Object.keys(call.pcs).forEach(closePeer);
-  if(call.stream){ call.stream.getTracks().forEach(function(t){ t.stop(); }); }
+  if(call.stream){ call.stream.getTracks().forEach(function(t){ t.onended = null; t.stop(); }); }
   var ws = call.ws; call.ws = null;
-  if(ws){ try { ws.close(); } catch(e){} }
-  call.stream = null; call.joined = false; call.connecting = false; call.peers = {}; call.selfId = null; call.sid = null; call.roomKey = null; call.rtt = null;
+  if(ws){ try { ws.onclose = null; ws.close(); } catch(e){} }
+  call.stream = null; call.joined = false; call.connecting = false; call.reconnecting = false; call.tries = 0; call.peers = {}; call.selfId = null; call.sid = null; call.roomKey = null; call.rtt = null;
+  call.shownSid = null; callSyncProject();       // 통화가 끝났으니 지금 보는 프로젝트의 통화방 목록으로 돌아간다
   renderCall();
-  if(message) pushToast('📞','통화가 끝났어요', message);
+  if(message){ if(wasIn) sfxPlay('leave'); pushToast('📞','통화가 끝났어요', message); }
 }
 function leaveCall(silent){
-  if(!call.joined && !call.connecting && !call.ws) return;
+  if(!call.joined && !call.connecting && !call.ws && !call.reconnecting) return;
+  var wasIn = call.joined;
   cleanupCall(silent ? null : '통화방에서 나왔어요.');
+  if(!silent){ if(wasIn) sfxPlay('leave'); }
   if(!silent) pollCallRoster();
 }
 /* 통화방 목록·누가 어느 방에 있는지: 입장 전에도, 통화 중에도(다른 방/이름 변경 반영) 가끔 확인한다 */
@@ -348,7 +403,12 @@ function pollCallRoster(){
     renderCall();
   }).catch(function(){});
 }
-setInterval(function(){ if(!document.hidden) pollCallRoster(); }, 5000);
+var callPollTick = 0;
+setInterval(function(){          // 통화창을 열어 뒀거나 통화 중일 때는 5초마다, 닫혀 있을 때는 (탭 배지용으로) 20초마다만 확인해서 불필요한 요청을 줄인다
+  callPollTick++;
+  if(document.hidden) return;
+  if(callOpen() || call.joined || call.connecting || callPollTick % 4 === 0) pollCallRoster();
+}, 5000);
 /* 방 만들기 / 삭제 */
 function toggleCreateRoom(){
   var f = document.getElementById('callCreateForm'), b = document.getElementById('callCreateBtn');

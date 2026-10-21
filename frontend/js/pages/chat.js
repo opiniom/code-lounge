@@ -1,4 +1,5 @@
 /* ---- team chat (프로젝트별 채팅 + AI 일정 감지) ---- */
+var chatSndSeen = {};      // 프로젝트별로 '여기까지 봤다'(효과음용): 처음 불러올 때는 소리를 내지 않는다
 var chatProject = null;      // 프런트 프로젝트 id ('p3')
 var chatMsgs = [];           // 서버 메시지 (팀 채팅)
 var chatMode = 'team';       // 'team' = 팀 채팅 · 'ai' = 나만 보는 AI 대화
@@ -150,6 +151,7 @@ function chatRenderPresence(){
   document.querySelectorAll('#chatPanel .mavatar[data-uid]').forEach(function(av){ av.dataset.pst = pstOf(av.dataset.uid); });
 }
 function switchChatProject(id){
+  chatSndSeen = {};
   chatProject = id; chatMsgs = []; chatSig = ''; aiMsgs = []; aiSig = ''; chatAiWait = null; CHAT_TYPING = {}; chatForceBottom = true;
   renderChatHeader(); renderChat(); loadChat(true); if(chatMode === 'ai') loadAiChat(true);
   if(typeof callSyncProject === 'function') callSyncProject();
@@ -185,6 +187,7 @@ function loadChat(force){
     if(chatNoteSig !== null && noteSig !== chatNoteSig) refreshMeetingDocs();
     chatNoteSig = noteSig;
     chatSig = sig; chatMsgs = rows;
+    chatSoundCheck(sid, rows);
     if(changed || force){
       renderChat();
       if(changed) refreshTeamEvents();
@@ -192,6 +195,14 @@ function loadChat(force){
     if(chatPanelOpen()) chatMarkSeen();
     updateChatBadge();
   }).catch(function(){}).then(function(){ chatBusy = false; });
+}
+/* 팀원이 새 채팅을 보내면 효과음 (내 메시지·AI 답변·처음 불러온 기존 메시지는 제외, 방해금지 중에는 조용히) */
+function chatSoundCheck(sid, rows){
+  var maxId = rows.reduce(function(a, m){ return Math.max(a, m.id || 0); }, 0), prev = chatSndSeen[sid], mine = currentUser ? currentUser.id : -1;
+  chatSndSeen[sid] = Math.max(prev || 0, maxId);
+  if(prev === undefined) return;
+  var fresh = rows.some(function(m){ return m.id > prev && m.kind === 'user' && m.user_id !== mine; });
+  if(fresh && typeof sfxPlay === 'function' && !(currentUser && pstOf(currentUser.id) === 'dnd')) sfxPlay('message');
 }
 function refreshTeamEvents(){
   if(!calApiMode) return;
@@ -202,6 +213,7 @@ function refreshTeamEvents(){
   }).catch(function(){});
 }
 function startChat(){
+  chatSndSeen = {};
   renderChatHeader();
   chatMsgs = []; chatSig = ''; chatNoteSig = null;
   loadChat(true);

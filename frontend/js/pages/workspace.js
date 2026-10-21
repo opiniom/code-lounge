@@ -872,7 +872,7 @@ function wsDeleteDir(dir){
   } else { wsDropLocal(keys); }
 }
 function wsImportEntries(entries, skipped, rootName){
-  var sid = wsServerId();
+  var sid = wsServerId(), pid = wsProject;
   var chunks = [];
   for (var i = 0; i < entries.length; i += 50) chunks.push(entries.slice(i, i + 50));
   pushToast('📂', '폴더를 가져오는 중이에요', entries.length + '개 파일');
@@ -880,7 +880,10 @@ function wsImportEntries(entries, skipped, rootName){
     return chain.then(function(){ return apiFetch('/api/projects/' + sid + '/files/bulk', { method: 'PUT', body: JSON.stringify({ files: chunk }) }); });
   }, Promise.resolve()).then(function(){
     pushToast('✅', '폴더를 가져왔어요', (rootName || '선택한 폴더') + ' · ' + entries.length + '개 파일' + (skipped ? ' (' + skipped + '개 건너뜀)' : ''));
-    wsProject = null; wsLoaded = false; enterWorkspaceView();
+    // 가져온 그 프로젝트를 다시 불러온다. (예전에는 enterWorkspaceView() 가 캘린더에서 고른 프로젝트나 기본 프로젝트로 화면을 옮겨서,
+    //  가져온 폴더가 안 보이고 채팅·통화방도 다른 프로젝트로 바뀌어 통화에서 나가지곤 했다)
+    if (wsProject === pid && pid && calProjectById(pid)) { wsLoaded = false; loadWorkspace(pid); }
+    else if (wsProject === pid) { wsProject = null; wsLoaded = false; enterWorkspaceView(); }
   }).catch(function(e){ pushToast('⚠️', '가져오지 못했어요', e.message); });
 }
 
