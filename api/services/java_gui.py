@@ -141,7 +141,7 @@ async def build(files: List[Dict[str, str]], main_class: str) -> Dict[str, objec
             rel.append(os.path.join("src", p))
         last = ""
         for release in ("17", "11", "8"):                            # 브라우저의 자바(CheerpJ)가 읽을 수 있는 버전으로 컴파일 (서버 JDK 가 오래됐으면 낮춰서)
-            argv = [javac, "-proc:none", "-nowarn", "--release", release, "-encoding", "UTF-8", "-d", "out"] + rel
+            argv = [javac, "-J-Xmx256m", "-J-XX:+UseSerialGC", "-J-Xshare:auto", "-proc:none", "-nowarn", "--release", release, "-encoding", "UTF-8", "-d", "out"] + rel
             rc, so, se, _, timed_out, _ = await sb._run(argv, tmp, "", COMPILE_SECONDS, cpu=int(COMPILE_SECONDS))
             if timed_out:
                 return {"ok": False, "errors": "컴파일 시간이 너무 오래 걸려서 중단했어요."}
