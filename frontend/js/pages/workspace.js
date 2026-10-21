@@ -1281,6 +1281,7 @@ function submitLiveInput(e) {
 }
 
 function stopInteractiveCode() {
+  if (typeof GUI !== 'undefined' && GUI.key) { guiClose(false); appendLiveOutput('\n[사용자에 의해 중단됨]\n', false); return; }
   if (activeTermSocket && activeTermSocket.readyState === WebSocket.OPEN) {
     activeTermSocket.send(JSON.stringify({ action: 'stop' }));
   }
@@ -1336,7 +1337,7 @@ function wsNameWarnClick() {
 }
 var wsRunning = false;
 async function runCode() {
-  if (wsRunning) { pushToast('ℹ️', '이미 실행 중이에요', '끝날 때까지 기다리거나 ■ 중지를 눌러 주세요.'); return; }
+  if (wsRunning && !(typeof GUI !== 'undefined' && GUI.key)) { pushToast('ℹ️', '이미 실행 중이에요', '끝날 때까지 기다리거나 ■ 중지를 눌러 주세요.'); return; }      // (GUI 창이 떠 있는 중에는 ▶ 로 다시 실행할 수 있다)
   if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
   var fobj = currentFileKey && files[currentFileKey];
   if (!fobj) { pushToast('⚠️', '열린 파일이 없어요', '왼쪽 탐색기에서 실행할 파일을 열어 주세요.'); return; }
@@ -1381,6 +1382,9 @@ async function runCode() {
       wsNameFixButtons(currentFileKey, true));
     return;
   }
+
+  // 자바 Swing/AWT(창이 뜨는 프로그램)는 서버에 화면이 없어서, 서버가 컴파일만 하고 창은 이 화면 안에서 연다 (내 PC 로 실행하기로 고른 경우는 내 컴퓨터의 창으로)
+  if (!isLocal && lang === 'java' && typeof wsGuiRun === 'function' && wsIsGuiJava(code)) { await wsGuiRun(currentFileKey, code); return; }
 
   // 내 PC 에서 실행하기 전 확인 (처음 한 번 안내 · 팀원이 고친 코드면 동의)
   if (isLocal && !(await runnerGate(currentFileKey, code))) return;

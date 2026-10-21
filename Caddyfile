@@ -18,3 +18,26 @@ duresync.cloud, www.duresync.cloud {
         format console
     }
 }
+
+# ---- (선택, 권장) 자바 GUI 창 전용 주소 — 보안을 더 단단히 하고 싶을 때만 켜세요 ----
+# 워크스페이스의 자바 Swing 창은 브라우저 안의 자바(CheerpJ)가 그립니다. 팀원이 올린 자바 코드가 로그인 정보가 있는 사이트와 분리된 주소에서 돌게 하려면:
+#   1) DNS 에 gui.duresync.cloud 의 A 레코드를 서버 IP 와 같게 추가
+#   2) 아래 블록의 주석(#)을 풀기
+#   3) docker-compose.prod.yml 의 app 환경변수에 GUI_FRAME_ORIGIN=https://gui.duresync.cloud 추가 후 다시 올리기
+# (안 켜도 동작해요: 같은 주소에서 열고, 컴파일된 코드에서 위험한 기능(리플렉션·JS 연결 등)을 서버가 막아요)
+#
+# gui.duresync.cloud {
+#     @frame path /static/gui/*
+#     handle @frame {
+#         reverse_proxy app:8000
+#     }
+#     handle {
+#         respond "Not found" 404
+#     }
+#     encode zstd gzip
+#     header {
+#         Strict-Transport-Security "max-age=31536000"
+#         X-Content-Type-Options "nosniff"
+#         Content-Security-Policy "frame-ancestors https://duresync.cloud https://www.duresync.cloud"
+#     }
+# }

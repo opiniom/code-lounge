@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GUI 창</title>
+<!-- 자바 Swing/AWT 프로그램이 그려지는 작은 페이지. 워크스페이스(부모 페이지)가 iframe 으로 열고, 컴파일된 jar 를 postMessage 로 보내 준다.
+     다른 출처(GUI_FRAME_ORIGIN)에서 열리면 팀원의 자바 코드가 로그인 정보가 있는 사이트와 분리돼서 안전하다. 이 페이지는 로그인 정보를 전혀 모른다.
+     자바 실행은 CheerpJ(브라우저 안의 자바, 개인·비영리 용도 무료)가 한다. -->
+<style>html,body{margin:0;height:100%;background:#f4f4f6;font:13px system-ui,sans-serif;color:#555}#boot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.7;padding:16px}</style></head>
+<body><div id="boot">자바 실행 환경을 준비하는 중이에요…<br><small>처음 한 번만 오래 걸려요 (약 20~40초)</small></div>
+<script src="https://cjrtnc.leaningtech.com/4.2/loader.js"></script>
+<script>
+(function () {
+  var parentOrigin = '';
+  try { parentOrigin = new URL(location.href).searchParams.get('p') || ''; } catch (e) {}
+  if (!/^https?:\/\/[\w.\-]+(:\d+)?$/.test(parentOrigin)) parentOrigin = '';
+  function send(m) { if (parentOrigin) parent.postMessage(m, parentOrigin); }
+  var BANNER = /CHEERPJ COMMUNITY EDITION|cheerpj\.com\/docs\/licensing|\/ ___\||\|_\|\s*$/;
+  // 자바의 System.out / System.err 는 브라우저 console 로 나온다 → 부모(실행 콘솔)로 넘긴다
+  ['log', 'info', 'warn', 'error'].forEach(function (k) {
+    var orig = console[k];
+    console[k] = function () {
+      var text = [].slice.call(arguments).map(function (a) { return typeof a === 'string' ? a : (a && a.message) || String(a); }).join(' ');
+      if (!BANNER.test(text) && text.trim()) send({ t: 'out', text: text.replace(/\n+$/, '') + '\n', err: k === 'error' || k === 'warn' });
+      try { orig.apply(console, arguments); } catch (e) {}
+    };
+  });
+  window.addEventListener('error', function (e) { send({ t: 'out', text: '[오류] ' + e.message + '\n', err: true }); });
+  var started = false;
+  window.addEventListener('message', async function (e) {
+    var m = e.data;
+    if (!m || m.t !== 'run' || started || e.origin !== parentOrigin) return;      // 우리를 연 페이지가 보낸 것만, 한 번만
+    started = true;
+    try {
+      send({ t: 'status', s: '자바 실행 환경을 불러오는 중…' });
+      await cheerpjInit({ version: 17 });
+      cheerpOSAddStringFile('/str/app.jar', new Uint8Array(m.jar));
+      document.getElementById('boot').remove();
+      cheerpjCreateDisplay(m.w || 640, m.h || 480, document.body);
+      send({ t: 'status', s: '실행 중' });
+      var code = await cheerpjRunMain(m.main, '/str/app.jar');
+      send({ t: 'exit', code: code });
+    } catch (err) {
+      send({ t: 'out', text: '[GUI 창을 열지 못했어요] ' + (err && err.message || err) + '\n', err: true });
+      send({ t: 'exit', code: 1 });
+    }
+  });
+  send({ t: 'ready' });
+})();
+</script></body></html>

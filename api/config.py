@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     # 외부 공유 모드: ./share.sh 로 켜면 true. 코드 실행(내 컴퓨터에서 직접 실행됨)·API 문서·개발용 로그인을 모두 끈다
     PUBLIC_MODE: bool = False
+    # 자바 GUI 창(CheerpJ)을 띄우는 별도 출처 주소 (예: https://gui.duresync.cloud). 비워 두면 같은 사이트 주소에서 띄운다.
+    # 별도 출처를 쓰면 팀원이 올린 자바 코드가 내 로그인 정보가 있는 사이트와 완전히 분리돼서 더 안전하다.
+    GUI_FRAME_ORIGIN: str = ""
     # 개발/테스트 전용: 이메일만으로 로그인하는 /api/auth/social 허용. 기본 꺼짐 (켜면 누구나 어떤 계정으로든 로그인 가능)
     ALLOW_DEV_LOGIN: bool = False
     # 임시(로컬) 서버 전용: 이 이메일의 '이미 있는' 계정으로 로그인 버튼 한 번에 자동 로그인. 내 컴퓨터(127.0.0.1)에서 직접 접속할 때만 동작하고 계정을 새로 만들지 않는다. 배포 서버에서는 비워 둘 것

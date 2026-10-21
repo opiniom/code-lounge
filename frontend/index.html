@@ -982,6 +982,14 @@
     </div>
   </div>
 
+  <div class="gui-dock" id="wsGuiDock" hidden role="dialog" aria-label="GUI 창">
+    <div class="gui-head"><b id="guiTitle">GUI 창</b><span class="gui-status" id="guiStatus"></span>
+      <button class="icon-btn" type="button" onclick="wsGuiRerun()" title="다시 실행" aria-label="다시 실행">↻</button>
+      <button class="icon-btn" type="button" onclick="guiClose(false)" title="닫기" aria-label="닫기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="gui-body" id="guiBody"></div>
+    <div class="gui-foot">자바 코드를 변환하지 않고 그대로 브라우저 안의 자바(CheerpJ)로 실행해요 · 창은 이 화면 안에서만 보여요</div>
+  </div>
+
   <div class="modal-backdrop" id="runnerConfirmModal" role="alertdialog" aria-modal="true" aria-labelledby="rcTitle">
     <div class="share-modal rc-card">
       <div class="mh"><h3 class="rc-title" id="rcTitle">내 컴퓨터에서 실행할까요?</h3></div>

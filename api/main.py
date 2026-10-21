@@ -28,6 +28,7 @@ from routers.invitations import router as invitations_router
 from routers.events import router as events_router
 from routers.notifications import router as notifications_router
 from routers.call import router as call_router
+from routers.gui import router as gui_router
 from routers.community import router as community_router, seed_community
 from routers.presence import router as presence_router
 from routers.profile import router as profile_router, follow_router
@@ -121,6 +122,7 @@ app.include_router(invitations_router)
 app.include_router(events_router)
 app.include_router(notifications_router)
 app.include_router(call_router)
+app.include_router(gui_router)
 app.include_router(community_router)
 app.include_router(presence_router)
 app.include_router(profile_router)
