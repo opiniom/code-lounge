@@ -1428,7 +1428,7 @@ async function runCode() {
   var ws;
   try { ws = new WebSocket(wsUrl); } catch (e) { appendLiveOutput('\n[내 PC 러너에 연결할 수 없어요]\n', true); finishRun(-1); return; }
   activeTermSocket = ws;
-  var started = false;
+  var started = false, runText = '';
   function sendStart() {
     started = true;
     ws.send(JSON.stringify({
@@ -1452,11 +1452,12 @@ async function runCode() {
         if (msg.ok) { if (!started) sendStart(); }
         else { appendLiveOutput('\n[연결 코드가 맞지 않아요. 상단의 🖥️ 내 PC 에서 다시 연결해 주세요]\n', true); runnerSetToken(''); RUNNER.last = null; finishRun(-1); try { ws.close(); } catch (e2) {} }
       } else if (msg.type === 'stdout') {
-        appendLiveOutput(msg.data, false);
+        appendLiveOutput(msg.data, false); if (!isLocal && runText.length < 20000) runText += msg.data;
       } else if (msg.type === 'stderr') {
-        appendLiveOutput(msg.data, true);
+        appendLiveOutput(msg.data, true); if (!isLocal && runText.length < 20000) runText += msg.data;
       } else if (msg.type === 'exit') {
         if (msg.data) appendLiveOutput(msg.data, false);
+        if (!isLocal && msg.code && wsNeedsDisplay(runText)) wsGuiHint(lang);       // 창(GUI)을 띄우는 프로그램이라 서버에서는 실패했다 → 이유와 해결 방법을 알려 준다
         finishRun(msg.code);
       }
     } catch(e) {
@@ -2016,6 +2017,27 @@ var WS_CODE_EXT = ['kt', 'kts', 'swift', 'lua', 'r', 'dart', 'scala', 'sql', 'vb
 var WS_EXT_LABEL = { kt:'Kotlin', kts:'Kotlin', swift:'Swift', lua:'Lua', r:'R', dart:'Dart', scala:'Scala', sql:'SQL', vb:'Visual Basic', pas:'Pascal', hs:'Haskell', ex:'Elixir', exs:'Elixir', clj:'Clojure', jl:'Julia', m:'Objective-C', mm:'Objective-C', asm:'Assembly', groovy:'Groovy', f90:'Fortran', cob:'COBOL' };
 function wsExtLabel(ex) { return WS_EXT_LABEL[ex] || ('.' + ex); }
 /* 실행 위치·버전 선택(서버 · 내 PC)은 workspace-runner.js */
+/* 창(GUI)을 띄우는 프로그램 (Java Swing·AWT·JavaFX, Python tkinter·pygame, C/C++ SDL·GTK …)은 화면이 없는 서버에서 실행할 수 없다 */
+var WS_DISPLAY_ERR = /HeadlessException|No X11 DISPLAY|java\.awt\.headless|TclError: no display|couldn't connect to display|no display name and no \$DISPLAY|pygame\.error: (No available video device|video system not initialized)|cannot connect to X server|Cannot open display|cannot open display|Could not connect to any X display|Unable to init server: Could not connect|SDL_Init|qt\.qpa\.xcb|could not connect to display/i;
+function wsNeedsDisplay(text) { return WS_DISPLAY_ERR.test(String(text || '')); }
+function wsGuiHint(lang) {
+  var log = document.getElementById('termLiveLog'); if (!log) return;
+  var box = document.createElement('div'); box.className = 'term-gui-hint';
+  var t = document.createElement('div'); t.className = 'term-err'; t.textContent = '// 이 프로그램은 창(GUI)을 띄우는 프로그램이에요';
+  var d = document.createElement('div'); d.className = 'term-dim'; d.style.whiteSpace = 'pre-wrap';
+  var local = (runnerDeviceOk() && runnerEnabled() && RUNNER.ok && (runnerLangs()[lang] || []).length) ? runnerLangs()[lang] : null;
+  d.textContent = '서버에는 화면이 없어서 창(JFrame·tkinter·pygame 등)을 열 수 없어요. 서버에서는 글자만 출력하는(콘솔) 프로그램을 실행할 수 있어요.\n'
+    + (runnerDeviceOk() ? '창이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요. ' + (local ? '아래 버튼을 누르면 내 PC 의 ' + (WS_RUN_LABEL[lang] || lang) + '로 실행하고, 창이 내 화면에 떠요.' : '내 PC 에 ' + (WS_RUN_LABEL[lang] || lang) + '를 설치하고 러너를 연결하면(🖥️ 내 PC) 창이 내 화면에 떠요.') : '폰·태블릿·앱(PWA)에서는 창 프로그램을 실행할 수 없어요. PC 에서 열어 주세요.');
+  box.appendChild(t); box.appendChild(d);
+  if (runnerDeviceOk()) {
+    var row = document.createElement('div'); row.className = 'term-fixes';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'term-fix-btn';
+    if (local) { b.textContent = '🖥️ 내 PC 에서 실행'; b.onclick = function() { try { localStorage.setItem(wsRunKey(lang), 'l:' + local[0].id); } catch (e) {} wsRtUpdate(); runCode(); }; }
+    else { b.textContent = '🖥️ 내 PC 연결 방법 보기'; b.onclick = function() { runnerOpenModal('창(GUI)이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요.'); }; }
+    row.appendChild(b); box.appendChild(row);
+  }
+  log.appendChild(box); log.scrollTop = log.scrollHeight;
+}
 /* '언어 지원이 되지 않습니다' 안내창 (PC · 모바일 · PWA 공통). why: 'spring' 이면 Spring 전용 설명 */
 async function wsLangAlert(label, ext, why) {
   var c = await wsRunLoad(false), sup = c && c.langs ? c.langs : [];

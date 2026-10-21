@@ -12,7 +12,7 @@
   · 처음 한 번 웹사이트에 '연결 코드'를 입력해야 해요. 코드는 내 컴퓨터에만 저장돼요(~/.duresync-runner/token).
   · 실행한 코드는 '내 컴퓨터에서, 내 권한으로' 돌아가요 (서버처럼 격리되지 않아요). 믿을 수 있는 코드만 실행하세요.
   · 한 번에 실행하는 시간·출력 크기를 제한해요.
-옵션:  --port 47321  --allow-origin https://내사이트  --max-seconds 300  --show-token  --reset-token
+옵션:  --port 47321  --allow-origin https://내사이트  --max-seconds 1800  --show-token  --reset-token
 자동 시작:  python3 duresync_runner.py --install-autostart     컴퓨터를 켤 때마다 알아서 켜져요 (끄기: --uninstall-autostart)
 언어 자동 인식:  언어를 새로 설치하면 ▶ 실행할 때 러너가 알아서 다시 찾아요 (다시 켜거나 '다시 검색'을 누를 필요 없어요)
 """
@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.1"
+RUNNER_VERSION = "1.2.2"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -515,7 +515,7 @@ class Runner:
             await ws.send({"type": "stderr", "data": "\x1b[31m[컴파일 에러]\n%s\x1b[0m\n" % e}); await ws.send({"type": "exit", "data": "", "code": 1})
             shutil.rmtree(tmp, ignore_errors=True); return None, None, []
         env = _env(tmp, item["tools"])
-        kw = {"creationflags": 0x00000200} if IS_WINDOWS else {"start_new_session": True}
+        kw = {"creationflags": 0x00000200 | 0x08000000} if IS_WINDOWS else {"start_new_session": True}
         if comp:
             await ws.send({"type": "stdout", "data": "\x1b[36m[%s 컴파일 중...]\x1b[0m\n" % label})
             try:
@@ -654,7 +654,7 @@ def _app_args(a):
     out = ["--port", str(a.port)]
     for o in a.allow_origin:
         out += ["--allow-origin", o]
-    if a.max_seconds != 300:
+    if a.max_seconds != 1800:
         out += ["--max-seconds", str(a.max_seconds)]
     return out
 
@@ -760,7 +760,7 @@ def main():
     ap = argparse.ArgumentParser(description="DureSync 러너: 내 컴퓨터에 설치한 언어로 워크스페이스 코드를 실행합니다.")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--allow-origin", action="append", default=[], help="믿을 웹사이트 주소를 더 추가 (예: http://localhost:8000)")
-    ap.add_argument("--max-seconds", type=int, default=300, help="한 번 실행의 최대 시간(초)")
+    ap.add_argument("--max-seconds", type=int, default=1800, help="한 번 실행의 최대 시간(초)")
     ap.add_argument("--show-token", action="store_true", help="연결 코드만 보여 주고 끝내기")
     ap.add_argument("--reset-token", action="store_true", help="연결 코드를 새로 만들기")
     ap.add_argument("--install-autostart", action="store_true", help="컴퓨터를 켤 때마다 러너가 자동으로 켜지게 하기")

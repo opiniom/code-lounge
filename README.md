@@ -146,6 +146,7 @@ cd code-lounge
    - 새로 설치한 언어는 ▶ 실행할 때 러너가 **알아서 다시 찾아요**(재시작·'다시 검색' 불필요). 고른 버전이 지워졌으면 몰래 다른 버전으로 돌리지 않고 이유를 알려 줘요.
    - 같은 와이파이를 써도 상관없어요. 러너는 **각자 자기 컴퓨터 안(127.0.0.1)**에서만 열려서, 컴퓨터마다 한 번씩 설치하면 돼요.
    - 끄기·지우기: `python3 ~/.duresync-runner/duresync_runner.py --uninstall-autostart` (윈도우: `py "$env:USERPROFILE\.duresync-runner\duresync_runner.py" --uninstall-autostart`). 수동 실행/옵션: `duresync_runner.py` `--install-autostart` `--token` `--port` `--allow-origin` `--max-seconds` `--show-token` `--reset-token` `--dry-run` `--no-start`.
+- **창(GUI)이 뜨는 프로그램**(Java Swing·AWT·JavaFX, Python tkinter·pygame, C/C++ SDL·GTK …)은 화면이 없는 서버에서는 실행할 수 없어요(`HeadlessException` 같은 오류). 서버에서 이런 오류가 나면 콘솔에 이유와 **[🖥️ 내 PC 에서 실행]**(또는 연결 방법) 버튼이 나와요. 내 PC 로 실행하면 창이 **내 화면**에 떠요. 러너의 한 번 실행 제한 시간은 기본 30분(`--max-seconds`)이에요.
 4. 같은 언어가 서버와 내 PC 에 모두 있거나 버전이 여러 개면 ▶ 실행 옆 **선택 박스**에서 `서버 · Java 25 / 내 PC · Java 17` 처럼 고르면 돼요(고른 것은 기억). 서버와 내 PC 어디에도 없으면 **"언어 지원이 되지 않습니다"** 안내창이 떠요.
 
 - **PC 브라우저 전용** (크롬·엣지·파이어폭스). **폰·태블릿·설치형 앱(PWA)** 에서는 서버가 지원하는 언어만 실행돼요(그 외는 "언어 지원이 되지 않습니다"). 사파리는 https 사이트에서 내 컴퓨터(127.0.0.1)로의 연결을 막아서 쓸 수 없어요.

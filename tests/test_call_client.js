@@ -125,6 +125,14 @@ const lastSock = () => sockets[sockets.length - 1];
   chk('화면 묶음에 sfx.js 가 call.js·chat.js 보다 먼저 들어 있다', man.indexOf('js/core/sfx.js') >= 0 && man.indexOf('js/core/sfx.js') < man.indexOf('js/pages/chat.js') && man.indexOf('js/core/sfx.js') < man.indexOf('js/pages/call.js'));
   const ws = fs.readFileSync(path.join(ROOT, 'frontend/js/pages/workspace.js'), 'utf8');
   chk('폴더 가져오기 뒤에는 가져온 그 프로젝트를 다시 불러온다 (다른 프로젝트로 옮겨 가서 통화가 끊기던 문제)', /wsProject === pid && pid && calProjectById\(pid\)\) \{ wsLoaded = false; loadWorkspace\(pid\)/.test(ws));
+  // ---- 창(GUI) 프로그램을 서버에서 돌렸을 때의 오류를 알아본다 (workspace.js 의 정규식을 그대로 꺼내서 시험)
+  const line = ws.split('\n').find(l => l.startsWith('var WS_DISPLAY_ERR'));
+  const guiRe = vm.runInContext(line.replace('var WS_DISPLAY_ERR =', '(').replace(/;\s*$/, ')'), vm.createContext({}));
+  const yes = ['Exception in thread "main" java.awt.HeadlessException: \nNo X11 DISPLAY variable was set,', '_tkinter.TclError: no display name and no $DISPLAY environment variable', "TclError: couldn't connect to display", 'pygame.error: No available video device', 'Gtk-WARNING **: cannot open display', 'qt.qpa.xcb: could not connect to display', 'Unable to init server: Could not connect'];
+  const no = ['Hello World', 'Exception in thread "main" java.lang.NullPointerException', 'ZeroDivisionError: division by zero', 'error: expected \';\' after expression'];
+  chk('GUI 오류 감지: 자바 Swing(HeadlessException)·tkinter·pygame·GTK·Qt 등은 알아본다', yes.every(t => guiRe.test(t)), yes.filter(t => !guiRe.test(t)));
+  chk('  ㄴ 보통 오류(NullPointer·ZeroDivision·컴파일 오류)는 GUI 문제로 착각하지 않는다', no.every(t => !guiRe.test(t)), no.filter(t => guiRe.test(t)));
+  chk('  ㄴ 서버 실행이 실패했을 때만(내 PC 실행 제외) 안내를 붙이고, 내 PC 로 다시 실행하는 버튼이 있다', /!isLocal && msg\.code && wsNeedsDisplay\(runText\)/.test(ws) && /내 PC 에서 실행/.test(ws));
   const bad = R.filter(x => !x[1]);
   bad.forEach(x => console.log('FAIL:', x[0], '→', JSON.stringify(x[2])));
   console.log(`${R.length - bad.length}/${R.length} 통과`); process.exit(bad.length ? 1 : 0);
