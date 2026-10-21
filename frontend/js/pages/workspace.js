@@ -1462,6 +1462,7 @@ async function runCode() {
       } else if (msg.type === 'exit') {
         if (msg.data) appendLiveOutput(msg.data, false);
         if (!isLocal && msg.code && wsNeedsDisplay(runText)) wsGuiHint(lang);       // 창(GUI)을 띄우는 프로그램이라 서버에서는 실패했다 → 이유와 해결 방법을 알려 준다
+        else if (!isLocal && msg.code && lang === 'python' && wsMissingModule(runText)) wsPkgHint(wsMissingModule(runText), lang);     // 서버에 없는 라이브러리(pyautogui 등)
         finishRun(msg.code);
       }
     } catch(e) {
@@ -2025,19 +2026,39 @@ function wsExtLabel(ex) { return WS_EXT_LABEL[ex] || ('.' + ex); }
 var WS_DISPLAY_ERR = /HeadlessException|No X11 DISPLAY|java\.awt\.headless|TclError: no display|couldn't connect to display|no display name and no \$DISPLAY|pygame\.error: (No available video device|video system not initialized)|cannot connect to X server|Cannot open display|cannot open display|Could not connect to any X display|Unable to init server: Could not connect|SDL_Init|qt\.qpa\.xcb|could not connect to display/i;
 function wsNeedsDisplay(text) { return WS_DISPLAY_ERR.test(String(text || '')); }
 function wsGuiHint(lang) {
+  var local = (runnerDeviceOk() && runnerEnabled() && RUNNER.ok && (runnerLangs()[lang] || []).length) ? runnerLangs()[lang] : null, L = WS_RUN_LABEL[lang] || lang;
+  wsRunHint('// 이 프로그램은 창(GUI)을 띄우는 프로그램이에요',
+    '서버에는 화면이 없어서 창(JFrame·tkinter·pygame 등)을 열 수 없어요. 서버에서는 글자만 출력하는(콘솔) 프로그램을 실행할 수 있어요.\n'
+    + (runnerDeviceOk() ? '창이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요. ' + (local ? '아래 버튼을 누르면 내 PC 의 ' + L + '로 실행하고, 창이 내 화면에 떠요.' : '내 PC 에 ' + L + '를 설치하고 러너를 연결하면(🖥️ 내 PC) 창이 내 화면에 떠요.') : '폰·태블릿·앱(PWA)에서는 창 프로그램을 실행할 수 없어요. PC 에서 열어 주세요.'),
+    lang, '창(GUI)이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요.');
+}
+/* 서버에 없는 라이브러리(pyautogui·numpy …): 서버는 기본 라이브러리만 있다. 내 컴퓨터에 설치해서 '내 PC 에서 실행'으로 돌리면 된다 */
+var WS_NO_MODULE = /No module named '([A-Za-z0-9_.]+)'/;
+function wsMissingModule(text) { var m = WS_NO_MODULE.exec(String(text || '')); return m ? m[1].split('.')[0] : null; }
+function wsPkgHint(mod, lang) {
+  var local = (runnerDeviceOk() && runnerEnabled() && RUNNER.ok && (runnerLangs()[lang] || []).length) ? runnerLangs()[lang] : null;
+  var desk = /^(pyautogui|pynput|keyboard|mouse|pyperclip|pygetwindow)$/.test(mod);
+  wsRunHint("// '" + mod + "' 라이브러리가 서버에 없어요",
+    '서버에는 파이썬 기본 라이브러리만 있고, pip install 로 새로 설치할 수 없어요(여러 사람이 같이 쓰는 서버라서 보안상 막혀 있어요).\n'
+    + (desk ? mod + ' 은(는) 마우스·키보드·화면을 직접 조종하는 라이브러리라서, 서버가 아니라 내 컴퓨터에서 실행해야 의미가 있어요.\n' : '')
+    + (runnerDeviceOk()
+      ? '내 컴퓨터에 설치하면 쓸 수 있어요:  ① 터미널에  python3 -m pip install ' + mod + '  ② 위쪽 🖥️ 내 PC 를 연결 ③ ▶ 옆 선택 박스에서 "내 PC · Python" 을 고르고 실행.' + (local ? '\n(이미 연결돼 있어요. 아래 버튼으로 바로 실행해 볼 수 있어요.)' : '')
+      : '폰·태블릿·앱(PWA)에서는 설치할 수 없어요. PC 에서 열어 주세요.'),
+    lang, "'" + mod + "' 는 내 컴퓨터에 설치해서 내 PC 로 실행해야 해요.");
+}
+/* 콘솔 아래에 붙는 안내 상자 + (PC 에서) '내 PC 에서 실행' / '연결 방법' 버튼 */
+function wsRunHint(title, text, lang, modalNote) {
   var log = document.getElementById('termLiveLog'); if (!log) return;
   var box = document.createElement('div'); box.className = 'term-gui-hint';
-  var t = document.createElement('div'); t.className = 'term-err'; t.textContent = '// 이 프로그램은 창(GUI)을 띄우는 프로그램이에요';
-  var d = document.createElement('div'); d.className = 'term-dim'; d.style.whiteSpace = 'pre-wrap';
+  var t = document.createElement('div'); t.className = 'term-err'; t.textContent = title;
+  var d = document.createElement('div'); d.className = 'term-dim'; d.style.whiteSpace = 'pre-wrap'; d.textContent = text;
   var local = (runnerDeviceOk() && runnerEnabled() && RUNNER.ok && (runnerLangs()[lang] || []).length) ? runnerLangs()[lang] : null;
-  d.textContent = '서버에는 화면이 없어서 창(JFrame·tkinter·pygame 등)을 열 수 없어요. 서버에서는 글자만 출력하는(콘솔) 프로그램을 실행할 수 있어요.\n'
-    + (runnerDeviceOk() ? '창이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요. ' + (local ? '아래 버튼을 누르면 내 PC 의 ' + (WS_RUN_LABEL[lang] || lang) + '로 실행하고, 창이 내 화면에 떠요.' : '내 PC 에 ' + (WS_RUN_LABEL[lang] || lang) + '를 설치하고 러너를 연결하면(🖥️ 내 PC) 창이 내 화면에 떠요.') : '폰·태블릿·앱(PWA)에서는 창 프로그램을 실행할 수 없어요. PC 에서 열어 주세요.');
   box.appendChild(t); box.appendChild(d);
   if (runnerDeviceOk()) {
     var row = document.createElement('div'); row.className = 'term-fixes';
     var b = document.createElement('button'); b.type = 'button'; b.className = 'term-fix-btn';
     if (local) { b.textContent = '🖥️ 내 PC 에서 실행'; b.onclick = function() { try { localStorage.setItem(wsRunKey(lang), 'l:' + local[0].id); } catch (e) {} wsRtUpdate(); runCode(); }; }
-    else { b.textContent = '🖥️ 내 PC 연결 방법 보기'; b.onclick = function() { runnerOpenModal('창(GUI)이 뜨는 프로그램은 내 컴퓨터에서 실행해야 해요.'); }; }
+    else { b.textContent = '🖥️ 내 PC 연결 방법 보기'; b.onclick = function() { runnerOpenModal(modalNote || ''); }; }
     row.appendChild(b); box.appendChild(row);
   }
   log.appendChild(box); log.scrollTop = log.scrollHeight;

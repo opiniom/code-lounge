@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.2"
+RUNNER_VERSION = "1.2.3"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -405,6 +405,34 @@ async def handshake(reader, writer, port, origins, allow_no_origin):
     return WS(reader, writer)
 
 
+# 파이썬 모듈 이름 → pip 로 설치하는 이름 (이름이 다른 것들)
+PIP_NAMES = {"PIL": "pillow", "cv2": "opencv-python", "yaml": "pyyaml", "sklearn": "scikit-learn", "bs4": "beautifulsoup4", "dateutil": "python-dateutil", "serial": "pyserial",
+             "Crypto": "pycryptodome", "skimage": "scikit-image", "dotenv": "python-dotenv", "win32api": "pywin32", "win32com": "pywin32", "win32gui": "pywin32", "attr": "attrs",
+             "usb": "pyusb", "jwt": "pyjwt", "OpenSSL": "pyopenssl", "wx": "wxPython", "gi": "PyGObject", "magic": "python-magic"}
+PERMISSION_MODULES = {"pyautogui", "pynput", "keyboard", "mouse", "pyperclip"}
+
+
+def missing_module_hint(lang, python_path, err_tail):
+    """파이썬 'No module named X' 오류가 났을 때, 이 컴퓨터의 어떤 파이썬에 무엇을 설치하면 되는지 한 줄로 알려 준다"""
+    if lang != "python":
+        return ""
+    m = re.search(r"No module named '([A-Za-z0-9_.]+)'", err_tail or "")
+    if not m:
+        return ""
+    mod = m.group(1).split(".")[0]
+    py = python_path or "python3"
+    shown = ('"%s"' % py) if (" " in py) else py
+    if mod in ("tkinter", "_tkinter"):
+        return ("\n\x1b[33m[도움말] 이 컴퓨터의 Python 에는 tkinter(창 만들기)가 들어 있지 않아요. pip 로 설치하는 게 아니에요.\n"
+                "  · 맥: 터미널에 brew install python-tk   · 윈도우: Python 을 다시 설치할 때 'tcl/tk and IDLE' 를 체크   · 리눅스: sudo apt install python3-tk\x1b[0m\n")
+    pip = PIP_NAMES.get(mod, mod)
+    out = ("\n\x1b[33m[도움말] 이 컴퓨터의 Python(%s)에 '%s' 가 설치돼 있지 않아요.\n"
+           "  터미널에 이 한 줄을 실행해서 설치한 뒤, 다시 ▶ 실행해 보세요:\n    %s -m pip install %s\x1b[0m\n" % (py, mod, shown, pip))
+    if mod in PERMISSION_MODULES:
+        out += "\x1b[33m  (마우스·키보드를 움직이는 라이브러리라서, 처음 실행하면 맥은 '손쉬운 사용' 권한 허용 창이 뜰 수 있어요.)\x1b[0m\n"
+    return out
+
+
 # ============================================================ 서버 본체
 class Runner:
     def __init__(self, port, origins, token, max_seconds, allow_no_origin):
@@ -539,12 +567,16 @@ class Runner:
         self.running += 1
         sent = [0]
 
+        errtail = [""]
+
         async def pipe(stream, kind):
             try:
                 while True:
                     chunk = await stream.read(1024)
                     if not chunk:
                         break
+                    if kind == "stderr":
+                        errtail[0] = (errtail[0] + chunk.decode("utf-8", "replace"))[-4000:]
                     sent[0] += len(chunk)
                     if sent[0] > OUT_CAP:
                         await ws.send({"type": "stderr", "data": "\n\x1b[33m[출력이 너무 많아서 실행을 중단했어요]\x1b[0m\n"}); kill_tree(proc); break
@@ -576,6 +608,7 @@ class Runner:
                 text = "\n\x1b[31m[프로그램이 강제로 종료됐어요 (신호 %d)]\x1b[0m\n" % -code
             else:
                 text = "\n\x1b[31m[프로그램 종료 (코드: %s)]\x1b[0m\n" % code
+                text = missing_module_hint(lang, (item["tools"] or {}).get("py"), errtail[0]) + text      # 설치 안 된 라이브러리면 설치 방법을 알려 준다
             try:
                 await ws.send({"type": "exit", "data": text, "code": -1 if timed else code})
             except Closed:

@@ -63,6 +63,11 @@ async def main():
     if real:
         out, code = await run(ws, "javascript", "console.log('real-node', process.version)", ver=real); chk(f"다른 버전({real})을 고르면 진짜 Node 로 실행", "real-node" in out and "FAKE" not in out, out)
     out, code = await run(ws, "javascript", "console.log('dflt')"); chk("버전을 안 고르면 가장 높은 버전(목록 맨 앞)", "FAKE_NODE_99" in out, out)
+    out, code = await run(ws, "python", "import duresync_no_such_pkg_xyz"); chk("설치 안 된 라이브러리(import 오류)면 이 컴퓨터의 파이썬에 설치하는 한 줄 명령을 알려 준다", "[도움말]" in out and "-m pip install duresync_no_such_pkg_xyz" in out and code != 0, out[-300:])
+    out, code = await run(ws, "python", "raise ModuleNotFoundError(\"No module named 'cv2'\")"); chk("  ㄴ import 이름과 pip 이름이 다른 경우(cv2 → opencv-python)도 맞게 알려 준다", "-m pip install opencv-python" in out, out[-200:])
+    out, code = await run(ws, "python", "raise ModuleNotFoundError(\"No module named 'pyautogui'\")"); chk("  ㄴ pyautogui 같은 마우스·키보드 라이브러리는 권한 안내도 붙는다", "-m pip install pyautogui" in out and "손쉬운 사용" in out, out[-300:])
+    out, code = await run(ws, "python", "raise ModuleNotFoundError(\"No module named 'tkinter'\")"); chk("  ㄴ tkinter 는 pip 가 아니라 설치 방법(brew install python-tk 등)을 알려 준다", "pip install tkinter" not in out and "python-tk" in out, out[-300:])
+    out, code = await run(ws, "python", "print(1/0)"); chk("  ㄴ 보통 오류(ZeroDivisionError)에는 설치 안내를 붙이지 않는다", "[도움말]" not in out and "ZeroDivisionError" in out, out[-200:])
     out, code = await run(ws, "cobol", "x"); chk("없는 언어는 안내하고 끝낸다", "찾지 못했어요" in out and code == 1, out)
     if "c" in inv:
         out, code = await run(ws, "c", '#include <stdio.h>\nint main(){printf("c-ok\\n");return 0;}'); chk("C 컴파일 + 실행", "c-ok" in out and code == 0, out)
