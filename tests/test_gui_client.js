@@ -19,5 +19,10 @@ chk('프레임 페이지: 우리를 연 페이지(p 주소)에서 온 메시지�
 chk('프레임 페이지: 자바 출력(System.out)을 부모의 실행 콘솔로 넘기고 CheerpJ 안내문은 걸러 낸다', /console\[k\] = function/.test(frame) && /CHEERPJ COMMUNITY EDITION/.test(frame));
 chk('프레임 페이지: CheerpJ 로더 버전을 고정해서 쓴다 (latest 금지)', /cjrtnc\.leaningtech\.com\/\d+\.\d+\/loader\.js/.test(frame) && !/latest/.test(frame));
 chk('부모: 다른 출처에서 열 때 sandbox 를 걸고, 메시지는 iframe 과 출처가 맞을 때만 받는다', /setAttribute\('sandbox', 'allow-scripts allow-same-origin'\)/.test(src) && /e\.source !== f\.contentWindow \|\| e\.origin !== GUI\.origin/.test(src));
+const html = fs.readFileSync(path.join(ROOT, 'frontend/index.html'), 'utf8');
+chk('GUI 창 하단에 CheerpJ 크레딧(공식 링크)이 있다 (무료 라이선스 조건)', /Powered by <a href="https:\/\/cheerpj\.com"[^>]*rel="noopener noreferrer">CheerpJ<\/a>/.test(html));
+chk('README 에 CheerpJ 출처와 상용 전환 시 라이선스 안내가 있다', /CheerpJ/.test(fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8')) && /Commercial|유료/.test(fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8')));
+const css = fs.readFileSync(path.join(ROOT, 'frontend/css/editor.css'), 'utf8');
+chk('모바일에서도 크레딧을 숨기지 않는다', !/\.gui-foot\{display:none;\}/.test(css));
 const bad = R.filter(x => !x[1]); bad.forEach(x => console.log('FAIL:', x[0], '→', JSON.stringify(x[2])));
 console.log(`${R.length - bad.length}/${R.length} 통과`); process.exit(bad.length ? 1 : 0);

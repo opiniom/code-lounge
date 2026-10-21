@@ -445,3 +445,7 @@ powershell -ExecutionPolicy Bypass -File c:\backend\scripts\test_java.ps1
 - **`token_exchange_failed` / `naver_profile_failed` 가 PC 에서만 나오던 원인(해결됨):** 소셜 로그인 코드는 **한 번만** 쓸 수 있는데, PC 브라우저(서비스 워커의 '화면 이동 미리 요청'이 켜진 상태)가 로그인 마무리 주소를 **두 번** 요청해서 두 번째가 거부됐어요. 그래서 ① 서비스 워커의 미리 요청을 껐고(`frontend/sw.js`) ② 서버는 같은 코드가 두 번 와도 구글·네이버를 **한 번만** 호출하고 같은 결과를 돌려줘요(`api/routers/auth.py`). 배포 전 PC 에서 급하게 로그인하려면 브라우저 주소창에 `chrome://serviceworker-internals` → `duresync.cloud` 의 **Unregister**(또는 사이트 데이터 삭제) 후 다시 로그인하세요.
 - PC 에서만 안 되고 폰에서는 되는 경우: PC 브라우저가 **다른 네이버/구글 계정**으로 이미 로그인돼 있을 수 있어요. 시크릿 창에서 시도해 보세요.
 - 테스트: `tests/test_oauth_errors.py`
+
+## 라이선스 · 출처 표기
+
+- **CheerpJ** — 자바 GUI(Swing/AWT) 창은 [CheerpJ](https://cheerpj.com)(Leaning Technologies)로 브라우저 안에서 실행해요. 무료 Community 라이선스(개인 프로젝트·오픈소스·기술 평가, 개인 또는 1인 회사)로 쓰고 있어요. 출처는 GUI 창 하단과 이 문서에 표기해요. **여러 명이 회사 형태로 상업 서비스를 하게 되거나 자체 호스팅이 필요해지면 유료(Commercial) 라이선스가 필요해요** — [라이선스 안내](https://cheerpj.com/licensing/) (Small Business: 개발자 1명당 월 £100, Enterprise: 문의). 사용량·토큰 제한이나 자동 결제는 없어요(사용 형태로 구분).
