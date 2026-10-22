@@ -27,6 +27,7 @@
 | **OpenJDK / Eclipse Temurin** | GPL v2 with Classpath Exception | Eclipse Foundation / Adoptium | Java 17/25 가상머신 및 javac 컴파일러 |
 | **Microsoft .NET Framework CSC** | Microsoft EULA / MIT | Microsoft Corporation | C# 샌드박스 컴파일러 (`csc.exe`) |
 | **Judge0 CE** | MIT License | Herman Zvonimir Došilović | 분산 코드 실행 엔진 및 도커 샌드박스 |
+| **CheerpJ** | CheerpJ Community License (개인·오픈소스·1인 회사 무료, 크레딧 표기 필요 · 상업적 팀 사용은 유료) | Leaning Technologies | 자바 Swing/AWT 창을 브라우저 안에서 실행 (https://cheerpj.com/docs/licensing) |
 
 ---
 

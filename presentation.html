@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Code Lounge | 올인원 실시간 개발자 협업 플랫폼 최종 발표</title>
+  <title>DureSync(두레싱크) | 함께 일하는 가장 오래된 방식, AI로 다시 — 발표 자료</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     :root {
@@ -97,31 +97,30 @@
 
   <!-- Top Progress Bar -->
   <div class="w-full h-1.5 bg-[#111726] relative z-50">
-    <div id="progressBar" class="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all duration-300" style="width: 6.66%;"></div>
+    <div id="progressBar" class="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all duration-300" style="width: 5%;"></div>
   </div>
 
   <!-- Header Nav -->
   <header class="h-14 px-6 border-b border-[#2d3a56]/50 flex items-center justify-between text-sm z-40 bg-[#07090e]/80 backdrop-blur">
     <div class="flex items-center gap-3">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
-        CL
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20 text-xs">
+        DS
       </div>
-      <span class="font-bold tracking-tight text-base bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">Code Lounge</span>
-      <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">Final Presentation 2026</span>
+      <span class="font-bold tracking-tight text-base bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">DureSync · 두레싱크</span>
+      <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">제품개발학기제 2026</span>
     </div>
 
     <!-- Center Slide Tracker -->
     <div class="flex items-center gap-3 font-mono text-xs text-[#94a3b8]">
-      <span id="currentSlideNumber" class="text-white font-semibold text-sm">1</span> / <span id="totalSlideCount">15</span>
+      <span id="currentSlideNumber" class="text-white font-semibold text-sm">1</span> / <span id="totalSlideCount">20</span>
       <span class="text-[#2d3a56]">|</span>
       <span id="currentSlideTitle" class="text-gray-300 font-sans truncate max-w-xs">프로젝트 개요</span>
     </div>
 
     <!-- Right Controls -->
     <div class="flex items-center gap-2">
-      <a href="Code_Lounge_Presentation.pptx" download class="p-2 rounded-lg hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 text-xs font-semibold" title="파워포인트 다운로드">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        <span>PPTX 다운로드</span>
+      <a href="https://duresync.cloud/app" target="_blank" rel="noopener noreferrer" class="p-2 rounded-lg hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 text-xs font-semibold" title="실제 서비스 열기">
+        <span>duresync.cloud ↗</span>
       </a>
       <button onclick="toggleNotes()" class="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition flex items-center gap-1.5 text-xs" title="발표자 대본 (N)">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -137,39 +136,39 @@
   <main class="flex-1 relative overflow-hidden flex items-center justify-center p-6">
 
     <!-- SLIDE 1: Cover -->
-    <section class="slide active w-full max-w-5xl justify-center items-center text-center py-8" data-title="Code Lounge 소개">
+    <section class="slide active w-full max-w-5xl justify-center items-center text-center py-8" data-title="DureSync 소개">
       <div class="mb-4">
-        <span class="badge badge-primary text-sm px-3.5 py-1">2026 Next-Gen Realtime Dev Platform</span>
+        <span class="badge badge-primary text-sm px-3.5 py-1">제품개발학기제 · 팀 프로젝트 AI 워크스페이스</span>
       </div>
       <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-        흩어진 개발 환경을 하나로,<br>
-        <span class="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">Code Lounge</span>
+        함께 일하는 가장 오래된 방식,<br>
+        <span class="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">AI로 다시 · DureSync</span>
       </h1>
       <p class="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed font-light">
-        WebSocket 실시간 동기화 · 5개 언어 웹 샌드박스 · AI 비서 · 협업 라운지<br>
-        개발팀을 위한 차세대 올인원 온라인 라운지
+        코드 · 회의록 · 캘린더 · 팀 채팅 · 통화를 한 프로젝트 안에서<br>
+        서로의 일을 돕던 전통 공동체 <strong class="text-white">'두레'</strong>의 방식을 브라우저 한 탭으로
       </p>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl w-full text-left mb-10">
         <div class="glass-card p-4 border border-emerald-500/30">
-          <div class="text-xs text-emerald-400 font-semibold mb-1">01. 실시간 웹소켓</div>
-          <div class="text-sm font-bold text-white">Live Sync & Presence</div>
-          <div class="text-xs text-gray-400 mt-1">/ws/live 양방향 브로드캐스트</div>
+          <div class="text-xs text-emerald-400 font-semibold mb-1">01. 실시간 공동 편집</div>
+          <div class="text-sm font-bold text-white">글자 단위 동시 편집</div>
+          <div class="text-xs text-gray-400 mt-1">OT · 팀원 커서 · 통화방</div>
         </div>
         <div class="glass-card p-4 border border-indigo-500/30">
-          <div class="text-xs text-indigo-400 font-semibold mb-1">02. 샌드박스 러너</div>
-          <div class="text-sm font-bold text-white">5개 언어 원클릭 실행</div>
-          <div class="text-xs text-gray-400 mt-1">Python, Java, C#, C++, C</div>
+          <div class="text-xs text-indigo-400 font-semibold mb-1">02. 어디서든 실행</div>
+          <div class="text-sm font-bold text-white">서버 · 내 PC · 브라우저</div>
+          <div class="text-xs text-gray-400 mt-1">다언어 실행 · 러너 · 자바 GUI 창</div>
         </div>
         <div class="glass-card p-4 border border-cyan-500/30">
-          <div class="text-xs text-cyan-400 font-semibold mb-1">03. AI 어시스턴트</div>
-          <div class="text-sm font-bold text-white">슬래시 회의 요약 & 일정</div>
-          <div class="text-xs text-gray-400 mt-1">/요약, /캘린더 자연어 파서</div>
+          <div class="text-xs text-cyan-400 font-semibold mb-1">03. AI 팀 비서</div>
+          <div class="text-sm font-bold text-white">회의록 · 일정 자동 연결</div>
+          <div class="text-xs text-gray-400 mt-1">팀 채팅 · 나만 보는 AI</div>
         </div>
         <div class="glass-card p-4 border border-amber-500/30">
-          <div class="text-xs text-amber-400 font-semibold mb-1">04. CI/CD & 배포</div>
-          <div class="text-sm font-bold text-white">Docker 자동 배포</div>
-          <div class="text-xs text-gray-400 mt-1">GitHub Actions + 무중단 운영</div>
+          <div class="text-xs text-amber-400 font-semibold mb-1">04. 실제 배포 서비스</div>
+          <div class="text-sm font-bold text-white">PC · 모바일 · PWA</div>
+          <div class="text-xs text-gray-400 mt-1">AWS · Docker · duresync.cloud</div>
         </div>
       </div>
 
@@ -183,29 +182,29 @@
       <div class="mb-3">
         <span class="badge badge-amber">Problem Statement</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">개발팀 협업의 3대 고질병: 도구 파편화와 실시간 싱크 단절</h2>
-      <p class="text-gray-400 text-sm mb-8">기존 개발 협업 과정에서 발생하는 극심한 컨텍스트 스위칭과 커뮤니케이션 단절 문제</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">팀 협업의 3대 고질병: 도구 파편화 · 약속 유실 · 환경 차이</h2>
+      <p class="text-gray-400 text-sm mb-8">코드·회의·일정·대화가 따로 놀 때 생기는 컨텍스트 스위칭과 커뮤니케이션 단절</p>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="glass-card p-6 border-red-500/20 bg-red-950/10">
           <div class="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-xl mb-4 font-bold">⚠️</div>
           <h3 class="text-lg font-bold text-white mb-2">극심한 도구 분산</h3>
           <p class="text-sm text-gray-400 leading-relaxed">
-            채팅은 <span class="text-white">Slack/카톡</span>, 회의록은 <span class="text-white">Notion</span>, 일정은 <span class="text-white">Google Calendar</span>, 코딩은 각자의 <span class="text-white">로컬 IDE</span>로 분산되어 링크 복사-붙여넣기에 집중력 낭비.
+            채팅은 <span class="text-white">카톡/Slack</span>, 회의록은 <span class="text-white">Notion</span>, 일정은 <span class="text-white">Google Calendar</span>, 코딩은 각자의 <span class="text-white">로컬 IDE</span>로 흩어져 링크 복사-붙여넣기에 집중력 낭비.
           </p>
         </div>
         <div class="glass-card p-6 border-amber-500/20 bg-amber-950/10">
           <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-4 font-bold">⏳</div>
           <h3 class="text-lg font-bold text-white mb-2">회의록 & 일정 누락</h3>
           <p class="text-sm text-gray-400 leading-relaxed">
-            채팅으로 "다음 주 화요일까지 API 짜자"고 약속하지만, 아무도 캘린더에 올리지 않아 데드라인이 유실되고 회의 결론 정리가 매번 지연됨.
+            채팅으로 "금요일까지 API 제가 할게요"라고 약속하지만 아무도 캘린더에 올리지 않아 <strong class="text-white">누가 언제까지 무엇을</strong> 하기로 했는지가 대화 속에 묻힘.
           </p>
         </div>
         <div class="glass-card p-6 border-indigo-500/20 bg-indigo-950/10">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-4 font-bold">💻</div>
           <h3 class="text-lg font-bold text-white mb-2">환경 차이 & 상태 불투명</h3>
           <p class="text-sm text-gray-400 leading-relaxed">
-            로컬 컴파일러 버전 차이로 인한 "내 컴퓨터에선 되는데" 문제와 팀원이 지금 접속 중인지 무엇을 하는지 알 수 없는 협업 블랙홀 발생.
+            "내 컴퓨터에선 되는데" 문제, 같은 파일을 동시에 고치다 덮어쓰기 충돌, 팀원이 지금 접속 중인지·무엇을 하는지 알 수 없는 협업 블랙홀.
           </p>
         </div>
       </div>
@@ -213,9 +212,9 @@
       <div class="glass-card p-5 border-indigo-500/40 bg-indigo-950/20 flex items-center gap-5">
         <div class="w-12 h-12 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-2xl font-bold shrink-0">💡</div>
         <div>
-          <div class="text-indigo-300 font-bold text-sm mb-1">Code Lounge가 제시하는 해결책</div>
+          <div class="text-indigo-300 font-bold text-sm mb-1">DureSync가 제시하는 해결책</div>
           <div class="text-gray-300 text-sm">
-            브라우저 접속 하나로 <strong>[실시간 동기화] + [코드 샌드박스] + [AI 회의 요약 & 일정] + [팀 관리] + [공모전 탐색]</strong>을 한 탭에서 완결!
+            브라우저 하나로 <strong>[코드 편집·실행] + [글자 단위 실시간 공동 편집] + [AI 회의록·일정] + [팀 채팅·통화] + [공모전 탐색]</strong>을 한 프로젝트 안에서 완결!
           </div>
         </div>
       </div>
@@ -226,8 +225,8 @@
       <div class="mb-3">
         <span class="badge badge-cyan">Architecture & Tech Stack</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실시간 비동기 풀스택 아키텍처 & DevOps</h2>
-      <p class="text-gray-400 text-sm mb-6">확장성과 실시간 협업 성능을 극대화한 현대적 구조 설계</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실시간 비동기 풀스택 + 3가지 실행 경로</h2>
+      <p class="text-gray-400 text-sm mb-6">서버 · 내 컴퓨터 · 브라우저 어디서든 코드를 돌리는 구조 (실제 서비스 duresync.cloud 운영 중)</p>
 
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="glass-card p-4 border-indigo-500/30">
@@ -236,10 +235,10 @@
             <span class="text-sm font-bold text-white">Frontend Layer</span>
           </div>
           <ul class="text-xs space-y-2 text-gray-300">
-            <li class="flex items-center justify-between"><span>모듈러 구조</span><span class="text-indigo-400 font-mono">18 CSS / JS 분리</span></li>
+            <li class="flex items-center justify-between"><span>모듈러 구조</span><span class="text-indigo-400 font-mono">JS 30 · CSS 25</span></li>
             <li class="flex items-center justify-between"><span>SPA 라우터</span><span class="text-indigo-400 font-mono">History API</span></li>
-            <li class="flex items-center justify-between"><span>실시간 통신</span><span class="text-indigo-400 font-mono">WebSocket Client</span></li>
-            <li class="flex items-center justify-between"><span>PWA 지원</span><span class="text-indigo-400 font-mono">manifest.json</span></li>
+            <li class="flex items-center justify-between"><span>에디터</span><span class="text-indigo-400 font-mono">Monaco + OT</span></li>
+            <li class="flex items-center justify-between"><span>앱 설치</span><span class="text-indigo-400 font-mono">PWA · SW</span></li>
           </ul>
         </div>
 
@@ -250,22 +249,22 @@
           </div>
           <ul class="text-xs space-y-2 text-gray-300">
             <li class="flex items-center justify-between"><span>비동기 프레임워크</span><span class="text-cyan-400 font-mono">FastAPI</span></li>
-            <li class="flex items-center justify-between"><span>실시간 허브</span><span class="text-cyan-400 font-mono">/ws/live WebSocket</span></li>
-            <li class="flex items-center justify-between"><span>ORM & 훅</span><span class="text-cyan-400 font-mono">SQLAlchemy Async</span></li>
-            <li class="flex items-center justify-between"><span>인증 & 인가</span><span class="text-cyan-400 font-mono">JWT + RBAC</span></li>
+            <li class="flex items-center justify-between"><span>API 규모</span><span class="text-cyan-400 font-mono">약 144개</span></li>
+            <li class="flex items-center justify-between"><span>실시간 채널</span><span class="text-cyan-400 font-mono">/ws/live·terminal·call</span></li>
+            <li class="flex items-center justify-between"><span>저장·인증</span><span class="text-cyan-400 font-mono">SQLite · JWT+RBAC</span></li>
           </ul>
         </div>
 
         <div class="glass-card p-4 border-emerald-500/30">
           <div class="flex items-center gap-2 mb-3">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span class="text-sm font-bold text-white">Sandbox Runner</span>
+            <span class="text-sm font-bold text-white">Execution (3 Paths)</span>
           </div>
           <ul class="text-xs space-y-2 text-gray-300">
-            <li class="flex items-center justify-between"><span>지원 언어</span><span class="text-emerald-400 font-mono">Py, Java, C#, C, C++</span></li>
-            <li class="flex items-center justify-between"><span>C# 무설치 탐색</span><span class="text-emerald-400 font-mono">Windows csc.exe</span></li>
-            <li class="flex items-center justify-between"><span>보안 격리</span><span class="text-emerald-400 font-mono">15s Timeout Kill</span></li>
-            <li class="flex items-center justify-between"><span>입출력 보정</span><span class="text-emerald-400 font-mono">UTF-8 Decoder</span></li>
+            <li class="flex items-center justify-between"><span>① 서버 샌드박스</span><span class="text-emerald-400 font-mono">핵심 언어 · 버전</span></li>
+            <li class="flex items-center justify-between"><span>② 내 PC 러너</span><span class="text-emerald-400 font-mono">127.0.0.1</span></li>
+            <li class="flex items-center justify-between"><span>③ 브라우저 자바</span><span class="text-emerald-400 font-mono">CheerpJ · GUI</span></li>
+            <li class="flex items-center justify-between"><span>음성 통화</span><span class="text-emerald-400 font-mono">WebRTC P2P</span></li>
           </ul>
         </div>
 
@@ -275,27 +274,27 @@
             <span class="text-sm font-bold text-white">DevOps & Deploy</span>
           </div>
           <ul class="text-xs space-y-2 text-gray-300">
-            <li class="flex items-center justify-between"><span>CI/CD</span><span class="text-amber-400 font-mono">GitHub Actions</span></li>
+            <li class="flex items-center justify-between"><span>서버</span><span class="text-amber-400 font-mono">AWS Ubuntu</span></li>
             <li class="flex items-center justify-between"><span>컨테이너</span><span class="text-amber-400 font-mono">Docker Compose</span></li>
-            <li class="flex items-center justify-between"><span>무중단 갱신</span><span class="text-amber-400 font-mono">Zero Downtime</span></li>
-            <li class="flex items-center justify-between"><span>캐시 버스팅</span><span class="text-amber-400 font-mono">Build Hash</span></li>
+            <li class="flex items-center justify-between"><span>HTTPS·프록시</span><span class="text-amber-400 font-mono">Caddy 자동 인증서</span></li>
+            <li class="flex items-center justify-between"><span>캐시 갱신</span><span class="text-amber-400 font-mono">Build Hash · ETag</span></li>
           </ul>
         </div>
       </div>
 
-      <div class="glass-card p-4 border-[#2d3a56] font-mono text-xs text-gray-300 flex items-center justify-between bg-black/40">
-        <div><span class="text-cyan-400">Client</span> (Modular SPA) ⇄ <span class="text-emerald-400">WebSocket /ws/live</span> (Push) ⇄ <span class="text-indigo-400">FastAPI</span> (SQLAlchemy after_commit) ⇄ <span class="text-amber-400">Async Sandbox Runner</span></div>
-        <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">100% Async Non-blocking</span>
+      <div class="glass-card p-4 border-[#2d3a56] font-mono text-xs text-gray-300 flex items-center justify-between bg-black/40 gap-3">
+        <div><span class="text-cyan-400">Browser</span> (PC·모바일·PWA) ⇄ <span class="text-amber-400">Caddy HTTPS</span> ⇄ <span class="text-indigo-400">FastAPI</span> (REST · WebSocket) ⇄ <span class="text-emerald-400">SQLite · 샌드박스 · 러너 · CheerpJ</span></div>
+        <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold shrink-0">100% Async</span>
       </div>
     </section>
 
-    <!-- SLIDE 4: NEW - WebSocket Live & Presence -->
+    <!-- SLIDE 4: WebSocket Live & Presence -->
     <section class="slide w-full max-w-5xl justify-center py-6" data-title="실시간 WebSocket & Presence">
       <div class="mb-3">
-        <span class="badge badge-green">[NEW] Realtime Innovation</span>
+        <span class="badge badge-green">Realtime</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">WebSocket 실시간 푸시 엔진 & Live Presence 동기화</h2>
-      <p class="text-gray-400 text-sm mb-6">주기적 폴링의 한계를 넘어선 이벤트 기반 양방향 실시간 동기화 아키텍처</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">WebSocket 실시간 푸시 엔진 & 접속 상태</h2>
+      <p class="text-gray-400 text-sm mb-6">주기적 폴링의 한계를 넘어선 이벤트 기반 양방향 실시간 동기화</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-emerald-500/30">
@@ -304,35 +303,34 @@
             <span>/ws/live 양방향 브로드캐스트 엔진</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><strong class="text-white">SQLAlchemy after_commit 이벤트 훅:</strong> 채팅, 일정, 회의록, 팀 변경이 DB에 커밋되는 순간 연결된 소켓으로 즉각 푸시</li>
-            <li><strong class="text-white">폴링 부하 90% 절감:</strong> 웹소켓 연결 중에는 헬스 폴링 주기를 대폭 늦추며, 끊김 시 자동으로 폴링 폴백(Fallback) 안전망 가동</li>
-            <li><strong class="text-white">프로젝트 단위 채널 격리:</strong> 소속 팀원에게만 실시간 알림 및 채팅 브로드캐스트</li>
+            <li><strong class="text-white">DB 커밋 즉시 푸시:</strong> 채팅·일정·회의록·팀 변경이 저장되는 순간 연결된 소켓으로 전달</li>
+            <li><strong class="text-white">폴링 폴백:</strong> 소켓이 연결돼 있으면 폴링 주기를 늦추고, 끊기면 자동으로 폴링을 되살려 데이터 불일치를 막음</li>
+            <li><strong class="text-white">프로젝트 단위 격리:</strong> 소속 팀원에게만 알림·채팅이 전달됨 (나만 보는 AI 대화는 본인에게만)</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-cyan-400 text-lg">🟢</span>
-            <span>Live Presence & 협업 인터랙션</span>
+            <span>Presence & 협업 인터랙션</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><strong class="text-white">실시간 접속 상태 감지:</strong> 소켓 연결 즉시 온라인/오프라인 상태가 팀원 아바타와 헤더에 녹색 도트로 전파</li>
-            <li><strong class="text-white">타이핑 인디케이터 (Typing Indicator):</strong> 팀원이 메시지 입력 시 버블 애니메이션(...) 실시간 표시</li>
-            <li><strong class="text-white">스마트 스크롤 & 플로팅 점프:</strong> 대화창 자동 스크롤 및 과거 대화 열람 중 새 메시지 도착 시 점프 버튼 표출</li>
+            <li><strong class="text-white">접속 상태 4단계:</strong> 온라인 · 자리비움 · 방해금지 · 오프라인 (직접 설정 가능, 방해금지에서는 알림·효과음 최소화)</li>
+            <li><strong class="text-white">타이핑 표시:</strong> 팀원이 입력 중이면 ... 애니메이션이 실시간으로 보임</li>
+            <li><strong class="text-white">워크스페이스 존재감:</strong> 어느 파일을 보고·고치는 중인지 아바타와 커서로 표시</li>
           </ul>
         </div>
       </div>
 
-      <!-- Live Simulation Widget -->
       <div class="glass-card p-4 border-emerald-500/40 bg-emerald-950/10">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            웹소켓 실시간 이벤트 시뮬레이터
+            웹소켓 이벤트 시뮬레이터 (시연용)
           </span>
           <div class="flex gap-2">
             <button onclick="simTyping()" class="px-2.5 py-1 text-xs rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 transition">
-              타이핑 인디케이터 테스트
+              타이핑 표시 테스트
             </button>
             <button onclick="simPush()" class="px-2.5 py-1 text-xs rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 transition">
               새 메시지 푸시 테스트
@@ -346,475 +344,731 @@
       </div>
     </section>
 
-    <!-- SLIDE 5: 5-Language Sandbox Runner -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="5개 언어 웹 샌드박스">
+    <!-- SLIDE 5: OT Live Editing -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="글자 단위 실시간 공동 편집 (OT)">
       <div class="mb-3">
-        <span class="badge badge-primary">Core Feature 1</span>
+        <span class="badge badge-green">[NEW] Core Feature 1</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">무설치 5개 언어 웹 샌드박스 컴파일러</h2>
-      <p class="text-gray-400 text-sm mb-6">브라우저에서 직접 컴파일 및 실행되는 안전한 다국어 샌드박스 환경</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">글자 단위 실시간 공동 편집 (Operational Transformation)</h2>
+      <p class="text-gray-400 text-sm mb-6">두 사람이 같은 곳을 동시에 고쳐도 덮어쓰기 없이 모두 같은 결과로 수렴</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="glass-card p-5 border-indigo-500/30">
-          <div class="text-indigo-400 font-bold text-sm mb-2">🐍 Python 3</div>
-          <div class="text-xs text-gray-300 leading-relaxed mb-3">
-            비동기 서브프로세스 파이프라인을 통한 즉시 실행. 알고리즘 스터디 및 데이터 파싱 코드 검증에 최적화.
-          </div>
-          <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">평균 실행 속도: 0.15초</span>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="glass-card p-5 border-emerald-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">✍️</span>
+            <span>동작 원리</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">서버가 순서를 정함:</strong> 모든 편집에 리비전 번호를 매기고 /ws/live 로 중계 (ot.py · livedoc.py)</li>
+            <li><strong class="text-white">클라이언트 변환:</strong> 전송 중인 편집·대기 중인 편집을 상대 편집에 맞춰 변환해 같은 문서로 수렴</li>
+            <li><strong class="text-white">자가 복구:</strong> 문서 길이·체크섬이 어긋나면 서버 기준으로 자동 재동기화</li>
+            <li><strong class="text-white">한글 입력 보호:</strong> 조합 중인 글자는 끝난 뒤 원격 편집을 적용해 입력이 깨지지 않음</li>
+          </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
-          <div class="text-cyan-400 font-bold text-sm mb-2">🔷 C# (.NET)</div>
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-cyan-400 text-lg">👀</span>
+            <span>기존 방식과의 차이</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">저장 후 갱신 ➔ 글자 단위 즉시 반영:</strong> Enter·저장 전에도 팀원이 치는 글자가 보임</li>
+            <li><strong class="text-white">팀원 커서·입력 위치 표시:</strong> 사람마다 색이 있는 작은 아바타 커서</li>
+            <li><strong class="text-white">자체 되돌리기(Undo):</strong> 남의 편집이 섞여도 내 편집만 정확히 되돌림</li>
+            <li><strong class="text-white">충돌 알림 최소화:</strong> 파일 저장 충돌 대화상자가 거의 필요 없음</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 border-emerald-500/40 bg-emerald-950/10">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">동시 편집 시뮬레이터 (원본 문서 "AB")</span>
+          <button onclick="otDemo()" class="px-2.5 py-1 text-xs rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-500/30 transition">
+            A: 1번 자리에 X, B: 1번 자리에 Y 를 동시에 입력
+          </button>
+        </div>
+        <div id="otLog" class="p-3 bg-black/60 rounded-lg font-mono text-xs text-gray-300 h-24 overflow-y-auto">
+          <div class="text-gray-500">// 버튼을 누르면 변환(OT)을 쓰지 않을 때와 쓸 때의 결과를 비교합니다</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Multi-language sandbox -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="다언어 실행 & 언어 관리">
+      <div class="mb-2">
+        <span class="badge badge-primary">Core Feature 2</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-1">설치 없는 다언어 실행 + 관리자 언어 관리</h2>
+      <p class="text-gray-400 text-sm mb-4">▶ 버튼 하나로 서버에서 안전하게 실행하고, 언어·버전은 관리자 페이지에서 운영</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+        <div class="glass-card p-4 border-indigo-500/30">
+          <div class="text-indigo-400 font-bold text-sm mb-2">🧰 핵심 언어 + 관리자 설치</div>
           <div class="text-xs text-gray-300 leading-relaxed mb-3">
-            무거운 SDK 설치 불필요! Windows OS 내장 <code class="text-cyan-300">csc.exe</code>를 자동 재귀 탐색하여 네이티브 컴파일 완결.
+            이미지에는 Python · JavaScript/TypeScript · Java · C/C++ 만 넣어 용량을 아끼고, C#·Go·Rust 등은 <strong class="text-white">관리자 페이지에서 설치·업데이트·삭제</strong>하며 공개 여부를 정합니다.
           </div>
-          <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">무설치 csc.exe 자동 탐색</span>
+          <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">재빌드 없이 설치</span>
         </div>
 
-        <div class="glass-card p-5 border-emerald-500/30">
-          <div class="text-emerald-400 font-bold text-sm mb-2">⚡ C / C++ / Java</div>
+        <div class="glass-card p-4 border-cyan-500/30">
+          <div class="text-cyan-400 font-bold text-sm mb-2">🔀 같은 언어, 여러 버전</div>
           <div class="text-xs text-gray-300 leading-relaxed mb-3">
-            GCC/Clang 및 Javac 동적 빌드 지원. 메모리 제한 및 15초 강제 타임아웃 킬러로 무한루프 완벽 차단.
+            Java 17·21처럼 여러 버전을 나란히 두고 ▶ 옆 <strong class="text-white">선택 박스</strong>에서 고릅니다. 서버에 없는 언어는 "언어 지원이 되지 않습니다"로 정확히 안내(가짜 결과 없음).
           </div>
-          <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">15s 자원 회수 킬러</span>
+          <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">서버 · 내 PC 선택</span>
+        </div>
+
+        <div class="glass-card p-4 border-emerald-500/30">
+          <div class="text-emerald-400 font-bold text-sm mb-2">🛡️ 서버 보호</div>
+          <div class="text-xs text-gray-300 leading-relaxed mb-3">
+            로그인한 사용자만, 서버 환경변수 미전달, 시간·출력·CPU·파일 크기 제한, 프로세스 그룹째 종료. 실행 중 <code class="text-emerald-300">input()</code> 도 바로 입력.
+          </div>
+          <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">/ws/terminal 대화형</span>
+        </div>
+      </div>
+
+      <!-- 운영 서버 지원 언어 (https://duresync.cloud/api/languages 기준) -->
+      <div class="glass-card p-3 mb-3 border-emerald-500/30 bg-emerald-950/10">
+        <div class="text-xs font-bold text-emerald-400 mb-2">🟢 운영 서버(duresync.cloud) 현재 지원 언어 · 2026.10.22 기준</div>
+        <div class="flex flex-wrap gap-1.5 text-[11px] font-mono">
+          <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">Python 3.13</span>
+          <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">JavaScript · TypeScript (Node 24)</span>
+          <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">Java 21</span>
+          <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">C</span>
+          <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">C++</span>
+          <span class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">C# (.NET 10) · 관리자 설치</span>
+          <span class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Go 1.27 · 관리자 설치</span>
+          <span class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Rust 1.99 · 관리자 설치</span>
+          <span class="px-2 py-0.5 rounded bg-gray-500/15 text-gray-300 border border-gray-500/30">Perl · Bash</span>
+          <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">HTML · CSS = 브라우저 미리보기</span>
         </div>
       </div>
 
       <!-- Interactive Code Sandbox Preview -->
-      <div class="glass-card p-4 border-indigo-500/30 bg-black/50">
+      <div class="glass-card p-3 border-indigo-500/30 bg-black/50">
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-2">
             <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
             <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
             <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
-            <span class="text-xs font-mono text-gray-400 ml-2">sandbox_runner_demo.cs</span>
+            <span class="text-xs font-mono text-gray-400 ml-2" id="sandboxFile">Main.java</span>
           </div>
           <div class="flex gap-2">
-            <button onclick="runSandbox('csharp')" class="px-2.5 py-1 text-xs rounded bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/30 font-mono transition">C# 실행</button>
+            <button onclick="runSandbox('java')" class="px-2.5 py-1 text-xs rounded bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/30 font-mono transition">Java 실행</button>
             <button onclick="runSandbox('python')" class="px-2.5 py-1 text-xs rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 font-mono transition">Python 실행</button>
           </div>
         </div>
-        <pre id="sandboxCode" class="text-xs font-mono text-emerald-400 p-3 bg-black/80 rounded border border-gray-800 leading-relaxed overflow-x-auto">using System;
-class Program {
-    static void Main() {
-        Console.WriteLine("[Code Lounge] C# Sandboxed Execution Success! Time: " + DateTime.Now);
-    }
+        <pre id="sandboxCode" class="text-xs font-mono text-emerald-400 p-2 bg-black/80 rounded border border-gray-800 leading-relaxed overflow-x-auto">public class Main {
+    public static void main(String[] a) { System.out.println("Hello, DureSync! (Java)"); }
 }</pre>
-        <div id="sandboxOutput" class="mt-2 p-2 bg-[#0d1117] rounded text-xs font-mono text-gray-300 border border-gray-800/80">
-          <span class="text-gray-500">// 실행 결과를 보려면 상단 버튼을 클릭하세요</span>
+        <div id="sandboxOutput" class="mt-1.5 p-1.5 bg-[#0d1117] rounded text-xs font-mono text-gray-300 border border-gray-800/80">
+          <span class="text-gray-500">// 실행 결과 예시를 보려면 상단 버튼을 클릭하세요 (시연용 모의 출력)</span>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 6: Chat AI Assistant -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="채팅 AI 슬래시 어시스턴트">
+    <!-- SLIDE 7: Local Runner -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="내 PC 러너">
       <div class="mb-3">
-        <span class="badge badge-cyan">Core Feature 2</span>
+        <span class="badge badge-amber">[NEW] Core Feature 3</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">채팅 내장형 AI 비서: 슬래시 명령어 자동화</h2>
-      <p class="text-gray-400 text-sm mb-6">회의록 작성과 일정 등록을 대화창 안에서 원클릭으로 해결</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">내 PC 러너: 내 컴퓨터에 설치한 언어로 실행</h2>
+      <p class="text-gray-400 text-sm mb-6">서버에 없는 언어·버전·라이브러리(pip)·창(GUI)을 한 줄 설치로 해결</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="glass-card p-5 border-amber-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-amber-400 text-lg">🖥️</span>
+            <span>어떻게 쓰나 (사용자 3단계)</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">1.</strong> 워크스페이스의 <strong>🖥️ 내 PC</strong> → 터미널 여는 법과 <strong>한 줄 명령</strong>이 OS별로 표시됨</li>
+            <li><strong class="text-white">2.</strong> 그 한 줄을 터미널에 붙여넣기 (어느 폴더에서든 OK — 설치·자동 시작·연결 코드까지 한꺼번에)</li>
+            <li><strong class="text-white">3.</strong> 창이 알아서 <span class="text-emerald-400">✓ 연결됨</span> → ▶ 옆에서 <code class="text-amber-300">내 PC · Java 17</code> 선택</li>
+            <li>새로 설치한 언어는 ▶ 실행할 때 자동으로 다시 찾음 · pip 미설치면 설치 명령을 콘솔이 안내</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-5 border-emerald-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">🔒</span>
+            <span>안전 설계</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">내 컴퓨터(127.0.0.1)에서만</strong> 접속을 받음 — 같은 와이파이의 다른 사람도 못 씀</li>
+            <li><strong class="text-white">허용 사이트(Origin)·Host 검사 + 연결 코드</strong>로 다른 사이트의 호출·DNS 우회 차단</li>
+            <li><strong class="text-white">팀원이 고친 코드</strong>는 실행 전에 "확인했어요" 동의를 받음, 처음엔 격리되지 않음을 안내</li>
+            <li>"내 PC 실행 사용" 스위치로 언제든 서버로만 실행 · 폰·PWA는 서버 언어만</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 border-[#2d3a56] font-mono text-xs text-gray-300 bg-black/40 space-y-1">
+        <div><span class="text-gray-500"># 맥·리눅스</span> <span class="text-cyan-300">curl -fsSL https://duresync.cloud/runner/install.sh | DURESYNC_TOKEN=연결코드 sh</span></div>
+        <div><span class="text-gray-500"># 윈도우(PowerShell)</span> <span class="text-cyan-300">$env:DURESYNC_TOKEN='연결코드'; irm https://duresync.cloud/runner/install.ps1 | iex</span></div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Java GUI in browser -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="자바 GUI 브라우저 실행">
+      <div class="mb-3">
+        <span class="badge badge-cyan">[NEW] Core Feature 4</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">자바 Swing 창을 사이트 안에서 바로 띄우기</h2>
+      <p class="text-gray-400 text-sm mb-6">서버에는 화면이 없다 ➔ 서버는 컴파일만, 창은 브라우저가 그린다 (PC · 모바일 · PWA)</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 text-xs">
+        <div class="glass-card p-4 border-indigo-500/30 text-center">
+          <div class="text-2xl mb-1">☕</div>
+          <div class="font-bold text-white mb-1">① Swing 코드</div>
+          <div class="text-gray-400">javax.swing 을 쓰는 .java 파일에서 ▶ 실행</div>
+        </div>
+        <div class="glass-card p-4 border-cyan-500/30 text-center">
+          <div class="text-2xl mb-1">⚙️</div>
+          <div class="font-bold text-white mb-1">② 서버: javac 컴파일만</div>
+          <div class="text-gray-400">jar 로 묶어 전달 · 서버 메모리 약 100MB</div>
+        </div>
+        <div class="glass-card p-4 border-emerald-500/30 text-center">
+          <div class="text-2xl mb-1">🌐</div>
+          <div class="font-bold text-white mb-1">③ 브라우저: CheerpJ</div>
+          <div class="text-gray-400">브라우저 안의 자바가 jar 를 실행</div>
+        </div>
+        <div class="glass-card p-4 border-amber-500/30 text-center">
+          <div class="text-2xl mb-1">🪟</div>
+          <div class="font-bold text-white mb-1">④ 사이트 안 GUI 창</div>
+          <div class="text-gray-400">버튼 클릭·System.out 이 콘솔로</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="glass-card p-5 border-emerald-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">🧠</span>
+            <span>왜 이 방식인가 (실측 근거)</span>
+          </h3>
+          <ul class="text-xs space-y-2 text-gray-300 leading-relaxed">
+            <li>서버 실행 시 <code class="text-emerald-300">HeadlessException</code> — 서버에 화면이 없음</li>
+            <li>운영 서버 메모리 <strong class="text-white">1GB (여유 약 400MB)</strong> ➔ 사용자마다 가상 화면(250~400MB)을 띄우면 서버 다운 위험</li>
+            <li>브라우저 실행 ➔ 서버 부담 0, 폰·PWA까지 동일하게 동작</li>
+          </ul>
+        </div>
+        <div class="glass-card p-5 border-red-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-red-400 text-lg">🛡️</span>
+            <span>보안 · 한계 · 라이선스</span>
+          </h3>
+          <ul class="text-xs space-y-2 text-gray-300 leading-relaxed">
+            <li>컴파일된 class 상수 풀 검사로 <strong class="text-white">리플렉션·JS 연결(JSObject)·native</strong> 차단, 창은 로그인 정보를 모르는 별도 iframe(별도 출처 옵션)</li>
+            <li>한계: Swing/AWT 중심 (JavaFX·Scanner 입력 미지원), 첫 로딩 약 30초 후 캐시</li>
+            <li>CheerpJ Community 라이선스(개인·1인 회사 무료, 크레딧 표기) — 상업화 시 유료 라이선스 검토</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: AI -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="AI 팀 비서">
+      <div class="mb-3">
+        <span class="badge badge-cyan">Core Feature 5</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">AI 팀 비서: 대화에서 일정·회의록을 자동으로</h2>
+      <p class="text-gray-400 text-sm mb-6">명령어를 외울 필요 없이 AI 이름을 부르거나, 나만 보는 AI 탭에서 편하게 대화</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="glass-card p-5 border-cyan-500/30">
           <div class="flex items-center gap-2 mb-3">
-            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-xs">/요약</span>
-            <span class="text-white font-bold text-sm">회의록 자동 구조화</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-xs">팀 채팅</span>
+            <span class="text-white font-bold text-sm">이름으로 부르는 AI</span>
           </div>
           <p class="text-xs text-gray-300 leading-relaxed mb-3">
-            채팅창에 <code class="text-cyan-300">/요약</code>을 입력하면 최근 대화 맥락을 즉시 분석하여 <strong>주요 안건, 결정 사항, 액션 아이템</strong>으로 깔끔하게 정돈해 공유 노트에 보관합니다.
+            프로필에서 정한 AI 이름을 부르면 대화체로 일정 등록·회의록 작성·정리를 해 줍니다. 만든 일정은 <strong>되돌리기·삭제 확인</strong> 버튼이 붙습니다.
           </p>
           <div class="p-3 bg-black/50 rounded text-xs text-gray-400 font-mono space-y-1">
-            <div class="text-cyan-400">📋 주요 안건: 백엔드 WebSocket 프로토콜 확정</div>
-            <div class="text-emerald-400">💡 결정 사항: /ws/live 엔드포인트 채택</div>
-            <div class="text-indigo-400">📌 액션 아이템: 민수 (배포 워크플로우 점검)</div>
+            <div class="text-cyan-300">"두레야 금요일 3시 스프린트 회의 잡아줘"</div>
+            <div class="text-emerald-400">➔ 캘린더 등록 완료 · 팀원 화면 즉시 동기화</div>
           </div>
         </div>
 
         <div class="glass-card p-5 border-indigo-500/30">
           <div class="flex items-center gap-2 mb-3">
-            <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs">/캘린더</span>
-            <span class="text-white font-bold text-sm">자연어 문맥 일정 등록</span>
+            <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs">🔒 나만 보는 AI</span>
+            <span class="text-white font-bold text-sm">개인 대화 탭</span>
           </div>
           <p class="text-xs text-gray-300 leading-relaxed mb-3">
-            <code class="text-indigo-300">/캘린더 내일 3시 팀 미팅</code>처럼 자연어 명령을 입력하면, AI가 날짜/시간/제목을 자동 파싱해 공유 캘린더에 즉시 등록합니다.
+            이름 없이도 답하고, 내 질문·AI 답은 <strong>나에게만</strong> 보입니다. 팀 채팅·실시간 알림·다른 사람의 AI 자료로 새지 않도록 서버에서 분리했습니다.
           </p>
           <div class="p-3 bg-black/50 rounded text-xs text-gray-400 font-mono space-y-1">
-            <div class="text-indigo-300">입력: "/캘린더 내일 15:00 스프린트 회의"</div>
-            <div class="text-emerald-400">결과: [캘린더 등록 완료] 2026-10-17 15:00 - 스프린트 회의</div>
-            <div class="text-gray-500">→ WebSocket으로 팀원 화면 즉시 동기화</div>
+            <div class="text-indigo-300">서버: scope=ai 는 본인에게만 전달</div>
+            <div class="text-gray-500">테스트 18항목으로 누출 여부 검증</div>
+          </div>
+        </div>
+
+        <div class="glass-card p-5 border-emerald-500/30">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs">일정 감지</span>
+            <span class="text-white font-bold text-sm">회의록·채팅 ➔ 캘린더</span>
+          </div>
+          <p class="text-xs text-gray-300 leading-relaxed mb-3">
+            "제가 금요일까지 할게요" 같은 말에서 <strong>담당·기한</strong>을 찾아 일정 카드로 제안하고, 추가하면 프로젝트 캘린더에 들어갑니다. 회의록은 노션처럼 쓰고 AI가 정리합니다.
+          </p>
+          <div class="p-3 bg-black/50 rounded text-xs text-gray-400 font-mono space-y-1">
+            <div class="text-emerald-300">프로젝트 단위로 캘린더·회의록·채팅 연동</div>
           </div>
         </div>
       </div>
 
       <div class="glass-card p-4 border-[#2d3a56] bg-black/30 flex items-center justify-between text-xs text-gray-300">
-        <div>💡 <strong>안전한 폴백 아키텍처:</strong> 외부 LLM API 지연/장애 시에도 자체 룰 기반 자연어 파서가 무중단으로 동작하여 서비스 연속성을 보장합니다.</div>
+        <div>💡 <strong>끊기지 않는 AI 엔진:</strong> Gemini ➔ (한도 초과 시 자동 전환) ➔ Claude ➔ 규칙 기반 분석 순으로 폴백하여 외부 API 장애에도 기능이 멈추지 않습니다.</div>
       </div>
     </section>
 
-    <!-- SLIDE 7: NEW - Team Hub & Guest Onboarding -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="실시간 팀 허브 & 게스트 온보딩">
+    <!-- SLIDE 10: Voice rooms -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="팀 통화방 & 효과음">
       <div class="mb-3">
-        <span class="badge badge-primary">[NEW] Team Collaboration</span>
+        <span class="badge badge-green">[NEW] Core Feature 6</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실시간 팀 관리 허브(/app/team) & 게스트 온보딩</h2>
-      <p class="text-gray-400 text-sm mb-6">목업 데이터를 전면 탈피한 100% 실데이터 연동 및 매끄러운 사용자 온보딩 경험</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">디스코드처럼: 팀 통화방 · 자동 재연결 · 효과음</h2>
+      <p class="text-gray-400 text-sm mb-6">팀원 브라우저끼리 직접 연결(WebRTC)해 지연을 최소화, 서버는 연결 신호만 중계</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="glass-card p-5 border-emerald-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">📞</span>
+            <span>통화방 기능</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">프로젝트별 여러 방:</strong> 기본 방은 프로젝트 이름을 따라가고, 팀원이 방을 만들 수 있음 (프로젝트당 8개, 방당 6명)</li>
+            <li><strong class="text-white">지연 표시:</strong> 연결 상태와 왕복 지연(ms)을 실시간으로 보여 줌</li>
+            <li><strong class="text-white">프로젝트를 바꿔도 통화 유지:</strong> 디스코드의 채널 이동처럼 끊기지 않음</li>
+            <li><strong class="text-white">자동 재연결:</strong> 신호 연결이 끊겨도 마이크를 유지한 채 최대 8회 재시도 + 15초 ping 으로 죽은 연결 감지</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-5 border-cyan-500/30">
+          <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+            <span class="text-cyan-400 text-lg">🔔</span>
+            <span>효과음 (파일 없이 브라우저가 생성)</span>
+          </h3>
+          <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
+            <li><strong class="text-white">새 채팅</strong> 도착 · <strong class="text-white">내가 들어감(올라가는 소리)/나감(내려가는 소리)</strong></li>
+            <li><strong class="text-white">팀원 입장·퇴장</strong> · <strong class="text-white">마이크 켜기·끄기</strong></li>
+            <li>Web Audio 로 합성 → 소리 파일·저작권·용량 걱정 없이 PC·모바일·PWA 동일</li>
+            <li>🔔 버튼으로 끄기, 방해금지 중에는 채팅 소리 없음, 내 메시지·AI 답변에는 울리지 않음</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 border-emerald-500/40 bg-emerald-950/10 text-xs text-gray-300">
+        <strong class="text-emerald-300">원인 분석으로 고친 버그:</strong> "통화방이 가끔 자동으로 나가진다" ➔ 프로젝트 전환 시 자동 퇴장하는 구조와 폴더 가져오기 후 다른 프로젝트로 다시 열리는 문제 ➔ 통화를 프로젝트에 고정 + 가져온 프로젝트 유지. (서버 12항목 · 클라이언트 로직 28항목 테스트)
+      </div>
+    </section>
+
+    <!-- SLIDE 11: Team Hub -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="팀 허브 & 게스트 온보딩">
+      <div class="mb-3">
+        <span class="badge badge-primary">Team Collaboration</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">팀 허브 · 초대 · 마이페이지 · 게스트 온보딩</h2>
+      <p class="text-gray-400 text-sm mb-6">더미 데이터 없이 실데이터만으로 동작, 초대 링크 하나로 멀리 있는 팀원도 합류</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-indigo-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-indigo-400 text-lg">👥</span>
-            <span>전용 팀 관리 뷰 (/app/team)</span>
+            <span>팀 관리 (/app/team)</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><strong class="text-white">실시간 팀원 상태 카드:</strong> 온라인/오프라인 여부 실시간 표출 및 프로젝트별 탭 분리</li>
-            <li><strong class="text-white">세분화된 RBAC 권한:</strong> 팀장(Owner)은 멤버 추방 및 역할 부여, 멤버(Member)는 안전한 자진 탈퇴 지원</li>
-            <li><strong class="text-white">인페이지 컨펌 다이얼로그:</strong> 브라우저 네이티브 팝업 차단 문제를 예방하는 현대적 인페이지 확인 모달</li>
-            <li><strong class="text-white">72시간 만료 초대 토큰:</strong> 원클릭으로 안전한 팀 초대 링크 생성 및 즉시 가입</li>
+            <li><strong class="text-white">실시간 팀원 상태 카드:</strong> 프로젝트별 접속 현황</li>
+            <li><strong class="text-white">역할(RBAC):</strong> 팀장·부팀장·팀원, 팀장은 내보내기·권한 부여</li>
+            <li><strong class="text-white">초대 링크:</strong> 기본 72시간 만료, 로그인 후 자동 합류 (정확한 이메일 검색은 횟수 제한)</li>
+            <li><strong class="text-white">관리자 콘솔:</strong> 6자리 관리자 코드, 사용자 정지·신고·크롤러·감사 로그·언어 관리</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-cyan-400 text-lg">🪐</span>
-            <span>7-노드 Home Orbit & 게스트 모드</span>
+            <span>홈 오빗 · 마이페이지 · 계정</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><strong class="text-white">홈 화면 7-노드 오빗(Orbit):</strong> 더미 아바타 대신 실제 팀원 6명 + 중앙 AI 비서가 원형으로 배치되어 실시간 상태 표현</li>
-            <li><strong class="text-white">게스트 홈(Guest Home) 우선 렌더링:</strong> 첫 접속 시 로그인 강제 없이 서비스 탐색 가능, 로그인 시 본인 워크스페이스로 매끄럽게 전환</li>
-            <li><strong class="text-white">더미 데이터 전면 제거:</strong> 가짜 프로젝트/차트/피드백 제거 후 실제 DB 기반 카운트 연동</li>
+            <li><strong class="text-white">홈 오빗:</strong> 실제 팀원 6명 + 가운데 AI 가 원형으로 배치, 접속 상태 표시</li>
+            <li><strong class="text-white">마이페이지:</strong> 프로필·포트폴리오·팔로우, 내가 쓴 글·일정·회의록 관리</li>
+            <li><strong class="text-white">게스트 홈:</strong> 로그인 없이 둘러본 뒤 구글·네이버 로그인으로 전환</li>
+            <li><strong class="text-white">계정 탈퇴:</strong> 단계별 안내, 7일 유예, 데이터 정리</li>
           </ul>
         </div>
       </div>
 
       <div class="glass-card p-4 border-indigo-500/40 bg-indigo-950/20 text-xs text-gray-300 flex items-center gap-3">
-        <span class="text-indigo-400 font-bold">인증 플로우:</span>
-        <span>Guest Home 방문 ➔ 서비스 둘러보기 ➔ 상단 "로그인" 클릭 ➔ 본인 대시보드 자동 진입 ➔ 팀 초대 링크 클릭 시 원터치 자동 가입</span>
+        <span class="text-indigo-400 font-bold">흐름:</span>
+        <span>게스트 홈 ➔ 로그인 ➔ 프로젝트 생성 ➔ 초대 링크 공유 ➔ 팀원 합류 ➔ 팀 허브에서 접속 현황 확인</span>
       </div>
     </section>
 
-    <!-- SLIDE 8: Hackathon Crawler -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="공모전 & 해커톤 자동 크롤러">
+    <!-- SLIDE 12: Hackathon Crawler -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="공모전 & 해커톤 자동 수집">
       <div class="mb-3">
-        <span class="badge badge-amber">Core Feature 3</span>
+        <span class="badge badge-amber">Core Feature 7</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">해커톤 & IT 공모전 정보 자동 수집 엔진</h2>
-      <p class="text-gray-400 text-sm mb-6">주요 대회 정보를 백엔드에서 자동 크롤링하여 팀 캘린더 데드라인과 즉시 연동</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">공모전 · 해커톤 정보 자동 수집 엔진</h2>
+      <p class="text-gray-400 text-sm mb-6">백엔드가 주기적으로 대회 정보를 수집해 이벤트 화면에 보여 주고 팀 캘린더와 연결</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-amber-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-amber-400 text-lg">🕷️</span>
-            <span>비동기 크롤링 엔진 아키텍처</span>
+            <span>비동기 수집 아키텍처</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li>국내 주요 해커톤 및 공모전 사이트에서 최신 접수 일정 정기 수집</li>
-            <li>대회명, 주최 기관, 접수 마감일, 공식 상세 링크 자동 정규화</li>
-            <li>백그라운드 비동기 태스크로 수집을 수행하여 서비스 응답 속도 영향 제로</li>
-            <li>중복 일정 필터링 및 D-Day 마감 임박순 자동 정렬 피드</li>
+            <li>대외활동·공모전·해커톤을 분류해 대회명·주최·마감일·포스터·링크를 정리</li>
+            <li>백그라운드 비동기 작업(기본 6시간 간격)으로 서비스 응답에 영향 없음</li>
+            <li>중복 제거, 마감 임박순 정렬, 새로 올라온 대회 표시</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-emerald-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-emerald-400 text-lg">📅</span>
-            <span>팀 캘린더 원클릭 데드라인 동기화</span>
+            <span>팀 캘린더 연동</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li>공모전 카드에서 <span class="text-emerald-400 font-bold">[캘린더 등록]</span> 버튼 클릭 시 즉시 팀 일정 등록</li>
-            <li>팀 캘린더에 공모전 마감 D-Day 배너가 핀 고정되어 팀원 전원 동기화</li>
-            <li>대회 준비용 회의록 및 프로젝트 샌드박스와 직접 연결되는 워크플로우 완성</li>
+            <li>대회 카드에서 버튼 한 번으로 팀 일정에 마감일 등록</li>
+            <li>등록된 일정은 /ws/live 로 팀원 화면에 즉시 반영</li>
+            <li>대회 준비용 회의록·워크스페이스와 한 프로젝트 안에서 이어짐</li>
           </ul>
         </div>
       </div>
 
       <div class="glass-card p-4 border-[#2d3a56] bg-black/40 flex items-center justify-between text-xs text-gray-300">
-        <div>💡 <strong>기대 효과:</strong> 외부 공모전 포털을 찾아다닐 필요 없이 라운지 안에서 대회 발굴부터 팀 빌딩, 코드 작성까지 완결!</div>
+        <div>💡 <strong>기대 효과:</strong> 대회 발굴 ➔ 팀 일정 ➔ 코드 작성까지 DureSync 안에서 완결</div>
       </div>
     </section>
 
-    <!-- SLIDE 9: NEW - Modular Refactoring & SPA Router -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="프론트엔드 모듈러 리팩토링">
+    <!-- SLIDE 13: Frontend + PWA -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="모듈러 프론트엔드 & PWA">
       <div class="mb-3">
-        <span class="badge badge-cyan">[NEW] Architecture Evolution</span>
+        <span class="badge badge-cyan">Architecture Evolution</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">8,500줄 모놀리스 ➔ 모듈러 SPA & History 라우터</h2>
-      <p class="text-gray-400 text-sm mb-6">확장성 있는 엔터프라이즈 구조로의 성공적 프론트엔드 아키텍처 대전환</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">모듈러 SPA · 서버 번들링 · PWA 설치형 앱</h2>
+      <p class="text-gray-400 text-sm mb-6">하나의 코드로 PC · 모바일 · 설치형 앱을 지원하고 빠르게 불러오는 구조</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-cyan-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-cyan-400 text-lg">📦</span>
-            <span>관심사 분리 (Separation of Concerns)</span>
+            <span>관심사 분리 · 번들링</span>
           </h3>
           <div class="text-xs space-y-2 text-gray-300 font-mono">
-            <div class="p-2 bg-black/50 rounded"><span class="text-cyan-400">frontend/css/</span> (18 modules: workspace, calendar, notes, shell...)</div>
-            <div class="p-2 bg-black/50 rounded"><span class="text-indigo-400">frontend/js/core/</span> (api, auth, live, router, session, theme)</div>
-            <div class="p-2 bg-black/50 rounded"><span class="text-emerald-400">frontend/js/pages/</span> (workspace, team, chat, calendar, notes)</div>
-            <div class="p-2 bg-black/50 rounded"><span class="text-amber-400">frontend/js/shell/</span> (menus, notifications, presence)</div>
+            <div class="p-2 bg-black/50 rounded"><span class="text-cyan-400">frontend/css/</span> 25개 모듈 (workspace, editor, calendar …)</div>
+            <div class="p-2 bg-black/50 rounded"><span class="text-indigo-400">frontend/js/core·shell/</span> api · auth · live · router · sfx …</div>
+            <div class="p-2 bg-black/50 rounded"><span class="text-emerald-400">frontend/js/pages/</span> workspace · live · runner · gui · chat · call …</div>
+            <div class="p-2 bg-black/50 rounded"><span class="text-amber-400">manifest.json</span> ➔ 서버가 bundle.js/css 한 개로 묶고 해시·ETag 로 캐시 갱신</div>
           </div>
         </div>
 
         <div class="glass-card p-5 border-indigo-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
-            <span class="text-indigo-400 text-lg">🧭</span>
-            <span>History API 기반 고유 URL 라우터</span>
+            <span class="text-indigo-400 text-lg">📱</span>
+            <span>PWA · 모바일 · 속도</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><strong class="text-white">화면별 고유 URL:</strong> <code class="text-indigo-300">/app/workspace</code>, <code class="text-indigo-300">/app/team</code>, <code class="text-indigo-300">/app/calendar</code> 등 딥링크 지원</li>
-            <li><strong class="text-white">브라우저 히스토리:</strong> 뒤로가기 / 앞으로가기(popstate) 완벽 지원</li>
-            <li><strong class="text-white">동적 타이틀 & 캐시 버스팅:</strong> 페이지별 타이틀 자동 변경 및 빌드 해시 기반 번들 최적화</li>
-            <li><strong class="text-white">PWA 지원:</strong> manifest.json 규격 탑재로 모바일 및 데스크톱 앱형 경험 제공</li>
+            <li><strong class="text-white">설치형 앱(PWA):</strong> 라이트/다크 아이콘, 서비스 워커, 새 버전 알림, 오프라인 안내</li>
+            <li><strong class="text-white">모바일 최적화:</strong> 하단 탭 바, 전체 화면 채팅, 키보드 위 입력줄, 화면 크기 설정</li>
+            <li><strong class="text-white">화면별 고유 URL:</strong> /app/workspace · /app/team … 딥링크, 뒤로가기 지원</li>
+            <li><strong class="text-white">성능:</strong> Monaco 에디터 지연 로딩, gzip, 실시간 연결 시 폴링 최소화</li>
           </ul>
         </div>
       </div>
 
       <div class="glass-card p-4 border-cyan-500/40 bg-cyan-950/20 text-xs text-gray-300 flex items-center justify-between">
-        <span>✅ <strong>성과:</strong> 가독성 400% 향상, 다중 개발자 협업 시 코드 충돌(Merge Conflict) 원천 차단</span>
-        <span class="font-mono text-cyan-300 font-bold">54 Files Refactored</span>
+        <span>✅ <strong>규모:</strong> 프런트 JS 약 9,700줄 · CSS 약 2,900줄 · 백엔드 Python 약 10,500줄 · 러너 845줄</span>
+        <span class="font-mono text-cyan-300 font-bold">JS 30 · CSS 25 modules</span>
       </div>
     </section>
 
-    <!-- SLIDE 10: NEW - DevOps & Deployment -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="DevOps & 자동 배포">
+    <!-- SLIDE 14: Deploy -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="배포 & 운영">
       <div class="mb-3">
-        <span class="badge badge-amber">[NEW] DevOps & Production</span>
+        <span class="badge badge-amber">DevOps & Production</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">GitHub Actions CI/CD & Docker 무중단 배포</h2>
-      <p class="text-gray-400 text-sm mb-6">코드 푸시부터 프로덕션 배포까지 자동화된 무중단 운영 파이프라인</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">AWS + Docker + Caddy: 실제 도메인으로 운영</h2>
+      <p class="text-gray-400 text-sm mb-6">duresync.cloud 에 배포해 팀원이 실제로 접속·사용하는 서비스</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-amber-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-amber-400 text-lg">🚀</span>
-            <span>자동화 CI/CD (.github/workflows/deploy.yml)</span>
+            <span>배포 절차</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li>main 브랜치에 코드 푸시 시 GitHub Actions 워크플로우 자동 트리거</li>
-            <li>SSH 보안 키를 통한 프로덕션 호스트 원격 접속 및 배포 파이프라인 가동</li>
-            <li>테스트 및 환경 변수 검증 후 안전하게 컨테이너 재빌드 실행</li>
-            <li>DEPLOY_* 시크릿 기반의 철저한 인증 정보 분리</li>
+            <li>GitHub main ➔ 서버 <code class="text-amber-300">git pull</code> ➔ <code class="text-amber-300">docker compose -f docker-compose.prod.yml up -d --build</code></li>
+            <li>Caddy 가 HTTPS 인증서를 자동 발급·갱신하고 FastAPI 로 프록시 (웹소켓 포함)</li>
+            <li>데이터(<code class="text-amber-300">data/</code>)와 설치한 언어(<code class="text-amber-300">langs/</code>)는 볼륨으로 보존, 배포 전 백업</li>
+            <li>GitHub Actions 배포 워크플로우도 준비(서버 접속 정보를 등록하면 push 시 자동)</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
-            <span class="text-cyan-400 text-lg">🐳</span>
-            <span>Docker Compose 기반 무중단 운영</span>
+            <span class="text-cyan-400 text-lg">📏</span>
+            <span>자원 기반 설계 결정</span>
           </h3>
           <ul class="text-xs space-y-2.5 text-gray-300 leading-relaxed">
-            <li><code class="text-cyan-300">docker compose up -d --build</code> 기반 제로 다운타임 재시작</li>
-            <li><code class="text-cyan-300">.dockerignore</code> 설정을 통한 빌드 컨텍스트 용량 최적화</li>
-            <li>백엔드 API와 정적 프론트엔드를 단일 컨테이너로 고효율 통합 서빙</li>
-            <li>표준 배포 가이드 문서화 완료 (<a href="docs/DEPLOY.md" class="text-cyan-400 underline">docs/DEPLOY.md</a>)</li>
+            <li>서버: <strong class="text-white">메모리 1GB · 디스크 28GB</strong> ➔ 실측 후 기능 방식을 선택</li>
+            <li>무거운 작업은 사용자 쪽으로: 자바 GUI 는 브라우저 실행, 비표준 언어는 내 PC 러너</li>
+            <li>이미지에는 핵심 언어만 넣고 나머지는 관리자 페이지에서 필요할 때 설치</li>
+            <li>실시간 편집 방은 서버 메모리에 있어 워커 1개로 운영</li>
           </ul>
         </div>
       </div>
 
-      <div class="glass-card p-4 border-[#2d3a56] font-mono text-xs text-gray-300 bg-black/40 flex items-center justify-between">
-        <span>git push origin main ➔ GitHub Actions (CI/CD) ➔ Docker Compose (Prod Container) ➔ Live Service</span>
-        <span class="text-emerald-400 font-bold">Zero Downtime</span>
+      <div class="glass-card p-4 border-[#2d3a56] font-mono text-xs text-gray-300 bg-black/40 flex items-center justify-between gap-3">
+        <span>git push origin main ➔ (서버) git pull ➔ Docker Compose build ➔ Caddy HTTPS ➔ duresync.cloud</span>
+        <span class="text-emerald-400 font-bold shrink-0">Live</span>
       </div>
     </section>
 
-    <!-- SLIDE 11: Engineering Challenges -->
+    <!-- SLIDE 15: Security -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="보안 설계">
+      <div class="mb-3">
+        <span class="badge badge-green">Security by Design</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">사용자 코드를 돌리는 서비스의 6겹 보안</h2>
+      <p class="text-gray-400 text-sm mb-6">서버·내 컴퓨터·브라우저 어디서 실행되든 안전하도록 경로마다 방어선을 설계</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="glass-card p-4 border-indigo-500/30">
+          <div class="text-xs font-bold text-indigo-400 mb-1">① 서버 실행 격리</div>
+          <p class="text-xs text-gray-300 leading-relaxed">로그인 필수 · 서버 비밀(환경변수) 미전달 · 시간·출력·CPU·파일 크기 제한 · 프로세스 그룹 종료 · 공유 모드에서는 꺼짐</p>
+        </div>
+        <div class="glass-card p-4 border-cyan-500/30">
+          <div class="text-xs font-bold text-cyan-400 mb-1">② 내 PC 러너</div>
+          <p class="text-xs text-gray-300 leading-relaxed">127.0.0.1 전용 · 허용 사이트(Origin)·Host 검사 · 연결 코드(파일 권한 0600) · 팀원이 고친 코드는 실행 전 동의</p>
+        </div>
+        <div class="glass-card p-4 border-emerald-500/30">
+          <div class="text-xs font-bold text-emerald-400 mb-1">③ 브라우저 자바(GUI)</div>
+          <p class="text-xs text-gray-300 leading-relaxed">class 상수 풀 검사(리플렉션·JS 연결·native 차단) · 로그인 정보를 모르는 별도 iframe · 별도 출처(sandbox) 옵션 · javac 어노테이션 처리 끔</p>
+        </div>
+        <div class="glass-card p-4 border-amber-500/30">
+          <div class="text-xs font-bold text-amber-400 mb-1">④ 계정·권한</div>
+          <p class="text-xs text-gray-300 leading-relaxed">JWT + 역할(RBAC) · 관리자 6자리 코드(잠금) · 서버 변경은 최고관리자만 · 감사 로그 · 탈퇴 7일 유예</p>
+        </div>
+        <div class="glass-card p-4 border-red-500/30">
+          <div class="text-xs font-bold text-red-400 mb-1">⑤ 비밀·저장소 관리</div>
+          <p class="text-xs text-gray-300 leading-relaxed">.env·키·DB 는 git 제외 · 푸시 전 비밀 값 검사 · SSH 키 비공개 · 서버 데이터 백업 후 배포</p>
+        </div>
+        <div class="glass-card p-4 border-indigo-500/30">
+          <div class="text-xs font-bold text-indigo-400 mb-1">⑥ 개인정보</div>
+          <p class="text-xs text-gray-300 leading-relaxed">나만 보는 AI 대화는 본인에게만 · 이메일은 정확 일치 검색만(횟수 제한) · 소셜 로그인 오류는 원인을 로그로 남김</p>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 border-emerald-500/40 bg-emerald-950/10 text-xs text-gray-300">
+        🔍 <strong>직접 찾아서 막은 위험:</strong> 브라우저 자바(CheerpJ)에 JS 연결 통로(JSObject)가 있음을 시험으로 확인 ➔ 위험한 기능을 서버가 컴파일 단계에서 거절하고 창을 별도 iframe 에서 실행하도록 설계.
+      </div>
+    </section>
+
+    <!-- SLIDE 16: Challenges -->
     <section class="slide w-full max-w-5xl justify-center py-6" data-title="핵심 기술 난제 극복">
       <div class="mb-3">
         <span class="badge badge-primary">Engineering Depth</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실제 개발 과정에서 극복한 3대 기술 난제</h2>
-      <p class="text-gray-400 text-sm mb-6">OS 및 플랫폼 레벨의 디테일을 깊이 파고들어 해결한 엔지니어링 사례</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실제 개발·운영에서 원인을 재현해 해결한 4대 난제</h2>
+      <p class="text-gray-400 text-sm mb-6">"되는 것 같은데 가끔 안 된다"를 로그·재현·테스트로 끝까지 추적한 사례</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
         <div class="glass-card p-5 border-indigo-500/30">
           <div class="text-xs text-indigo-400 font-semibold mb-2">CHALLENGE 01</div>
-          <h3 class="text-base font-bold text-white mb-2">무설치 C# 컴파일러 탐색</h3>
-          <p class="text-xs text-gray-400 leading-relaxed mb-3">
-            .NET SDK가 없는 클라이언트 PC에서도 C# 코드를 즉시 컴파일해야 하는 요구사항 발생.
-          </p>
+          <h3 class="text-base font-bold text-white mb-2">PC에서만 소셜 로그인이 실패</h3>
+          <p class="text-xs text-gray-400 leading-relaxed mb-3">같은 계정이 폰에서는 되고 PC에서만 실패. 서버 로그에 일회용 인증 코드가 두 번 사용된 흔적.</p>
           <div class="p-3 bg-indigo-950/20 rounded border border-indigo-500/30 text-xs text-gray-300">
-            <strong class="text-indigo-300">해결:</strong> Windows 내장 Framework 디렉터리를 재귀 탐색하여 최적의 <code class="text-indigo-200">csc.exe</code>를 동적 감지하는 알고리즘 구현 성공.
+            <strong class="text-indigo-300">해결:</strong> 서비스 워커의 화면 이동 사전 요청이 콜백을 중복 호출함을 재현으로 확인 ➔ 사전 요청 해제 + 서버 중복 요청 방어(60초).
           </div>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <div class="text-xs text-cyan-400 font-semibold mb-2">CHALLENGE 02</div>
-          <h3 class="text-base font-bold text-white mb-2">CP949 인코딩 충돌 보정</h3>
-          <p class="text-xs text-gray-400 leading-relaxed mb-3">
-            Windows 터미널의 기본 CP949 인코딩으로 인해 한글 컴파일 에러 메시지가 깨지는 현상.
-          </p>
+          <h3 class="text-base font-bold text-white mb-2">통화방이 가끔 자동으로 나가짐</h3>
+          <p class="text-xs text-gray-400 leading-relaxed mb-3">특히 폴더를 가져온 직후. 연결 자체는 정상인데 앱이 스스로 통화를 종료.</p>
           <div class="p-3 bg-cyan-950/20 rounded border border-cyan-500/30 text-xs text-gray-300">
-            <strong class="text-cyan-300">해결:</strong> 표준 입출력 스트림을 캡처하여 UTF-8 우선 디코딩 및 CP949 폴백 처리하는 하이브리드 비동기 디코더 개발.
+            <strong class="text-cyan-300">해결:</strong> 프로젝트 전환 시 자동 퇴장하는 구조가 원인 ➔ 통화를 프로젝트에 고정, 연결 끊김은 마이크 유지 자동 재연결(최대 8회).
           </div>
         </div>
 
         <div class="glass-card p-5 border-emerald-500/30">
           <div class="text-xs text-emerald-400 font-semibold mb-2">CHALLENGE 03</div>
-          <h3 class="text-base font-bold text-white mb-2">웹소켓 유실 대비 하이브리드 싱크</h3>
-          <p class="text-xs text-gray-400 leading-relaxed mb-3">
-            네트워크 순단 시 실시간 이벤트가 유실되어 클라이언트 데이터 불일치가 발생할 위험.
-          </p>
+          <h3 class="text-base font-bold text-white mb-2">서버에서 자바 창(Swing) 실행 불가</h3>
+          <p class="text-xs text-gray-400 leading-relaxed mb-3">HeadlessException. 가상 화면 방식은 사용자당 250~400MB, 서버 여유는 약 400MB.</p>
           <div class="p-3 bg-emerald-950/20 rounded border border-emerald-500/30 text-xs text-gray-300">
-            <strong class="text-emerald-300">해결:</strong> 소켓 연결 시 폴링을 지연시키고 끊김 감지 시 즉시 백그라운드 폴링으로 전환되는 자가 치유(Self-healing) 구조 완성.
+            <strong class="text-emerald-300">해결:</strong> 서버 메모리를 실측해 방식을 바꿈 ➔ 서버는 컴파일만(약 100MB), 창은 브라우저(CheerpJ)가 그림. 위험 기능은 컴파일 단계에서 차단.
+          </div>
+        </div>
+
+        <div class="glass-card p-5 border-amber-500/30">
+          <div class="text-xs text-amber-400 font-semibold mb-2">CHALLENGE 04</div>
+          <h3 class="text-base font-bold text-white mb-2">윈도우 한글 환경에서 러너 오류</h3>
+          <p class="text-xs text-gray-400 leading-relaxed mb-3">한국어 콘솔(cp949)에서 시작 즉시 종료, 한글 사용자 이름 경로에서 자동 시작 오류.</p>
+          <div class="p-3 bg-amber-950/20 rounded border border-amber-500/30 text-xs text-gray-300">
+            <strong class="text-amber-300">해결:</strong> 못 찍는 글자를 대체 출력하고, 자동 시작을 유니코드를 그대로 쓰는 레지스트리 방식으로 교체 + cp949·cp1252 콘솔 재현 테스트.
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 12: Quality & Compliance -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="품질 검증 & 컴플라이언스">
+    <!-- SLIDE 17: Quality -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="품질 검증 & 라이선스">
       <div class="mb-3">
         <span class="badge badge-green">Verification & Compliance</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">100% 자동화 E2E 테스트 통과 & 오픈소스 라이선스 준수</h2>
-      <p class="text-gray-400 text-sm mb-6">검증된 안정성과 법적 라이선스 컴플라이언스를 완벽히 확립</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">자동 테스트 600여 항목 통과 & 라이선스 준수</h2>
+      <p class="text-gray-400 text-sm mb-6">기능을 바꿀 때마다 기존 기능이 깨지지 않는지 자동으로 확인하는 개발 방식</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass-card p-5 border-emerald-500/30">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               <span class="text-emerald-400">🧪</span>
-              <span>E2E 통합 테스트 100% PASS</span>
+              <span>통합·단위 테스트 (약 20개 묶음)</span>
             </h3>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">Exit Code 0</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">전부 PASS</span>
           </div>
-          <ul class="text-xs space-y-2 text-gray-300 font-mono">
-            <li class="flex items-center justify-between"><span>[PASS] 인증 & JWT 토큰 발급/검증</span><span class="text-emerald-400">OK</span></li>
-            <li class="flex items-center justify-between"><span>[PASS] 5개 언어 샌드박스 컴파일 & 타임아웃</span><span class="text-emerald-400">OK</span></li>
-            <li class="flex items-center justify-between"><span>[PASS] AI 슬래시 파서 (/요약, /캘린더)</span><span class="text-emerald-400">OK</span></li>
-            <li class="flex items-center justify-between"><span>[PASS] WebSocket /ws/live 이벤트 브로드캐스트</span><span class="text-emerald-400">OK</span></li>
-            <li class="flex items-center justify-between"><span>[PASS] 해커톤 크롤러 및 캘린더 동기화</span><span class="text-emerald-400">OK</span></li>
+          <ul class="text-xs space-y-1.5 text-gray-300 font-mono">
+            <li class="flex items-center justify-between"><span>[PASS] 관리자 API · 계정 탈퇴</span><span class="text-emerald-400">91 · 61</span></li>
+            <li class="flex items-center justify-between"><span>[PASS] 내 PC 러너 · 한 줄 설치</span><span class="text-emerald-400">51 · 23</span></li>
+            <li class="flex items-center justify-between"><span>[PASS] 커뮤니티 · PWA · 터미널(실행)</span><span class="text-emerald-400">52 · 36 · 27</span></li>
+            <li class="flex items-center justify-between"><span>[PASS] 실시간 공동 편집(OT · /ws/live)</span><span class="text-emerald-400">5 · 21</span></li>
+            <li class="flex items-center justify-between"><span>[PASS] 언어 관리 · 샌드박스 · 나만 보는 AI</span><span class="text-emerald-400">65 · 29 · 18</span></li>
+            <li class="flex items-center justify-between"><span>[PASS] 통화방(서버·클라이언트) · 자바 GUI</span><span class="text-emerald-400">12 · 28 · 37</span></li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
             <span class="text-cyan-400">📜</span>
-            <span>오픈소스 라이선스 명세 확립</span>
+            <span>오픈소스 라이선스 · 출처 표기</span>
           </h3>
           <p class="text-xs text-gray-300 leading-relaxed mb-3">
-            사용된 모든 오픈소스 라이브러리의 라이선스를 철저히 분석하고 UI 설정 모달에서 누구나 확인할 수 있는 준수 체계를 확립했습니다.
+            사용한 오픈소스의 라이선스를 정리해 문서(docs/OPEN_SOURCE_LICENSES.md)와 설정 화면에서 확인할 수 있고, CheerpJ 는 GUI 창 하단에 출처를 표기합니다.
           </p>
           <div class="grid grid-cols-2 gap-2 text-xs font-mono text-gray-400">
             <div class="p-2 bg-black/40 rounded">FastAPI: MIT</div>
             <div class="p-2 bg-black/40 rounded">SQLAlchemy: MIT</div>
-            <div class="p-2 bg-black/40 rounded">Tailwind CSS: MIT</div>
             <div class="p-2 bg-black/40 rounded">Monaco Editor: MIT</div>
+            <div class="p-2 bg-black/40 rounded">CheerpJ: Community<br><span class="text-[10px] text-gray-500">개인·1인 회사 무료 · 크레딧 표기</span></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 13: Live Demo Journey -->
-    <section class="slide w-full max-w-5xl justify-center py-6" data-title="실제 팀 협업 사용자 여정">
+    <!-- SLIDE 18: Demo Journey -->
+    <section class="slide w-full max-w-5xl justify-center py-6" data-title="사용자 여정 (Demo)">
       <div class="mb-3">
         <span class="badge badge-primary">Demo Walkthrough</span>
       </div>
       <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">실제 팀 협업 사용자 여정 (Demo Walkthrough)</h2>
-      <p class="text-gray-400 text-sm mb-6">첫 접속부터 실시간 협업까지 매끄럽게 이어지는 4단계 사용자 경험</p>
+      <p class="text-gray-400 text-sm mb-6">첫 접속부터 코딩·AI·통화까지 한 탭에서 이어지는 5단계</p>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
         <div class="glass-card p-4 border-indigo-500/30">
           <div class="text-xs font-bold text-indigo-400 mb-1">STEP 01</div>
-          <h3 class="text-sm font-bold text-white mb-2">게스트 둘러보기 & 로그인</h3>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            로그인 압박 없이 게스트 홈에서 서비스를 탐색한 뒤, 원클릭 로그인으로 본인 대시보드로 자연스럽게 전환.
-          </p>
+          <h3 class="text-sm font-bold text-white mb-2">게스트 ➔ 로그인</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">둘러본 뒤 구글·네이버로 로그인하고 프로젝트 생성.</p>
         </div>
-
         <div class="glass-card p-4 border-cyan-500/30">
           <div class="text-xs font-bold text-cyan-400 mb-1">STEP 02</div>
-          <h3 class="text-sm font-bold text-white mb-2">1초 팀원 초대 & 합류</h3>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            팀장이 72시간 초대 링크를 복사해 공유하면, 팀원은 클릭 한 번으로 프로젝트에 즉시 합류.
-          </p>
+          <h3 class="text-sm font-bold text-white mb-2">초대 링크 합류</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">링크를 보내면 멀리 있는 팀원도 클릭 후 로그인으로 합류.</p>
         </div>
-
         <div class="glass-card p-4 border-emerald-500/30">
           <div class="text-xs font-bold text-emerald-400 mb-1">STEP 03</div>
-          <h3 class="text-sm font-bold text-white mb-2">5개 언어 샌드박스 코딩</h3>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            로컬 컴파일러 없이 브라우저에서 바로 C#/Python 코드를 실행해 팀원과 로직을 신속히 검증.
-          </p>
+          <h3 class="text-sm font-bold text-white mb-2">같이 코딩</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">같은 파일을 동시에 편집하고 ▶ 실행. 서버·내 PC 선택, Swing 창은 사이트 안에.</p>
         </div>
-
         <div class="glass-card p-4 border-amber-500/30">
           <div class="text-xs font-bold text-amber-400 mb-1">STEP 04</div>
-          <h3 class="text-sm font-bold text-white mb-2">실시간 채팅 & AI 슬래시</h3>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            타이핑 인디케이터를 보며 대화하고, <code class="text-amber-300">/요약</code>과 <code class="text-amber-300">/캘린더</code>로 회의록과 일정을 자동 마감.
-          </p>
+          <h3 class="text-sm font-bold text-white mb-2">AI 와 정리</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">AI 이름을 불러 회의록·일정을 자동 정리, 나만 보는 AI 로 질문.</p>
+        </div>
+        <div class="glass-card p-4 border-red-500/30">
+          <div class="text-xs font-bold text-red-400 mb-1">STEP 05</div>
+          <h3 class="text-sm font-bold text-white mb-2">통화로 마무리</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">통화방에 들어가 입·퇴장 효과음과 함께 이야기하며 마감.</p>
         </div>
       </div>
 
       <div class="glass-card p-4 border-indigo-500/40 bg-indigo-950/20 text-xs text-gray-300 text-center">
-        🚀 <strong>모든 과정이 단일 브라우저 탭 안에서 무중단으로 완결되는 올인원 협업 사이클 구축!</strong>
+        🚀 <strong>PC · 모바일 · 설치형 앱에서 같은 흐름이 끊김 없이 이어지는 올인원 협업 사이클!</strong>
       </div>
     </section>
 
-    <!-- SLIDE 14: Roadmap -->
+    <!-- SLIDE 19: Roadmap -->
     <section class="slide w-full max-w-5xl justify-center py-6" data-title="향후 발전 로드맵">
       <div class="mb-3">
         <span class="badge badge-cyan">Future Roadmap</span>
       </div>
-      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">향후 발전 로드맵 & 상용화 확장 계획</h2>
-      <p class="text-gray-400 text-sm mb-6">단계별 기능 고도화를 통한 차세대 엔지니어링 플랫폼으로의 진화</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">남은 과제와 단계별 발전 계획</h2>
+      <p class="text-gray-400 text-sm mb-6">이미 구현한 것(실시간 공동 편집, 통화방, 러너)은 완료로 두고, 현재 한계에서 출발</p>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="glass-card p-5 border-indigo-500/30">
           <div class="text-xs text-indigo-400 font-bold mb-1">PHASE 1 (단기)</div>
-          <h3 class="text-base font-bold text-white mb-3">안정화 & 퍼블릭 오픈</h3>
+          <h3 class="text-base font-bold text-white mb-3">검증 & 안정화</h3>
           <ul class="text-xs space-y-2 text-gray-300 leading-relaxed">
-            <li>• Cloudflare Tunnel 기반 퍼블릭 도메인 상시 오픈</li>
-            <li>• 카카오 / 구글 / 깃허브 소셜 OAuth 연동</li>
-            <li>• 웹소켓 네트워크 끊김 자동 재접속 튜닝</li>
+            <li>• iOS · Android 실기기 시험 (통화·효과음·GUI 창)</li>
+            <li>• TURN 중계 서버로 다른 네트워크 통화 보장</li>
+            <li>• GUI 전용 별도 주소(gui 도메인) 적용</li>
+            <li>• 사용자 피드백 수집·반영</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-cyan-500/30">
           <div class="text-xs text-cyan-400 font-bold mb-1">PHASE 2 (중기)</div>
-          <h3 class="text-base font-bold text-white mb-3">심화 실시간 협업</h3>
+          <h3 class="text-base font-bold text-white mb-3">기능 확장</h3>
           <ul class="text-xs space-y-2 text-gray-300 leading-relaxed">
-            <li>• CRDT / Y.js 기반 다중 사용자 동시 코드 편집</li>
-            <li>• WebRTC 기반 팀 음성 및 화면 공유 라운지</li>
-            <li>• 마크다운 회의록 실시간 공동 편집기 도입</li>
+            <li>• 서버 증설 시 가상 화면 방식으로 JavaFX·입력까지 지원</li>
+            <li>• AI 코드 리뷰 · 일정 감지 정확도 평가</li>
+            <li>• 푸시 알림, 앱 스토어 출시(PWA 기반)</li>
+            <li>• 공동 편집 대상 확장(회의록 실시간 공동 편집)</li>
           </ul>
         </div>
 
         <div class="glass-card p-5 border-emerald-500/30">
           <div class="text-xs text-emerald-400 font-bold mb-1">PHASE 3 (장기)</div>
-          <h3 class="text-base font-bold text-white mb-3">보안 & 엔터프라이즈</h3>
+          <h3 class="text-base font-bold text-white mb-3">상용화 & 엔터프라이즈</h3>
           <ul class="text-xs space-y-2 text-gray-300 leading-relaxed">
-            <li>• Docker cgroup / Firecracker 기반 마이크로VM 격리</li>
-            <li>• AI 기반 코드 리뷰 및 자동 버그 탐지 에이전트</li>
-            <li>• 대학/해커톤 기관 전용 팀 관리 대시보드 제공</li>
+            <li>• 마이크로VM 격리 샌드박스 (Firecracker 등)</li>
+            <li>• 상용 라이선스·요금 검토 (CheerpJ 등 외부 구성요소 포함)</li>
+            <li>• 학교·해커톤 기관 전용 대시보드</li>
+            <li>• 다중 서버 확장 (실시간 방 상태 외부화)</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- SLIDE 15: Q&A & Closing -->
+    <!-- SLIDE 20: Q&A & Closing -->
     <section class="slide w-full max-w-5xl justify-center items-center text-center py-10" data-title="질의응답 및 마무리">
       <div class="mb-4">
         <span class="badge badge-green text-sm px-3.5 py-1">Thank You</span>
       </div>
       <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">
-        흩어진 개발 환경을 하나로,<br>
-        <span class="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">Code Lounge</span>
+        함께 일하는 가장 오래된 방식,<br>
+        <span class="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">AI로 다시 · DureSync</span>
       </h2>
       <p class="text-base text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-        개발팀의 흩어진 시간을 모으고 본질적인 코딩과 협업에만 몰입할 수 있도록 돕겠습니다.<br>
-        경청해 주셔서 대단히 감사합니다.
+        팀의 흩어진 시간을 모으고 본질적인 협업에만 몰입할 수 있도록 돕겠습니다.<br>
+        경청해 주셔서 감사합니다.
       </p>
 
       <div class="glass-card p-5 border-emerald-500/30 max-w-2xl w-full text-left mb-6 bg-black/40">
         <div class="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5">
-          <span>💡</span> 심사위원 예상 질의 대응 준비 완료
+          <span>💡</span> 예상 질의 대응 준비
         </div>
         <div class="text-xs text-gray-300 space-y-1.5 font-sans">
-          <div>• <strong>차별점:</strong> 범용 도구와 다른 '개발 특화 올인원' (코드 실행 + AI 회의 요약 + 일정 동기화)</div>
-          <div>• <strong>샌드박스 보안:</strong> 15초 프로세스 트리 강제 킬러 및 마이크로VM 컨테이너 격리 로드맵</div>
-          <div>• <strong>C# 무설치 원리:</strong> Windows 내장 csc.exe 자동 탐색 알고리즘 탑재</div>
-          <div>• <strong>실시간 동기화:</strong> SQLAlchemy after_commit 훅 + /ws/live WebSocket 이벤트 푸시</div>
+          <div>• <strong>차별점:</strong> 코드 편집·실행 + 글자 단위 공동 편집 + AI 회의록·일정 + 통화를 한 프로젝트에서</div>
+          <div>• <strong>실행 보안:</strong> 서버 격리·러너 Origin/코드 검사·자바 class 검사 등 경로별 방어선</div>
+          <div>• <strong>서버에 없는 언어·GUI:</strong> 내 PC 러너 + 브라우저(CheerpJ) 자바 창</div>
+          <div>• <strong>실시간 동기화:</strong> OT 로 동시 편집 수렴, /ws/live 로 즉시 푸시</div>
+          <div>• <strong>비용·라이선스:</strong> 서버 1GB 로 운영, CheerpJ 는 개인·1인 회사 무료(상업화 시 유료 검토)</div>
         </div>
       </div>
 
@@ -841,7 +1095,7 @@ class Program {
     </div>
 
     <div>
-      <span class="text-xs text-gray-500 font-mono">Code Lounge v2.1-live</span>
+      <span class="text-xs text-gray-500 font-mono">DureSync v3 · duresync.cloud</span>
     </div>
   </footer>
 
@@ -871,77 +1125,102 @@ class Program {
       {
         title: "Slide 1: 표지 (Cover)",
         time: "30초",
-        script: "안녕하십니까. 개발 스터디 및 해커톤 팀의 협업 효율을 극대화하는 올인원 실시간 개발 플랫폼, Code Lounge의 발표를 맡은 [이름]입니다. 저희 프로젝트는 분산되어 있던 코드 실행, 회의록 요약, 일정 관리, 공모전 탐색을 웹소켓 기반의 실시간 브라우저 탭 하나로 완결할 수 있도록 구축된 차세대 개발자 라운지입니다. 지금부터 개발 배경과 시스템 아키텍처, 그리고 최신 핵심 기능들을 차례로 소개해 드리겠습니다."
+        script: "안녕하십니까. 팀 프로젝트의 코드, 회의록, 일정, 대화, 통화를 한 곳에서 해결하는 AI 팀 워크스페이스, DureSync, 두레싱크 발표를 맡은 [이름]입니다. 두레는 서로의 일을 함께 돕던 우리나라의 오래된 협동 공동체입니다. 저희는 그 방식을 AI와 실시간 기술로 다시 만들었고, 지금은 duresync.cloud 에 실제로 배포해 사용하고 있습니다. 개발 배경과 구조, 그리고 핵심 기능을 차례로 소개하겠습니다."
       },
       {
         title: "Slide 2: 문제 정의 및 배경",
         time: "45초",
-        script: "개발 프로젝트를 진행해 보신 분들은 누구나 겪는 고질적인 문제가 있습니다. 채팅은 슬랙/카톡, 회의록은 노션, 일정은 구글 캘린더, 코드는 로컬 IDE에서 각자 돌립니다. 이처럼 도구가 파편화되면서 대화 속에 나온 중요한 일정이나 결정 사항이 유실되고, '내 컴퓨터에선 되는데' 현상이 빈번히 일어납니다. Code Lounge는 이러한 컨텍스트 스위칭 낭비를 해결하고자 시작되었습니다."
+        script: "팀 프로젝트를 해 보면 코드는 각자의 IDE, 회의록은 노션, 일정은 캘린더, 대화는 메신저에 흩어집니다. 그러면 '누가 언제까지 무엇을 하기로 했는지'가 대화 속에 묻히고, 같은 파일을 동시에 고치다 덮어쓰기가 나며, '내 컴퓨터에선 되는데' 문제가 생깁니다. DureSync는 이 문제를 브라우저 한 탭에서, 한 프로젝트 안에서 해결하려고 시작했습니다."
       },
       {
-        title: "Slide 3: 시스템 아키텍처 & DevOps",
+        title: "Slide 3: 시스템 아키텍처",
+        time: "50초",
+        script: "구조는 비동기 FastAPI와 SQLite를 중심으로, 실시간 채널인 웹소켓 세 개와 약 144개의 API로 이루어져 있습니다. 가장 큰 특징은 코드를 실행하는 길이 세 가지라는 점입니다. 서버 샌드박스, 사용자 컴퓨터의 러너, 그리고 브라우저 안의 자바입니다. 서버는 AWS의 작은 인스턴스에서 도커와 Caddy로 운영하며 HTTPS 인증서는 자동으로 관리됩니다."
+      },
+      {
+        title: "Slide 4: 실시간 푸시 & Presence",
         time: "45초",
-        script: "Code Lounge는 고성능 비동기 처리를 위해 FastAPI와 SQLAlchemy Async를 코어로 채택했습니다. 프론트엔드는 8,500줄 모놀리스에서 18개 CSS와 JS 도메인 모듈로 전면 리팩토링된 모듈러 SPA 구조로 진화했습니다. 또한 GitHub Actions와 Docker Compose를 기반으로 코드 푸시 시 실서버에 무중단으로 자동 배포되는 CI/CD 파이프라인을 구축했습니다."
+        script: "채팅, 일정, 회의록이 저장되는 순간 연결된 팀원 화면으로 웹소켓이 바로 밀어 줍니다. 소켓이 끊기면 폴링이 자동으로 되살아나 데이터가 어긋나지 않게 했습니다. 접속 상태는 온라인, 자리비움, 방해금지, 오프라인 네 단계이고, 입력 중 표시와 팀원이 어느 파일을 보고 있는지도 실시간으로 보입니다. 아래 시뮬레이터로 동작을 확인하실 수 있습니다."
       },
       {
-        title: "Slide 4: [NEW] WebSocket 실시간 푸시 & Presence",
+        title: "Slide 5: 글자 단위 실시간 공동 편집 (OT)",
+        time: "60초",
+        script: "이번 프로젝트의 핵심 기술입니다. 두 사람이 같은 위치를 동시에 고치면 보통 한쪽이 덮어써집니다. 저희는 서버가 편집 순서를 정하고, 각 클라이언트가 자기 편집을 상대 편집에 맞춰 변환하는 오퍼레이셔널 트랜스포메이션을 구현했습니다. 아래 시뮬레이터에서 원본 AB에 A는 X를, B는 Y를 같은 자리에 동시에 넣으면, 변환이 없을 때는 두 화면이 서로 다른 결과가 되지만 변환을 쓰면 모두 AXYB로 같아집니다. 한글 조합 입력 중에는 원격 편집을 미뤄서 입력이 깨지지 않게 했고, 문서가 어긋나면 자동으로 다시 맞춥니다."
+      },
+      {
+        title: "Slide 6: 다언어 실행 & 언어 관리",
         time: "50초",
-        script: "이번 최신 업데이트의 핵심인 웹소켓 실시간 푸시 엔진입니다. 기존의 느린 폴링 방식에서 벗어나, SQLAlchemy의 after_commit 이벤트 훅과 연동된 /ws/live 웹소켓을 구축했습니다. 채팅, 일정, 회의록 변경이 DB에 커밋되는 순간 연결된 모든 팀원에게 즉시 브로드캐스트됩니다. 또한 실시간 Presence 감지로 팀원의 온/오프라인 상태와 타이핑 인디케이터가 실시간으로 공유됩니다."
+        script: "워크스페이스의 실행 버튼은 하나입니다. 서버 이미지에는 파이썬, 자바스크립트와 타입스크립트, 자바, C와 C++ 같은 핵심 언어만 넣어 용량을 줄였고, C#, Go, Rust 같은 언어는 관리자 페이지에서 재빌드 없이 설치하고 공개 여부와 기본 버전을 정합니다. 같은 언어의 여러 버전을 나란히 두고 실행 옆 선택 박스에서 고를 수 있습니다. 실행은 로그인한 사용자만 가능하고, 서버 비밀은 넘기지 않으며, 시간과 출력, CPU를 제한합니다. 현재 운영 서버에는 파이썬, 자바스크립트와 타입스크립트, 자바 21, C, C++, 그리고 관리자가 설치한 C#, Go, Rust와 펄, 배시가 올라가 있습니다. 아래 버튼은 시연용 모의 출력입니다."
       },
       {
-        title: "Slide 5: 5개 언어 웹 샌드박스 컴파일러",
+        title: "Slide 7: 내 PC 러너",
+        time: "55초",
+        script: "서버에 없는 언어나 버전, 파이썬 라이브러리, 그리고 마우스를 조종하는 pyautogui 같은 프로그램은 내 컴퓨터에서 돌려야 합니다. 그래서 러너를 만들었습니다. 사용자는 내 PC 버튼에서 한 줄 명령을 복사해 터미널에 붙여넣기만 하면 설치와 자동 시작, 연결 코드 맞춤까지 끝나고 화면이 알아서 연결됨으로 바뀝니다. 보안은 내 컴퓨터 안에서만 접속을 받고, 허용한 사이트와 연결 코드를 확인하며, 팀원이 고친 코드는 실행 전에 동의를 받는 방식으로 설계했습니다."
+      },
+      {
+        title: "Slide 8: 자바 GUI 브라우저 실행",
+        time: "60초",
+        script: "자바 Swing 창은 서버에 화면이 없어서 실행하면 HeadlessException이 납니다. 가상 화면을 띄우는 방법은 사용자마다 메모리가 250에서 400메가가 드는데, 운영 서버는 메모리 1기가에 여유가 약 400메가였습니다. 그래서 서버는 컴파일만 하고, 창은 브라우저 안의 자바 실행 환경인 CheerpJ가 그리도록 바꿨습니다. 서버 부담은 약 100메가로 줄었고 폰과 설치형 앱에서도 같은 창이 뜹니다. 시험 중 브라우저 자바에 자바스크립트 연결 통로가 있다는 것을 발견해, 컴파일된 코드에서 위험한 기능을 서버가 거절하고 창을 별도 프레임에서 실행하도록 했습니다. 한계는 JavaFX와 입력을 지원하지 않는다는 점이고, CheerpJ는 개인과 1인 회사에 무료이므로 상업화 시 라이선스를 검토해야 합니다."
+      },
+      {
+        title: "Slide 9: AI 팀 비서",
         time: "50초",
-        script: "첫 번째 핵심 기능인 5개 언어 즉시 실행 샌드박스입니다. 파이썬, 자바, C, C++, C# 코드를 별도의 로컬 설치 없이 브라우저에서 바로 컴파일하고 결과를 확인할 수 있습니다. 특히 Windows 환경에 기본 내장된 csc.exe를 지능적으로 감지하여, 무거운 닷넷 SDK가 없는 PC에서도 완벽한 C# 컴파일을 지원하며, 15초 강제 타임아웃 킬러로 서버 자원을 안전하게 보호합니다."
+        script: "AI는 명령어를 외우지 않아도 됩니다. 팀 채팅에서 AI 이름을 부르면 대화체로 일정을 등록하고 회의록을 정리하며, 결과에는 되돌리기와 삭제 확인이 붙습니다. 나만 보는 AI 탭의 대화는 서버에서 본인에게만 전달해 팀 채팅이나 알림으로 새지 않도록 했고, 테스트로 검증했습니다. 대화에서 담당과 기한을 찾아 일정 카드로 제안하기도 합니다. AI 엔진은 Gemini, Claude, 규칙 기반 순으로 폴백해서 외부 장애에도 멈추지 않습니다."
       },
       {
-        title: "Slide 6: 채팅 내장형 AI 비서",
+        title: "Slide 10: 팀 통화방 & 효과음",
         time: "50초",
-        script: "두 번째는 팀 채팅창에 내장된 AI 비서 기능입니다. /요약 명령을 입력하면 최근 나눈 긴 회의 대화를 분석해 주요 안건, 결정 사항, 다음 할 일로 깔끔히 정돈해 줍니다. 또한 /캘린더 명령을 통해 '내일 3시 팀 미팅' 같은 문맥을 AI가 인식하여 날짜와 시간을 자동 계산하고 팀 공유 캘린더에 바로 등록해 줍니다. 외부 API 장애 시에도 자체 개발된 룰 기반 파서가 무중단으로 동작합니다."
+        script: "팀원끼리 브라우저로 직접 연결하는 WebRTC 통화방입니다. 디스코드처럼 프로젝트마다 여러 방을 만들 수 있고 지연을 실시간으로 보여 줍니다. 통화방이 가끔 자동으로 나가지는 문제는, 프로젝트가 바뀌면 자동 퇴장하는 구조가 원인이었습니다. 이제 통화는 프로젝트에 고정되고, 연결이 끊겨도 마이크를 유지한 채 자동으로 다시 연결합니다. 효과음은 새 채팅, 입장과 퇴장, 마이크 켜기와 끄기에 나며, 파일 없이 브라우저가 소리를 직접 만들어 용량과 저작권 걱정이 없습니다."
       },
       {
-        title: "Slide 7: [NEW] 실시간 팀 관리 허브 & 게스트 온보딩",
-        time: "45초",
-        script: "새롭게 추가된 /app/team 전용 뷰에서는 팀원들의 실시간 접속 상태를 한눈에 볼 수 있으며, 팀장의 역할 변경/추방 및 멤버의 자진 탈퇴를 안전한 인페이지 컨펌 모달로 지원합니다. 72시간 만료 토큰 링크로 1초 만에 초대할 수 있습니다. 또한 서비스 첫 진입 시 게스트 홈을 먼저 제공하여 부담 없이 둘러본 뒤 로그인으로 전환되는 완성도 높은 온보딩 경험을 제공합니다."
-      },
-      {
-        title: "Slide 8: 공모전 & 해커톤 자동 크롤러",
+        title: "Slide 11: 팀 허브 & 게스트 온보딩",
         time: "40초",
-        script: "공모전을 준비하는 개발팀을 위한 자동 크롤링 엔진입니다. 매번 외부 사이트를 찾아다닐 필요 없이, 백엔드 크롤러가 최신 해커톤 명칭, 주최 기관, 접수 마감일을 자동으로 수집하며, 버튼 클릭 한 번으로 팀 캘린더에 마감 데드라인을 등록할 수 있습니다."
+        script: "팀 허브에서는 프로젝트별 접속 현황을 보고, 팀장과 부팀장, 팀원 역할을 관리합니다. 초대 링크는 기본 72시간 만료이고, 멀리 있는 팀원도 링크를 받아 로그인하면 합류합니다. 관리자 콘솔은 6자리 관리자 코드로 보호됩니다. 마이페이지에는 프로필, 포트폴리오, 팔로우가 있고 계정 탈퇴는 7일 유예와 단계별 안내를 제공합니다."
       },
       {
-        title: "Slide 9: [NEW] 프론트엔드 모듈러 SPA & History 라우터",
-        time: "45초",
-        script: "기존 8,500줄 단일 HTML의 유지보수 한계를 극복하기 위해, 프론트엔드를 CSS/JS 계층별 18개 모듈로 완벽히 분리했습니다. 또한 브라우저 History API 기반 전용 SPA 라우터를 구축하여 /app/workspace, /app/team 등 화면별 고유 URL 딥링크와 브라우저 뒤로가기/앞으로가기 네이티브 경험을 완성했습니다."
-      },
-      {
-        title: "Slide 10: [NEW] DevOps: CI/CD & Docker 무중단 배포",
-        time: "40초",
-        script: "프로덕션 환경 운영을 위해 GitHub Actions 기반의 자동 배포 워크플로우를 완성했습니다. main 브랜치 푸시 시 SSH 보안 접속을 통해 Docker Compose로 무중단 재배포가 수행되며, .dockerignore 최적화와 docs/DEPLOY.md 표준 가이드를 통해 상용 수준의 운영 체계를 마련했습니다."
-      },
-      {
-        title: "Slide 11: 실제 개발 과정의 3대 기술 난제 극복",
-        time: "50초",
-        script: "개발 과정에서 맞닥뜨린 핵심 기술 과제 3가지를 해결했습니다. 첫째, SDK 미설치 환경에서도 Windows 기본 csc.exe를 자동 재귀 탐색하여 C# 네이티브 컴파일을 성공시켰습니다. 둘째, Windows 콘솔의 한글 CP949 인코딩 충돌을 방지하기 위해 UTF-8 우선 비동기 예외 디코더를 구축했습니다. 셋째, 소켓 단절 시에도 데이터가 유실되지 않도록 WebSocket과 저주기 폴링을 결합한 자가 치유 동기화 아키텍처를 완성했습니다."
-      },
-      {
-        title: "Slide 12: 품질 검증 & 오픈소스 라이선스",
-        time: "40초",
-        script: "저희는 기능 구현에 그치지 않고, 자동화 검증 스크립트를 작성하여 크롤러부터 샌드박스, AI, 권한까지 모든 엔드포인트의 E2E 통합 테스트를 100% 통과(Exit Code 0)시켰습니다. 또한 사용된 서드파티 오픈소스 라이브러리의 라이선스를 철저히 분석하여 UI 환경설정 모달에서 누구나 확인할 수 있도록 준수 체계를 확립했습니다."
-      },
-      {
-        title: "Slide 13: 라이브 시연 시나리오 (Demo Walkthrough)",
-        time: "40초",
-        script: "사용자 여정은 매우 자연스럽습니다. 게스트 홈에서 서비스를 가볍게 둘러본 후 원클릭 로그인으로 진입합니다. 팀장이 72시간 초대 링크를 던져주면 팀원은 클릭 즉시 합류합니다. 이후 브라우저에서 바로 C# 코드를 실행해 보고, 타이핑 인디케이터가 뜨는 실시간 채팅창에서 /요약과 /캘린더로 일정을 등록하며 협업을 마감합니다."
-      },
-      {
-        title: "Slide 14: 향후 발전 로드맵",
+        title: "Slide 12: 공모전 & 해커톤 자동 수집",
         time: "35초",
-        script: "앞으로의 로드맵입니다. 단기적으로는 Cloudflare Tunnel 기반 상시 도메인 배포와 카카오/구글 소셜 로그인을 연동할 계획입니다. 중장기적으로는 CRDT 기반의 실시간 다중 사용자 동시 편집과 WebRTC 음성 채널, 그리고 Docker cgroup 기반의 완전 격리 마이크로VM 샌드박스로 발전시켜 나갈 것입니다."
+        script: "공모전을 준비하는 팀을 위해 백엔드가 주기적으로 대외활동, 공모전, 해커톤 정보를 수집해 마감일과 포스터를 정리합니다. 버튼 한 번으로 팀 캘린더에 마감일을 올리면 팀원 화면에 바로 반영됩니다."
       },
       {
-        title: "Slide 15: 질의응답 및 마무리",
+        title: "Slide 13: 모듈러 프론트엔드 & PWA",
+        time: "40초",
+        script: "프런트엔드는 약 9,700줄의 자바스크립트를 30개 모듈로 나누고, 서버가 하나의 번들로 묶어 해시와 ETag로 캐시를 갱신합니다. 같은 코드로 PC와 모바일, 설치형 앱을 지원하고, 서비스 워커로 새 버전 알림과 오프라인 안내를 제공합니다. 모나코 에디터는 지연 로딩해서 첫 화면이 빠릅니다."
+      },
+      {
+        title: "Slide 14: 배포 & 운영",
+        time: "40초",
+        script: "배포는 GitHub의 main을 서버에서 받아 도커 컴포즈로 다시 빌드하는 방식이고, Caddy가 HTTPS를 자동 관리합니다. 데이터와 설치한 언어는 볼륨으로 보존하고 배포 전에 백업합니다. 서버가 메모리 1기가라는 점을 실측하고 기능의 방식을 정했습니다. 무거운 일은 사용자 쪽으로 보내는 것이 이 서비스의 설계 원칙입니다."
+      },
+      {
+        title: "Slide 15: 보안 설계",
+        time: "50초",
+        script: "사용자 코드를 돌리는 서비스라서 경로마다 방어선을 설계했습니다. 서버에서는 로그인과 환경변수 차단, 자원 제한. 러너는 내 컴퓨터에서만 접속을 받고 허용 사이트와 연결 코드를 확인. 자바 창은 컴파일된 클래스를 검사하고 별도 프레임에서 실행. 계정은 역할과 관리자 코드, 비밀은 저장소에 올리지 않습니다. 시험 중 브라우저 자바의 위험을 직접 발견해 막은 것이 대표 사례입니다."
+      },
+      {
+        title: "Slide 16: 4대 기술 난제 극복",
+        time: "60초",
+        script: "원인을 재현해서 푼 네 가지 사례입니다. 첫째, PC에서만 소셜 로그인이 실패했는데 서비스 워커의 사전 요청이 일회용 코드를 두 번 쓰는 것이 원인이어서 해결했습니다. 둘째, 통화방이 가끔 나가지는 문제는 프로젝트 전환 구조 때문이었고 통화를 프로젝트에 고정하고 자동 재연결을 넣었습니다. 셋째, 서버에서 자바 창을 못 띄우는 문제는 메모리를 실측해 브라우저 실행으로 바꿨습니다. 넷째, 윈도우 한글 환경의 콘솔 인코딩과 한글 경로 문제를 재현 테스트와 함께 고쳤습니다."
+      },
+      {
+        title: "Slide 17: 품질 검증 & 라이선스",
+        time: "40초",
+        script: "기능을 바꿀 때마다 기존 기능이 깨지지 않는지 자동 테스트로 확인했고, 약 20개 묶음 600여 항목이 모두 통과합니다. 관리자, 계정 탈퇴, 러너, 실시간 편집, 통화방, 자바 GUI까지 포함됩니다. 오픈소스 라이선스는 문서로 정리했고, 사용한 CheerpJ는 GUI 창 하단에 출처를 표기합니다."
+      },
+      {
+        title: "Slide 18: 사용자 여정 (Demo)",
+        time: "40초",
+        script: "시연 순서입니다. 게스트로 둘러보고 로그인해 프로젝트를 만들고, 초대 링크로 팀원이 합류합니다. 같은 파일을 동시에 편집하며 실행하고, 서버나 내 PC를 고르고 Swing 창은 사이트 안에서 띄웁니다. AI 이름을 불러 회의록과 일정을 정리하고, 마지막에는 통화방에 들어가 효과음과 함께 마무리합니다. 모든 과정이 PC와 모바일, 설치형 앱에서 같은 흐름입니다."
+      },
+      {
+        title: "Slide 19: 향후 발전 로드맵",
+        time: "35초",
+        script: "앞으로의 계획입니다. 단기적으로는 iOS와 안드로이드 실기기 검증, TURN 서버, GUI 전용 별도 주소를 적용합니다. 중기적으로는 서버를 늘려 JavaFX와 입력까지 지원하고, AI 코드 리뷰와 앱 스토어 출시를 준비합니다. 장기적으로는 마이크로VM 격리와 상용 라이선스 및 요금 검토, 학교와 해커톤 기관용 대시보드로 확장하겠습니다."
+      },
+      {
+        title: "Slide 20: 질의응답 및 마무리",
         time: "20초",
-        script: "Code Lounge는 개발팀의 흩어진 시간을 모으고 본질적인 코딩과 협업에만 몰입할 수 있도록 돕는 플랫폼입니다. 이상으로 발표를 마치겠습니다. 경청해 주셔서 대단히 감사합니다. 질의응답을 받도록 하겠습니다."
+        script: "DureSync는 팀의 흩어진 시간을 모으고 협업에만 몰입할 수 있도록 돕는 서비스입니다. 이상으로 발표를 마치겠습니다. 경청해 주셔서 감사합니다. 질의응답을 받도록 하겠습니다."
       }
     ];
 
@@ -953,7 +1232,7 @@ class Program {
       document.getElementById('currentSlideNumber').textContent = currentSlide + 1;
       document.getElementById('totalSlideCount').textContent = totalSlides;
       document.getElementById('currentSlideTitle').textContent = title;
-      
+
       const progress = ((currentSlide + 1) / totalSlides) * 100;
       document.getElementById('progressBar').style.width = progress + '%';
 
@@ -1010,7 +1289,7 @@ class Program {
       }
     });
 
-    // Interactive Demo Handlers
+    // Interactive Demo Handlers (시연용 모의 동작)
     function simTyping() {
       const log = document.getElementById('simLog');
       log.innerHTML += `<div class="text-indigo-300">[WS Push] '민수' is typing <span class="inline-flex gap-1"><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></span><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></span><span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot"></span></span></div>`;
@@ -1023,15 +1302,38 @@ class Program {
       log.scrollTop = log.scrollHeight;
     }
 
+    // OT 시뮬레이터: 같은 자리에 동시에 글자를 넣었을 때, 변환이 없을 때와 있을 때를 비교한다
+    function otDemo() {
+      const base = 'AB';
+      const ins = (s, pos, ch) => s.slice(0, pos) + ch + s.slice(pos);
+      const A = { site: 'A', pos: 1, ch: 'X' }, B = { site: 'B', pos: 1, ch: 'Y' };
+      // 변환: 상대가 내 앞(같은 자리는 사이트 순서)에 넣었다면 내 위치를 한 칸 뒤로
+      const shift = (op, other) => (other.pos < op.pos || (other.pos === op.pos && other.site < op.site)) ? { ...op, pos: op.pos + 1 } : op;
+      // 변환 없이: 각자 자기 편집을 먼저 적용하고, 상대 편집을 받은 그대로 적용
+      const naiveA = ins(ins(base, A.pos, A.ch), B.pos, B.ch);
+      const naiveB = ins(ins(base, B.pos, B.ch), A.pos, A.ch);
+      // OT: 상대 편집을 내 문서 상태에 맞게 변환해서 적용
+      const otA = ins(ins(base, A.pos, A.ch), shift(B, A).pos, B.ch);
+      const otB = ins(ins(base, B.pos, B.ch), shift(A, B).pos, A.ch);
+      const log = document.getElementById('otLog');
+      log.innerHTML = `<div class="text-gray-500">원본 "${base}" · A: insert('X' @1) · B: insert('Y' @1) 동시 입력</div>`
+        + `<div class="text-red-400">[변환 없음] A 화면 "${naiveA}" / B 화면 "${naiveB}" ${naiveA === naiveB ? '' : '➔ 서로 다름 (충돌)'}</div>`
+        + `<div class="text-emerald-400">[OT 적용] A 화면 "${otA}" / B 화면 "${otB}" ${otA === otB ? '➔ 두 화면이 같은 결과로 수렴 ✔' : ''}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
     function runSandbox(lang) {
       const code = document.getElementById('sandboxCode');
       const out = document.getElementById('sandboxOutput');
-      if (lang === 'csharp') {
-        code.textContent = `using System;\nclass Program {\n    static void Main() {\n        Console.WriteLine("[Code Lounge] C# Sandboxed Execution Success! Time: " + DateTime.Now);\n    }\n}`;
-        out.innerHTML = `<span class="text-cyan-400 font-bold">[Auto-detect csc.exe]</span> Compiling...\n<span class="text-emerald-400">[Output] [Code Lounge] C# Sandboxed Execution Success! Time: ${new Date().toLocaleTimeString()}</span>\n<span class="text-gray-500">[Exit Code 0, Execution Time: 0.62s]</span>`;
+      const file = document.getElementById('sandboxFile');
+      if (lang === 'java') {
+        file.textContent = 'Main.java';
+        code.textContent = `public class Main {\n    public static void main(String[] a) { System.out.println("Hello, DureSync! (Java)"); }\n}`;
+        out.innerHTML = `<span class="text-cyan-400 font-bold">[Java 컴파일 중...]</span>\n<span class="text-emerald-400">Hello, DureSync! (Java)</span>\n<span class="text-gray-500">[프로그램 정상 종료] (시연용 모의 출력)</span>`;
       } else {
-        code.textContent = `import datetime\nprint(f"[Code Lounge] Python Sandbox Executed at {datetime.datetime.now()}")`;
-        out.innerHTML = `<span class="text-indigo-400 font-bold">[Async Subprocess]</span> Running Python 3.12...\n<span class="text-emerald-400">[Output] [Code Lounge] Python Sandbox Executed at ${new Date().toLocaleTimeString()}</span>\n<span class="text-gray-500">[Exit Code 0, Execution Time: 0.12s]</span>`;
+        file.textContent = 'main.py';
+        code.textContent = `name = input("이름: ")\nprint("안녕,", name)`;
+        out.innerHTML = `<span class="text-indigo-400 font-bold">[실행 중]</span> 이름: <span class="text-white">두레</span>\n<span class="text-emerald-400">안녕, 두레</span>\n<span class="text-gray-500">[프로그램 정상 종료] (시연용 모의 출력)</span>`;
       }
     }
 
