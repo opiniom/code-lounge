@@ -174,6 +174,41 @@ for enc in ("cp949", "cp1252", "ascii"):
     try: out = pr.communicate(timeout=8)[0].decode(enc, "replace")
     except Exception: pr.kill(); out = ""
     chk(f"콘솔 글자 표(%s)에서도 러너가 정상으로 켜지고 시작 화면이 나온다" % enc, up and "Traceback" not in out and "연결 코드" in out or (up and "Traceback" not in out and "?" in out), out[-200:])
+# ---- 윈도우 '앱 실행 별칭'(WindowsApps\\python.exe)은 부를 때마다 터미널 창이 뜨므로 버전 확인으로 부르지 않는다 (실제 사용자 영상에서 확인된 원인)
+import platform as _pf, tempfile as _tf
+_td = _tf.mkdtemp(prefix="runner_wa_"); _wa = os.path.join(_td, "Microsoft", "WindowsApps"); _real = os.path.join(_td, "Python312")
+os.makedirs(_wa); os.makedirs(_real)
+for _d in (_wa, _real):
+    _f = os.path.join(_d, "python.exe"); open(_f, "w").write("x"); os.chmod(_f, 0o755)
+_oldpath, _oldwin3 = os.environ.get("PATH", ""), M.IS_WINDOWS
+try:
+    os.environ["PATH"] = os.pathsep.join([_wa, _real]); M.IS_WINDOWS = True
+    _found = M._which_all(["python"]); _alias = M.is_store_alias(os.path.join(_wa, "python.exe")); _alias2 = M.is_store_alias(os.path.join(_real, "python.exe"))
+finally:
+    os.environ["PATH"] = _oldpath; M.IS_WINDOWS = _oldwin3
+chk("윈도우: PATH 의 WindowsApps 별칭(python.exe)은 건너뛰고 진짜 파이썬만 찾는다 (별칭을 부르면 터미널 창이 계속 뜸)", _alias and not _alias2 and _found == [os.path.join(_real, "python.exe")], (_found, _alias, _alias2))
+chk("맥·리눅스에서는 별칭 규칙을 적용하지 않는다", M.is_store_alias("/usr/local/WindowsApps/python") is False)
+_oldpath2 = os.environ.get("PATH", "")
+try:
+    os.environ["PATH"] = ""; _inv = M.scan_tools()
+finally:
+    os.environ["PATH"] = _oldpath2
+chk("러너를 돌리는 파이썬은 프로그램을 부르지 않고도(PATH 가 비어 있어도) 목록에 들어간다", any(i["version"] == _pf.python_version() for i in _inv.get("python", [])), _inv.get("python"))
+chk("러너에 연결할 때마다 뒤에서 언어를 다시 찾지 않는다 (연결 확인이 외부 프로그램 호출로 이어지지 않음)", "asyncio.ensure_future(self.rescan())" not in _src)
+_oldhome = os.environ.get("HOME")
+_th = _tf.mkdtemp(prefix="runner_home2_")
+try:
+    os.environ["HOME"] = _th
+    _sample = {"python": [{"id": "3.12.1", "version": "3.12.1", "label": "3.12.1", "tools": {"py": sys.executable}}], "java": [{"id": "21", "version": "21", "label": "21", "tools": {"javac": "/no/such/javac", "java": "/no/such/java"}}]}
+    M.save_inventory_cache(_sample); _c = M.load_inventory_cache(); _stale = M.load_inventory_cache(max_age=-1)
+    M.run_quiet([sys.executable, "-c", "pass"]); _log = open(os.path.join(_th, ".duresync-runner", "spawn.log"), encoding="utf-8").read()
+finally:
+    if _oldhome is None: os.environ.pop("HOME", None)
+    else: os.environ["HOME"] = _oldhome
+chk("방금 찾은 결과는 보관돼서 10분 안에 다시 켜도 프로그램을 또 부르지 않는다 (없어진 도구는 뺀다)", _c is not None and "python" in _c and "java" not in _c and _stale is None, (_c, _stale))
+chk("러너가 부른 외부 프로그램은 ~/.duresync-runner/spawn.log 에 시각과 함께 남는다 (창이 깜빡이면 이 파일로 원인을 바로 안다)", "-c pass" in _log, _log)
+chk("시작할 때 보관된 결과를 먼저 쓴다", "load_inventory_cache()" in _src and "save_inventory_cache(self.inv)" in _src)
+shutil.rmtree(_td, ignore_errors=True); shutil.rmtree(_th, ignore_errors=True)
 # ---- 새로 설치하면 이미 켜져 있던 예전 러너를 끄고 바꾼다 (안 그러면 옛 러너가 계속 돌아 창 깜빡임·옛 버그가 남는다)
 _netstat = ("  Proto  Local Address          Foreign Address        State           PID\r\n  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1048\r\n"
             "  TCP    127.0.0.1:47321        0.0.0.0:0              LISTENING       7777\r\n  TCP    127.0.0.1:47321        127.0.0.1:50000        ESTABLISHED     7777\r\n")

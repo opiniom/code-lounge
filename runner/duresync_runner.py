@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.4"
+RUNNER_VERSION = "1.2.5"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -51,7 +51,26 @@ LABELS = {"python": "Python", "javascript": "JavaScript", "typescript": "TypeScr
 CREATE_NO_WINDOW = 0x08000000
 
 
+SPAWN_LOG_MAX = 64 * 1024
+
+
+def _spawn_log(argv):
+    """러너가 외부 프로그램을 부른 기록(~/.duresync-runner/spawn.log) — 창이 깜빡이는 원인을 찾을 때 이 파일을 보면 무엇을 얼마나 자주 불렀는지 알 수 있다"""
+    try:
+        d = os.path.join(os.path.expanduser("~"), ".duresync-runner")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, "spawn.log")
+        if os.path.exists(p) and os.path.getsize(p) > SPAWN_LOG_MAX:
+            data = open(p, "rb").read()[-SPAWN_LOG_MAX // 2:]
+            open(p, "wb").write(data)
+        with open(p, "a", encoding="utf-8") as f:
+            f.write("%s  %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), " ".join(str(a) for a in argv)[:240]))
+    except Exception:
+        pass
+
+
 def run_quiet(argv, **kw):
+    _spawn_log(argv)
     if IS_WINDOWS:
         kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
         try:
@@ -72,6 +91,11 @@ def _path_dirs():
     return [d for d in os.environ.get("PATH", "").split(os.pathsep) if d]
 
 
+def is_store_alias(p):
+    """윈도우의 '앱 실행 별칭'(…\\WindowsApps\\python.exe 등). 파이썬이 없으면 마이크로소프트 스토어를 열고, 있어도 부를 때마다 터미널 창이 뜨는 일이 있어서 버전 확인으로 부르지 않는다"""
+    return IS_WINDOWS and "\\windowsapps\\" in str(p).replace("/", "\\").lower()
+
+
 def _which_all(names):
     """PATH 에서 이름이 같거나 비슷한 실행 파일을 모두 (python3, python3.11 …)"""
     found = []
@@ -81,11 +105,11 @@ def _which_all(names):
             for pat in ([n] if "*" not in n else []):
                 for e in exts:
                     p = os.path.join(d, pat + e)
-                    if os.path.isfile(p) and os.access(p, os.X_OK):
+                    if os.path.isfile(p) and os.access(p, os.X_OK) and not is_store_alias(p):
                         found.append(p)
             if "*" in n:
                 for p in glob.glob(os.path.join(d, n)):
-                    if os.path.isfile(p) and os.access(p, os.X_OK) and not p.endswith((".config", "-config", ".py", ".pyc")):
+                    if os.path.isfile(p) and os.access(p, os.X_OK) and not p.endswith((".config", "-config", ".py", ".pyc")) and not is_store_alias(p):
                         found.append(p)
     return found
 
@@ -132,9 +156,17 @@ def scan_tools():
     cands = _which_all(["python3", "python", "python3.*"]) + glob.glob(_home(".pyenv", "versions", "*", "bin", "python")) + glob.glob("/opt/homebrew/bin/python3*") + glob.glob("/usr/local/bin/python3*")
     if IS_WINDOWS:
         cands += glob.glob(os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Python", "Python*", "python.exe"))
-    for p in _uniq([c for c in cands if not re.search(r"-config$", c)]):
+    try:                                                              # 러너를 돌리고 있는 파이썬은 프로그램을 부르지 않고도 알 수 있다 (버전은 이 프로그램이 이미 알고 있다)
+        me = sys.executable or ""
+        if IS_WINDOWS and os.path.basename(me).lower() == "pythonw.exe" and os.path.isfile(os.path.join(os.path.dirname(me), "python.exe")):
+            me = os.path.join(os.path.dirname(me), "python.exe")
+        if me and os.path.isfile(me):
+            add("python", {"py": me}, platform.python_version())
+    except Exception:
+        pass
+    for p in _uniq([c for c in cands if not re.search(r"-config$", c) and not is_store_alias(c)]):
         v = _version_of([p, "--version"])
-        if v and not v.startswith("2.") and ("WindowsApps" not in p):
+        if v and not v.startswith("2."):
             add("python", {"py": p}, v)
     # Node (JavaScript · TypeScript)
     cands = _which_all(["node"]) + glob.glob(_home(".nvm", "versions", "node", "*", "bin", "node")) + glob.glob(_home(".volta", "tools", "image", "node", "*", "bin", "node")) + glob.glob(_home(".fnm", "node-versions", "*", "installation", "bin", "node"))
@@ -452,6 +484,38 @@ def missing_module_hint(lang, python_path, err_tail):
 
 
 # ============================================================ 서버 본체
+INV_CACHE_SECONDS = 600
+
+
+def _inv_cache_path():
+    return os.path.join(os.path.expanduser("~"), ".duresync-runner", "inventory.json")
+
+
+def save_inventory_cache(inv):
+    try:
+        os.makedirs(os.path.dirname(_inv_cache_path()), exist_ok=True)
+        with open(_inv_cache_path(), "w", encoding="utf-8") as f:
+            json.dump({"at": time.time(), "inv": inv}, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def load_inventory_cache(max_age=INV_CACHE_SECONDS):
+    """방금(기본 10분 안에) 찾은 결과가 있으면 그대로 쓴다. 도구 파일이 사라졌으면 그 항목은 뺀다. 없으면 None"""
+    try:
+        d = json.load(open(_inv_cache_path(), encoding="utf-8"))
+        if time.time() - float(d.get("at", 0)) > max_age or not isinstance(d.get("inv"), dict):
+            return None
+        out = {}
+        for lang, items in d["inv"].items():
+            keep = [i for i in items if all(os.path.exists(v) for v in (i.get("tools") or {}).values() if isinstance(v, str) and (os.sep in v or "/" in v))]
+            if keep:
+                out[lang] = keep
+        return out or None
+    except Exception:
+        return None
+
+
 class Runner:
     def __init__(self, port, origins, token, max_seconds, allow_no_origin):
         self.port, self.origins, self.token, self.max_seconds, self.allow_no_origin = port, set(origins), token, max_seconds, allow_no_origin
@@ -470,6 +534,7 @@ class Runner:
                 try:
                     self.inv = await asyncio.get_event_loop().run_in_executor(None, scan_tools)
                     self.scanned_at = time.time()
+                    save_inventory_cache(self.inv)
                 finally:
                     self._scanning = None
             self._scanning = asyncio.ensure_future(go())
@@ -496,8 +561,6 @@ class Runner:
             if first.get("action") != "hello" or not secrets.compare_digest(str(first.get("token", "")), self.token):
                 await ws.send({"type": "hello", "ok": False, "why": "token"}); await ws.close(4401); return
             await ws.send({"type": "hello", "ok": True, "version": RUNNER_VERSION, "os": platform.system(), "runtimes": self.public_inv(), "max_seconds": self.max_seconds})
-            if time.time() - self.scanned_at > 120:                        # 설치한 언어가 늘었을 수 있으니 뒤에서 조용히 다시 찾아 둔다 (▶ 실행 때는 따로 바로 다시 찾는다)
-                asyncio.ensure_future(self.rescan())
             while True:
                 msg = json.loads(await ws.recv())
                 act = msg.get("action")
@@ -885,7 +948,11 @@ def main():
     runner = Runner(a.port, origins, token, max(5, a.max_seconds), a.allow_no_origin)
 
     async def run():
-        await runner.rescan()
+        cached = load_inventory_cache()
+        if cached:                                                    # 방금 찾은 결과가 있으면 다시 찾지 않는다 (재시작이 잦아도 외부 프로그램을 또 부르지 않는다)
+            runner.inv, runner.scanned_at = cached, time.time()
+        else:
+            await runner.rescan()
         try:
             server = await asyncio.start_server(runner.handle, "127.0.0.1", a.port)
         except OSError as e:
