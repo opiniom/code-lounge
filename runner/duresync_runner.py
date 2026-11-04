@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.5"
+RUNNER_VERSION = "1.2.6"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -135,6 +135,20 @@ def _uniq(paths):
             seen.add(rp)
             out.append(p)
     return out
+
+
+def self_inventory():
+    """외부 프로그램을 하나도 부르지 않고 알 수 있는 것: 이 러너를 돌리고 있는 파이썬 (--no-scan 이나 문제를 가려낼 때 쓴다)"""
+    try:
+        me = sys.executable or ""
+        if IS_WINDOWS and os.path.basename(me).lower() == "pythonw.exe" and os.path.isfile(os.path.join(os.path.dirname(me), "python.exe")):
+            me = os.path.join(os.path.dirname(me), "python.exe")
+        if me and os.path.isfile(me):
+            v = platform.python_version()
+            return {"python": [{"id": v, "version": v, "label": v, "tools": {"py": me}}]}
+    except Exception:
+        pass
+    return {}
 
 
 def scan_tools():
@@ -523,12 +537,16 @@ class Runner:
         self.running = 0
         self.scanned_at = 0.0
         self._scanning = None
+        self.no_scan = False                                     # True 면 외부 프로그램을 전혀 부르지 않는다 (내 컴퓨터에 설치된 언어는 찾지 않고, 이 러너의 파이썬만 쓴다)
 
     def public_inv(self):
         return {lang: [{"id": i["id"], "version": i["version"], "label": i["label"]} for i in items] for lang, items in self.inv.items()}
 
     async def rescan(self):
         """내 컴퓨터의 언어를 다시 찾는다 (동시에 여러 번 부르면 한 번만 찾고 같이 기다린다)"""
+        if self.no_scan:
+            self.inv, self.scanned_at = self_inventory(), time.time()
+            return
         if self._scanning is None:
             async def go():
                 try:
@@ -770,6 +788,8 @@ def _app_args(a):
         out += ["--allow-origin", o]
     if a.max_seconds != 1800:
         out += ["--max-seconds", str(a.max_seconds)]
+    if getattr(a, "no_scan", False):
+        out.append("--no-scan")
     return out
 
 
@@ -795,6 +815,19 @@ def _listener_pid(port):
     except Exception:
         pass
     return None
+
+
+def running_runner_version(port):
+    """이 컴퓨터에서 켜져 있는 러너의 버전 (없으면 None)"""
+    import http.client
+    try:
+        c = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+        c.request("GET", "/")
+        d = json.loads(c.getresponse().read(400).decode("utf-8", "replace"))
+        c.close()
+        return d.get("version") if d.get("name") == "DureSync Runner" else None
+    except Exception:
+        return None
 
 
 def stop_existing_runner(port):
@@ -823,6 +856,17 @@ def stop_existing_runner(port):
         time.sleep(0.1)
         if _listener_pid(port) is None:
             break
+    if _listener_pid(port) is not None and IS_WINDOWS:                      # 아직 남아 있으면 명령줄에 duresync_runner 가 들어간 프로세스를 모두 끈다 (이 설치 프로그램 자신은 빼고)
+        try:
+            run_quiet(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                       "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*duresync_runner*' -and $_.ProcessId -ne %d } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" % os.getpid()],
+                      capture_output=True, timeout=30)
+            for _ in range(30):
+                time.sleep(0.1)
+                if _listener_pid(port) is None:
+                    break
+        except Exception:
+            pass
     return True
 
 
@@ -878,6 +922,17 @@ def autostart_install(a, dry=False):
                     print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
             except Exception as e:
                 print("  ! %s 실패: %s" % (cmd[0], e))
+    if not getattr(a, "no_start", False):                                  # 새로 켜진 러너가 이 버전이 맞는지 확인 (예전 러너가 남아 있으면 알려 준다)
+        ver = None
+        for _ in range(40):
+            time.sleep(0.25)
+            ver = running_runner_version(a.port)
+            if ver:
+                break
+        if ver and ver != RUNNER_VERSION:
+            print("  [주의] 지금 켜져 있는 러너는 예전 버전(%s)이에요. 이 창을 닫고 컴퓨터를 다시 시작하거나, 다시 한 번 설치 명령을 실행해 주세요." % ver)
+        elif not ver:
+            print("  [주의] 러너가 아직 응답하지 않아요. 몇 초 뒤에 사이트의 '내 PC' 창을 확인해 주세요.")
     print("")
     print("[완료] 설치가 끝났어요! 이제 컴퓨터를 켤 때마다 러너가 알아서 켜져요.")
     print("       브라우저(DureSync 사이트)로 돌아가세요. 잠시 뒤 '연결됨'으로 바뀌어요.")
@@ -932,6 +987,7 @@ def main():
     ap.add_argument("--uninstall-autostart", action="store_true", help="자동 시작 끄기")
     ap.add_argument("--token", default=os.environ.get("DURESYNC_TOKEN", ""), help="(웹사이트 한 줄 설치가 쓴다) 연결 코드를 이 값으로 맞추기")
     ap.add_argument("--no-start", action="store_true", help="(테스트용) 자동 시작 파일만 만들고 지금 바로 켜지는 않기")
+    ap.add_argument("--no-scan", action="store_true", help="(문제 확인용) 설치된 언어를 찾으려고 외부 프로그램을 부르지 않는다. 이 러너의 파이썬만 쓸 수 있다")
     ap.add_argument("--dry-run", action="store_true", help="(자동 시작 미리보기) 아무것도 바꾸지 않고 무엇을 할지만 보여 주기")
     ap.add_argument("--allow-no-origin", action="store_true", help="(개발·테스트용) Origin 이 없는 클라이언트도 허용")
     a = ap.parse_args()
@@ -946,9 +1002,10 @@ def main():
     if a.install_autostart:
         return autostart_install(a, a.dry_run)
     runner = Runner(a.port, origins, token, max(5, a.max_seconds), a.allow_no_origin)
+    runner.no_scan = bool(a.no_scan)
 
     async def run():
-        cached = load_inventory_cache()
+        cached = None if runner.no_scan else load_inventory_cache()
         if cached:                                                    # 방금 찾은 결과가 있으면 다시 찾지 않는다 (재시작이 잦아도 외부 프로그램을 또 부르지 않는다)
             runner.inv, runner.scanned_at = cached, time.time()
         else:
