@@ -223,6 +223,32 @@ chk("방금 찾은 결과는 보관돼서 10분 안에 다시 켜도 프로그�
 chk("러너가 부른 외부 프로그램은 ~/.duresync-runner/spawn.log 에 시각과 함께 남는다 (창이 깜빡이면 이 파일로 원인을 바로 안다)", "-c pass" in _log, _log)
 chk("시작할 때 보관된 결과를 먼저 쓴다", "load_inventory_cache()" in _src and "save_inventory_cache(self.inv)" in _src)
 shutil.rmtree(_td, ignore_errors=True); shutil.rmtree(_th, ignore_errors=True)
+# ---- 윈도우: 시작할 때 프로그램을 하나도 부르지 않고 버전을 알아낸다 (파일 정보·설치 폴더·레지스트리만 읽음)
+_tmp = _tf.mkdtemp(prefix="runner_win_")
+os.makedirs(os.path.join(_tmp, "jdk-21", "bin")); open(os.path.join(_tmp, "jdk-21", "release"), "w").write('IMPLEMENTOR="Eclipse Adoptium"\nJAVA_VERSION="21.0.4"\n')
+os.makedirs(os.path.join(_tmp, "dotnet", "sdk", "8.0.100")); os.makedirs(os.path.join(_tmp, "dotnet", "sdk", "9.0.200"))
+os.makedirs(os.path.join(_tmp, "go", "bin")); open(os.path.join(_tmp, "go", "VERSION"), "w").write("go1.22.3\ntime 2024-05-01T00:00:00Z\n")
+chk("Java: JDK 폴더의 release 파일에서 버전을 읽는다 (java 를 실행하지 않음)", M._java_release_version(os.path.join(_tmp, "jdk-21")) == "21.0.4", M._java_release_version(os.path.join(_tmp, "jdk-21")))
+chk(".NET: sdk 폴더 이름 중 가장 높은 버전", M._dotnet_sdk_version(os.path.join(_tmp, "dotnet")) == "9.0.200", M._dotnet_sdk_version(os.path.join(_tmp, "dotnet")))
+chk("Go: VERSION 파일에서 버전을 읽는다", M._go_root_version(os.path.join(_tmp, "go", "bin", "go.exe")) == "1.22.3", M._go_root_version(os.path.join(_tmp, "go", "bin", "go.exe")))
+chk("python.exe 파일 버전(3, 12, 1150, …) → 3.12.1 · (3, 13, 150) → 3.13.0 · (3, 11, 9150) → 3.11.9 · 파이썬이 아니면 빈 값", M._python_exe_version((3, 12, 1150, 1013)) == "3.12.1" and M._python_exe_version((3, 13, 150, 1013)) == "3.13.0" and M._python_exe_version((3, 11, 9150, 0)) == "3.11.9" and M._python_exe_version((24, 12, 0, 0)) == "" and M._python_exe_version(None) == "")
+chk("맥·리눅스에서는 윈도우 전용 읽기 함수가 아무것도 하지 않는다", M._file_version("/bin/sh") is None and M._win_registered_pythons() == [])
+_rq = []
+_fake_bins = os.path.join(_tmp, "bins"); os.makedirs(_fake_bins)
+for _n in ("node.exe", "java.exe", "javac.exe", "gcc.exe", "g++.exe", "rustc.exe", "perl.exe", "go.exe", "dotnet.exe", "php.exe"):
+    _f = os.path.join(_fake_bins, _n); open(_f, "w").write("x"); os.chmod(_f, 0o755)
+_o_run, _o_win, _o_path = M.run_quiet, M.IS_WINDOWS, os.environ.get("PATH", "")
+def _rec(argv, **kw):
+    _rq.append(list(argv)); return type("R", (), {"stdout": "1.2.3", "stderr": "", "returncode": 0})()
+try:
+    M.run_quiet = _rec; M.IS_WINDOWS = True; os.environ["PATH"] = _fake_bins
+    M.scan_tools(deep=False); _quick = len(_rq)
+    _rq.clear(); M.scan_tools(deep=True); _deep = len(_rq)
+finally:
+    M.run_quiet, M.IS_WINDOWS = _o_run, _o_win; os.environ["PATH"] = _o_path
+chk("윈도우 시작 검색(deep=False)은 외부 프로그램을 한 번도 부르지 않는다 (창이 뜰 일이 없다)", _quick == 0, _quick)
+chk("  ㄴ '다시 검색'(deep=True)에서만 gcc·Rust·Perl 같은 나머지를 프로그램을 불러서 찾는다", _deep > 0, _deep)
+shutil.rmtree(_tmp, ignore_errors=True)
 # ---- 새로 설치하면 이미 켜져 있던 예전 러너를 끄고 바꾼다 (안 그러면 옛 러너가 계속 돌아 창 깜빡임·옛 버그가 남는다)
 _netstat = ("  Proto  Local Address          Foreign Address        State           PID\r\n  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1048\r\n"
             "  TCP    127.0.0.1:47321        0.0.0.0:0              LISTENING       7777\r\n  TCP    127.0.0.1:47321        127.0.0.1:50000        ESTABLISHED     7777\r\n")

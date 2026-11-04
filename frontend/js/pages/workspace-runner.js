@@ -228,7 +228,7 @@ function runnerRenderModal(force) {
     if (!names.length) box.appendChild(el('div', 'rn-faint', '아직 찾은 언어가 없어요. 파이썬·자바·gcc 등을 설치하면 ▶ 실행할 때 알아서 찾아요.'));
     var rs = add(el('button', 'btn', '🔄 다시 검색')); rs.type = 'button';
     rs.onclick = function() { rs.disabled = true; rs.textContent = '검색 중…'; runnerRefresh().then(function() { rs.disabled = false; rs.textContent = '🔄 다시 검색'; }); };
-    add(el('p', 'rn-faint', '언어를 새로 설치했다면 ▶ 실행할 때 알아서 다시 찾아요. 이 버튼을 누르지 않아도 돼요.'));
+    add(el('p', 'rn-faint', '언어를 새로 설치했다면 ▶ 실행할 때 알아서 다시 찾아요. 이 버튼을 누르지 않아도 돼요.' + (RUNNER.info.os === 'Windows' ? ' (윈도우에서는 처음에 Python·Node·Java·.NET·Go 만 찾고, C/C++(gcc)·Rust·Perl 등은 이 버튼을 누르면 찾아요. 잠깐 걸릴 수 있어요.)' : '')));
     add(el('p', 'rn-p', '같은 언어가 서버에도 있고 내 PC 에도 있으면 ▶ 실행 옆 선택 박스에서 "서버 · Java 21 / 내 PC · Java 17" 처럼 어디서 어떤 버전으로 실행할지 고를 수 있어요.'));
     var d = add(el('details', 'rn-more')); d.appendChild(el('summary', null, '다시 설치하거나 끄고 싶어요'));
     add(el('p', 'rn-p', '다시 설치(새 버전으로 바꾸기, 컴퓨터를 바꿨을 때): 터미널에 아래 한 줄을 붙여넣으세요.'), d); codeBox(runnerInstallCmd(os), d);

@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.6"
+RUNNER_VERSION = "1.2.7"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -137,6 +137,108 @@ def _uniq(paths):
     return out
 
 
+# ---------------------------------------------------------------- 윈도우: 프로그램을 부르지 않고 버전 알아내기
+# 윈도우에서는 java.exe · python.exe 같은 콘솔 프로그램을 러너가 부를 때 터미널 창이 뜨는 일이 있었다 (실제 영상으로 확인).
+# 그래서 윈도우에서는 시작할 때 '프로그램을 실행하지 않고' 파일 정보·설치 폴더·레지스트리만 읽어서 버전을 알아낸다.
+def _file_version(path):
+    """윈도우 실행 파일(.exe)에 들어 있는 버전 정보 (a, b, c, d) — 프로그램을 실행하지 않고 읽는다. 못 읽으면 None"""
+    if not IS_WINDOWS:
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+        ver = ctypes.windll.version
+        size = ver.GetFileVersionInfoSizeW(path, None)
+        if not size:
+            return None
+        buf = ctypes.create_string_buffer(size)
+        if not ver.GetFileVersionInfoW(path, 0, size, buf):
+            return None
+        lp, ln = ctypes.c_void_p(), wintypes.UINT()
+        if not ver.VerQueryValueW(buf, "\\", ctypes.byref(lp), ctypes.byref(ln)) or not lp.value:
+            return None
+        info = (wintypes.DWORD * 13).from_address(lp.value)
+        ms, ls = info[2], info[3]
+        return (ms >> 16, ms & 0xFFFF, ls >> 16, ls & 0xFFFF)
+    except Exception:
+        return None
+
+
+def _python_exe_version(ft):
+    """python.exe 의 파일 버전 (3, 12, 1150, …) → '3.12.1' (세 번째 칸은 micro*1000 + 릴리스 표시)"""
+    return "%d.%d.%d" % (ft[0], ft[1], ft[2] // 1000) if ft and ft[0] == 3 else ""
+
+
+def _win_registered_pythons():
+    """윈도우 레지스트리(PEP 514)에 등록된 파이썬들 [(python.exe 경로, 버전)] — 프로그램을 실행하지 않는다"""
+    out = []
+    try:
+        import winreg
+        for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            for sub in (r"Software\Python\PythonCore", r"Software\WOW6432Node\Python\PythonCore"):
+                try:
+                    with winreg.OpenKey(root, sub) as k:
+                        i = 0
+                        while True:
+                            try:
+                                name = winreg.EnumKey(k, i); i += 1
+                            except OSError:
+                                break
+                            try:
+                                with winreg.OpenKey(k, name + r"\InstallPath") as ip:
+                                    base = winreg.QueryValueEx(ip, "")[0]
+                                    try:
+                                        exe = winreg.QueryValueEx(ip, "ExecutablePath")[0]
+                                    except OSError:
+                                        exe = os.path.join(base, "python.exe")
+                                try:
+                                    with winreg.OpenKey(k, name) as vk:
+                                        ver = winreg.QueryValueEx(vk, "Version")[0]
+                                except OSError:
+                                    ver = name
+                                if os.path.isfile(exe) and not is_store_alias(exe):
+                                    out.append((exe, ver))
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+    except Exception:
+        pass
+    return out
+
+
+def _java_release_version(home):
+    """JDK 폴더의 release 파일에서 버전 읽기 (JAVA_VERSION="21.0.4")"""
+    try:
+        for line in open(os.path.join(home, "release"), encoding="utf-8", errors="replace"):
+            m = re.match(r'JAVA_VERSION\s*=\s*"?([\d._+-]+)', line.strip())
+            if m:
+                return m.group(1).split("+")[0].split("-")[0]
+    except OSError:
+        pass
+    return ""
+
+
+def _dotnet_sdk_version(root):
+    """dotnet 설치 폴더의 sdk\\<버전> 폴더 이름 중 가장 높은 것"""
+    try:
+        names = [d for d in os.listdir(os.path.join(root, "sdk")) if re.match(r"^\d+\.\d+\.\d+", d)]
+        names.sort(key=lambda v: [int(x) for x in re.findall(r"\d+", v)[:3]])
+        return names[-1] if names else ""
+    except OSError:
+        return ""
+
+
+def _go_root_version(goexe):
+    """Go 설치 폴더의 VERSION 파일 (go1.22.3)"""
+    try:
+        line = open(os.path.join(os.path.dirname(os.path.dirname(goexe)), "VERSION"), encoding="utf-8", errors="replace").readline().strip()
+        m = re.match(r"go(\d+(?:\.\d+){1,3})", line)
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
 def self_inventory():
     """외부 프로그램을 하나도 부르지 않고 알 수 있는 것: 이 러너를 돌리고 있는 파이썬 (--no-scan 이나 문제를 가려낼 때 쓴다)"""
     try:
@@ -151,8 +253,9 @@ def self_inventory():
     return {}
 
 
-def scan_tools():
-    """{언어: [{id, label, tools:{...}}]} — 이 컴퓨터에 설치된 언어와 버전들. id 는 버전 문자열(같은 버전이 둘이면 뒤에 -2 …)"""
+def scan_tools(deep=True):
+    """{언어: [{id, label, tools:{...}}]} — 이 컴퓨터에 설치된 언어와 버전들. id 는 버전 문자열(같은 버전이 둘이면 뒤에 -2 …)
+    윈도우에서 deep=False(시작할 때)는 프로그램을 하나도 실행하지 않고 파이썬·Node·Java·.NET·Go 만 알아낸다. deep=True('다시 검색'·없는 언어로 실행할 때)에서만 나머지(gcc·Rust·Perl …)를 프로그램을 불러서 찾는다."""
     inv = {}
 
     def add(lang, tools, ver, extra=""):
@@ -178,14 +281,21 @@ def scan_tools():
             add("python", {"py": me}, platform.python_version())
     except Exception:
         pass
+    if IS_WINDOWS:
+        for exe, ver in _win_registered_pythons():                    # 레지스트리에 등록된 파이썬 (프로그램을 부르지 않는다)
+            if ver and not ver.startswith("2."):
+                add("python", {"py": exe}, ver)
     for p in _uniq([c for c in cands if not re.search(r"-config$", c) and not is_store_alias(c)]):
-        v = _version_of([p, "--version"])
+        v = _python_exe_version(_file_version(p)) if IS_WINDOWS else _version_of([p, "--version"])
         if v and not v.startswith("2."):
             add("python", {"py": p}, v)
     # Node (JavaScript · TypeScript)
     cands = _which_all(["node"]) + glob.glob(_home(".nvm", "versions", "node", "*", "bin", "node")) + glob.glob(_home(".volta", "tools", "image", "node", "*", "bin", "node")) + glob.glob(_home(".fnm", "node-versions", "*", "installation", "bin", "node"))
-    for p in _uniq(cands):
-        v = _version_of([p, "--version"])
+    for p in _uniq([c for c in cands if not is_store_alias(c)]):
+        if IS_WINDOWS:
+            ft = _file_version(p); v = ("%d.%d.%d" % ft[:3]) if ft else ""
+        else:
+            v = _version_of([p, "--version"])
         if v:
             add("javascript", {"node": p}, v)
             nums = [int(x) for x in v.split(".")[:2]]
@@ -203,11 +313,16 @@ def scan_tools():
     javac_list = [os.path.join(h, "bin", "javac" + (".exe" if IS_WINDOWS else "")) for h in homes] + _which_all(["javac"])
     for jc in _uniq([p for p in javac_list if os.path.isfile(p)]):
         jv = os.path.join(os.path.dirname(jc), "java" + (".exe" if IS_WINDOWS else ""))
-        v = _version_of([jc, "--version"])
+        if IS_WINDOWS:
+            ft = _file_version(jc); v = _java_release_version(os.path.dirname(os.path.dirname(jc))) or (("%d.%d.%d" % ft[:3]) if ft else "")
+        else:
+            v = _version_of([jc, "--version"])
         if v and os.path.isfile(jv):
             add("java", {"javac": jc, "java": jv}, v)
     # C / C++
     for lang, names in (("c", ["gcc", "cc", "clang"]), ("cpp", ["g++", "c++", "clang++"])):
+        if IS_WINDOWS and not deep:                               # 윈도우: gcc 는 버전을 알려면 실행해야 해서, '다시 검색' 때만 찾는다
+            break
         for p in _uniq(_which_all(names)):
             v = _version_of([p, "--version"])
             if v:
@@ -218,8 +333,8 @@ def scan_tools():
     for p in _uniq([c for c in dn_c if os.path.isfile(c)]):
         info = _dotnet_info(p)
         if info:
-            add("csharp", {"dotnet": p, "info": info}, _version_of([p, "--version"]), ".NET")
-    for p in _uniq(_which_all(["mcs"])):
+            add("csharp", {"dotnet": p, "info": info}, (_dotnet_sdk_version(info["root"]) if IS_WINDOWS else _version_of([p, "--version"])), ".NET")
+    for p in ([] if (IS_WINDOWS and not deep) else _uniq(_which_all(["mcs"]))):
         mono = shutil.which("mono")
         if mono:
             add("csharp", {"mcs": p, "mono": mono}, _version_of([p, "--version"]), "Mono")
@@ -234,7 +349,10 @@ def scan_tools():
         for p in _uniq(extra):
             if lang == "bash" and IS_WINDOWS:
                 continue
-            v = _version_of([p] + args)
+            if IS_WINDOWS and not deep:                           # 윈도우 시작할 때: Go 는 VERSION 파일로, 나머지는 '다시 검색' 때만
+                v = _go_root_version(p) if lang == "go" else ""
+            else:
+                v = _version_of([p] + args)
             if v:
                 add(lang, {key: p}, v)
     for lang in inv:                                  # 높은 버전이 앞
@@ -542,15 +660,18 @@ class Runner:
     def public_inv(self):
         return {lang: [{"id": i["id"], "version": i["version"], "label": i["label"]} for i in items] for lang, items in self.inv.items()}
 
-    async def rescan(self):
-        """내 컴퓨터의 언어를 다시 찾는다 (동시에 여러 번 부르면 한 번만 찾고 같이 기다린다)"""
+    async def rescan(self, deep=True):
+        """내 컴퓨터의 언어를 다시 찾는다 (동시에 여러 번 부르면 한 번만 찾고 같이 기다린다). deep=False 는 윈도우 시작할 때: 프로그램을 부르지 않는 빠른 검색"""
         if self.no_scan:
             self.inv, self.scanned_at = self_inventory(), time.time()
             return
+        while deep and self._scanning is not None and not getattr(self, "_scan_deep", True):   # 빠른 검색이 끝나지 않았는데 전체 검색을 요청하면, 끝나길 기다렸다가 전체 검색을 한다
+            await asyncio.shield(self._scanning)
         if self._scanning is None:
+            self._scan_deep = deep
             async def go():
                 try:
-                    self.inv = await asyncio.get_event_loop().run_in_executor(None, scan_tools)
+                    self.inv = await asyncio.get_event_loop().run_in_executor(None, lambda: scan_tools(deep))
                     self.scanned_at = time.time()
                     save_inventory_cache(self.inv)
                 finally:
@@ -1009,7 +1130,7 @@ def main():
         if cached:                                                    # 방금 찾은 결과가 있으면 다시 찾지 않는다 (재시작이 잦아도 외부 프로그램을 또 부르지 않는다)
             runner.inv, runner.scanned_at = cached, time.time()
         else:
-            await runner.rescan()
+            await runner.rescan(deep=not IS_WINDOWS)               # 윈도우는 시작할 때 프로그램을 부르지 않는 검색만 한다 (창이 뜨는 문제 방지)
         try:
             server = await asyncio.start_server(runner.handle, "127.0.0.1", a.port)
         except OSError as e:
