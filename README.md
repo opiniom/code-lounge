@@ -155,6 +155,7 @@ cd code-lounge
    - 파이썬이 없으면 스크립트가 **무엇을 설치해야 하는지** 알려 주고 끝나요(윈도우는 `winget install Python.Python.3.12` 도 안내).
    - 새로 설치한 언어는 ▶ 실행할 때 러너가 **알아서 다시 찾아요**(재시작·'다시 검색' 불필요). 고른 버전이 지워졌으면 몰래 다른 버전으로 돌리지 않고 이유를 알려 줘요.
    - 같은 와이파이를 써도 상관없어요. 러너는 **각자 자기 컴퓨터 안(127.0.0.1)**에서만 열려서, 컴퓨터마다 한 번씩 설치하면 돼요.
+   - **윈도우에서 검은 터미널 창이 깜빡이지 않아요(러너 1.2.4):** 러너가 설치된 언어의 버전을 알아보려고 java·python 같은 프로그램을 여러 번 부를 때마다 창이 잠깐 떴다 사라지던 것을, 모든 외부 호출에 '창 만들지 않음'을 걸어 없앴어요. 한 줄 설치를 다시 실행하면 **켜져 있던 예전 러너를 자동으로 끄고** 새 버전으로 바꿔요(안 끄면 옛 러너가 계속 돌아요).
    - 끄기·지우기: `python3 ~/.duresync-runner/duresync_runner.py --uninstall-autostart` (윈도우: `py "$env:USERPROFILE\.duresync-runner\duresync_runner.py" --uninstall-autostart`). 수동 실행/옵션: `duresync_runner.py` `--install-autostart` `--token` `--port` `--allow-origin` `--max-seconds` `--show-token` `--reset-token` `--dry-run` `--no-start`.
 - **창(GUI)이 뜨는 프로그램**(Java Swing·AWT·JavaFX, Python tkinter·pygame, C/C++ SDL·GTK …)은 화면이 없는 서버에서는 실행할 수 없어요(`HeadlessException` 같은 오류). 서버에서 이런 오류가 나면 콘솔에 이유와 **[🖥️ 내 PC 에서 실행]**(또는 연결 방법) 버튼이 나와요. 내 PC 로 실행하면 창이 **내 화면**에 떠요. 러너의 한 번 실행 제한 시간은 기본 30분(`--max-seconds`)이에요.
 4. 같은 언어가 서버와 내 PC 에 모두 있거나 버전이 여러 개면 ▶ 실행 옆 **선택 박스**에서 `서버 · Java 25 / 내 PC · Java 17` 처럼 고르면 돼요(고른 것은 기억). 서버와 내 PC 어디에도 없으면 **"언어 지원이 되지 않습니다"** 안내창이 떠요.

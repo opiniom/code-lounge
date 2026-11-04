@@ -132,6 +132,30 @@ u = lin["files"][0][1]
 chk("리눅스: systemd 사용자 서비스(로그인 때 켜짐, 실패하면 재시작)", "ExecStart=\"/usr/bin/python3\" \"/home/me/.duresync-runner/duresync_runner.py\" \"--port\"" in u and "WantedBy=default.target" in u and "Restart=on-failure" in u and ["systemctl", "--user", "enable", "--now", "duresync-runner.service"] in lin["start"], u)
 lin2 = M.autostart_plan("Linux", "/home/me", "/usr/bin/python3", "/s.py", ARGS, has_systemd=False)
 chk("  ㄴ systemd 가 없으면 ~/.config/autostart/*.desktop 으로", lin2["files"][0][0].endswith(".config/autostart/duresync-runner.desktop") and "Exec=" in lin2["files"][0][1])
+# ---- 윈도우: 러너가 외부 프로그램(java·python·gcc 버전 확인, taskkill 등)을 부를 때 검은 터미널 창이 뜨지 않는다
+import re as _re
+_src = open(os.path.join(ROOT, "runner", "duresync_runner.py"), encoding="utf-8").read()
+_bare = [l for l in _src.split("\n") if "subprocess.run(" in l and "def run_quiet" not in l and "return subprocess.run(argv, **kw)" not in l]
+chk("윈도우 창 깜빡임 방지: 러너의 모든 외부 프로그램 호출이 run_quiet 를 거친다 (subprocess.run 직접 호출 없음)", not _bare, _bare)
+_calls = []
+class _FakeRun:
+    def __call__(self, argv, **kw):
+        _calls.append((list(argv), kw)); r = type("R", (), {"stdout": "java 21.0.1", "stderr": "", "returncode": 0})(); return r
+_orig_run, _orig_win = M.subprocess.run, M.IS_WINDOWS
+try:
+    M.IS_WINDOWS = True; M.subprocess.run = _FakeRun()
+    M._version_of(["java.exe", "--version"])
+    class _P: pid = 4242; returncode = None
+    M.kill_tree(_P())
+finally:
+    M.subprocess.run, M.IS_WINDOWS = _orig_run, _orig_win
+chk("  ㄴ 윈도우에서 버전 확인(java --version)과 중지(taskkill) 호출에 '콘솔 창 만들지 않음' 플래그가 붙는다", len(_calls) == 2 and all(kw.get("creationflags", 0) & 0x08000000 for _, kw in _calls), [(a[0], kw.get("creationflags")) for a, kw in _calls])
+_calls.clear()
+try:
+    M.IS_WINDOWS = False; M.subprocess.run = _FakeRun(); M._version_of(["java", "--version"])
+finally:
+    M.subprocess.run, M.IS_WINDOWS = _orig_run, _orig_win
+chk("  ㄴ 맥·리눅스에는 윈도우 전용 옵션을 붙이지 않는다", len(_calls) == 1 and "creationflags" not in _calls[0][1], _calls)
 # 미리보기(--dry-run)는 파일을 만들지 않는다
 r = subprocess.run([sys.executable, os.path.join(ROOT, "runner", "duresync_runner.py"), "--install-autostart", "--dry-run", "--allow-origin", ORIGIN], env=env, capture_output=True, text=True)
 chk("--install-autostart --dry-run: 무엇을 할지 보여 주고 아무것도 만들지 않는다", r.returncode == 0 and "미리보기" in r.stdout and not os.path.exists(os.path.join(HOME, "Library", "LaunchAgents")) and not os.path.exists(os.path.join(HOME, ".config", "systemd")), r.stdout + r.stderr)
@@ -150,6 +174,27 @@ for enc in ("cp949", "cp1252", "ascii"):
     try: out = pr.communicate(timeout=8)[0].decode(enc, "replace")
     except Exception: pr.kill(); out = ""
     chk(f"콘솔 글자 표(%s)에서도 러너가 정상으로 켜지고 시작 화면이 나온다" % enc, up and "Traceback" not in out and "연결 코드" in out or (up and "Traceback" not in out and "?" in out), out[-200:])
+# ---- 새로 설치하면 이미 켜져 있던 예전 러너를 끄고 바꾼다 (안 그러면 옛 러너가 계속 돌아 창 깜빡임·옛 버그가 남는다)
+_netstat = ("  Proto  Local Address          Foreign Address        State           PID\r\n  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1048\r\n"
+            "  TCP    127.0.0.1:47321        0.0.0.0:0              LISTENING       7777\r\n  TCP    127.0.0.1:47321        127.0.0.1:50000        ESTABLISHED     7777\r\n")
+_lsof = "88123\n"
+_orig_q, _orig_win2 = M.run_quiet, M.IS_WINDOWS
+class _O:
+    def __init__(self, out): self.stdout = out; self.stderr = ""; self.returncode = 0
+try:
+    M.IS_WINDOWS = True; M.run_quiet = lambda argv, **kw: _O(_netstat)
+    pid_win = M._listener_pid(47321); pid_none = M._listener_pid(47399)
+    M.IS_WINDOWS = False; M.run_quiet = lambda argv, **kw: _O(_lsof)
+    pid_mac = M._listener_pid(47321)
+finally:
+    M.run_quiet, M.IS_WINDOWS = _orig_q, _orig_win2
+chk("예전 러너 찾기: 윈도우(netstat)·맥/리눅스(lsof) 출력에서 포트를 열고 있는 프로그램 번호를 읽는다", pid_win == 7777 and pid_none is None and pid_mac == 88123, (pid_win, pid_none, pid_mac))
+_before = srv.poll()
+stopped = M.stop_existing_runner(PORT)
+try: srv.wait(5)
+except Exception: pass
+chk("  ㄴ 이미 켜져 있는 러너(포트 47399)를 찾아서 끄고, 끝나면 True 를 돌려준다", _before is None and stopped is True and srv.poll() is not None, (_before, stopped, srv.poll()))
+chk("  ㄴ 포트를 쓰는 러너가 없으면(또는 러너가 아니면) 아무것도 건드리지 않는다", M.stop_existing_runner(PORT) is False)
 for p in (srv, srv2):
     p.terminate()
     try: p.wait(5)

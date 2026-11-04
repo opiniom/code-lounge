@@ -34,7 +34,7 @@ import sys
 import tempfile
 import time
 
-RUNNER_VERSION = "1.2.3"
+RUNNER_VERSION = "1.2.4"
 DEFAULT_PORT = 47321
 # 서버가 이 파일을 내려줄 때 이 줄을 자기 주소로 바꿔 준다 (그래서 다운로드한 러너는 그 사이트만 믿는다)
 ALLOWED_ORIGINS = ["__DURESYNC_ORIGIN__"]
@@ -44,6 +44,24 @@ MAX_CODE = 500_000
 LABELS = {"python": "Python", "javascript": "JavaScript", "typescript": "TypeScript", "java": "Java", "c": "C", "cpp": "C++", "csharp": "C#",
           "ruby": "Ruby", "php": "PHP", "perl": "Perl", "bash": "Bash", "go": "Go", "rust": "Rust"}
 
+
+
+# 윈도우: 창이 없는 상태(pythonw·자동 시작)에서 java.exe·python.exe 같은 콘솔 프로그램을 부르면, 부를 때마다 검은 터미널 창이 잠깐 떴다 사라진다
+# (러너는 시작할 때 설치된 언어의 버전을 알아보려고 프로그램을 10여 번 부른다). 그래서 이 파일의 모든 외부 프로그램 호출은 run_quiet 를 거쳐 창을 만들지 않게 한다.
+CREATE_NO_WINDOW = 0x08000000
+
+
+def run_quiet(argv, **kw):
+    if IS_WINDOWS:
+        kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
+        try:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = 0                      # SW_HIDE
+            kw.setdefault("startupinfo", si)
+        except Exception:
+            pass
+    return subprocess.run(argv, **kw)
 
 # ============================================================ 설치된 언어 찾기
 def _home(*p):
@@ -74,7 +92,7 @@ def _which_all(names):
 
 def _version_of(argv, timeout=8):
     try:
-        r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=dict(os.environ, DOTNET_NOLOGO="1", DOTNET_CLI_TELEMETRY_OPTOUT="1"))
+        r = run_quiet(argv, capture_output=True, text=True, timeout=timeout, env=dict(os.environ, DOTNET_NOLOGO="1", DOTNET_CLI_TELEMETRY_OPTOUT="1"))
         line = ((r.stdout or r.stderr or "").strip().splitlines() or [""])[0]
     except Exception:
         return ""
@@ -147,7 +165,7 @@ def scan_tools():
         for p in _uniq(_which_all(names)):
             v = _version_of([p, "--version"])
             if v:
-                kind = "clang" if "clang" in os.path.basename(os.path.realpath(p)) or "Apple" in (subprocess.run([p, "--version"], capture_output=True, text=True).stdout or "") else os.path.basename(p)
+                kind = "clang" if "clang" in os.path.basename(os.path.realpath(p)) or "Apple" in (run_quiet([p, "--version"], capture_output=True, text=True).stdout or "") else os.path.basename(p)
                 add(lang, {"cc": p}, v, kind)
     # C# (.NET SDK 의 csc.dll → 없으면 Mono)
     dn_c = _which_all(["dotnet"]) + glob.glob(_home(".dotnet", "dotnet")) + ["/usr/local/share/dotnet/dotnet", "/usr/share/dotnet/dotnet", r"C:\Program Files\dotnet\dotnet.exe"]
@@ -297,7 +315,7 @@ def _env(tmp, tools):
 def kill_tree(proc):
     try:
         if IS_WINDOWS:
-            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
+            run_quiet(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
         else:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
     except Exception:
@@ -478,7 +496,7 @@ class Runner:
             if first.get("action") != "hello" or not secrets.compare_digest(str(first.get("token", "")), self.token):
                 await ws.send({"type": "hello", "ok": False, "why": "token"}); await ws.close(4401); return
             await ws.send({"type": "hello", "ok": True, "version": RUNNER_VERSION, "os": platform.system(), "runtimes": self.public_inv(), "max_seconds": self.max_seconds})
-            if time.time() - self.scanned_at > 20:                         # 설치한 언어가 늘었을 수 있으니 뒤에서 조용히 다시 찾아 둔다
+            if time.time() - self.scanned_at > 120:                        # 설치한 언어가 늘었을 수 있으니 뒤에서 조용히 다시 찾아 둔다 (▶ 실행 때는 따로 바로 다시 찾는다)
                 asyncio.ensure_future(self.rescan())
             while True:
                 msg = json.loads(await ws.recv())
@@ -696,6 +714,55 @@ def _uid():
     return os.getuid() if hasattr(os, "getuid") else 0
 
 
+
+def _listener_pid(port):
+    """이 컴퓨터에서 해당 포트를 열고 기다리는(LISTEN) 프로그램의 번호(PID). 없으면 None"""
+    try:
+        if IS_WINDOWS:
+            r = run_quiet(["netstat", "-ano", "-p", "tcp"], capture_output=True, text=True, timeout=15)
+            for line in (r.stdout or "").splitlines():
+                parts = line.split()
+                if len(parts) >= 5 and parts[0].upper() == "TCP" and parts[1].endswith(":%d" % port) and parts[3].upper() in ("LISTENING", "LISTEN"):
+                    return int(parts[4])
+        else:
+            r = run_quiet(["lsof", "-ti", "tcp:%d" % port, "-sTCP:LISTEN"], capture_output=True, text=True, timeout=15)
+            for tok in (r.stdout or "").split():
+                if tok.isdigit():
+                    return int(tok)
+    except Exception:
+        pass
+    return None
+
+
+def stop_existing_runner(port):
+    """예전 버전 러너가 이미 켜져 있으면 끈다 (안 그러면 새로 설치해도 옛 러너가 계속 돌고 새 러너는 '이미 켜져 있어요' 하고 끝난다). 끈 게 있으면 True"""
+    import http.client
+    try:
+        c = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+        c.request("GET", "/")
+        body = c.getresponse().read(400).decode("utf-8", "replace")
+        c.close()
+    except Exception:
+        return False
+    if "DureSync Runner" not in body:                                       # 다른 프로그램이 쓰는 포트는 건드리지 않는다
+        return False
+    pid = _listener_pid(port)
+    if not pid or pid == os.getpid():
+        return False
+    try:
+        if IS_WINDOWS:
+            run_quiet(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, timeout=15)
+        else:
+            os.kill(pid, signal.SIGTERM)
+    except Exception:
+        return False
+    for _ in range(30):                                                     # 포트가 비워질 때까지 최대 3초
+        time.sleep(0.1)
+        if _listener_pid(port) is None:
+            break
+    return True
+
+
 def autostart_install(a, dry=False):
     home = os.path.expanduser("~")
     d = os.path.join(home, ".duresync-runner")
@@ -720,6 +787,8 @@ def autostart_install(a, dry=False):
         os.makedirs(os.path.dirname(f), exist_ok=True)
         with open(f, "w", encoding="utf-8", newline="") as fh:
             fh.write(body)
+    if not getattr(a, "no_start", False) and stop_existing_runner(a.port):
+        print("  · 이미 켜져 있던 예전 러너를 끄고 새 버전으로 바꿔요.")
     if system == "Windows":
         for f in plan["remove"]:                                           # 옛 방식(.vbs)이 남아 있으면 지운다 (안 지우면 오류 창이 계속 뜬다)
             try:
@@ -741,7 +810,7 @@ def autostart_install(a, dry=False):
     else:
         for cmd in ([] if getattr(a, "no_start", False) else plan["start"]):
             try:
-                r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+                r = run_quiet(cmd, capture_output=True, text=True, timeout=20)
                 if r.returncode and not (len(cmd) > 1 and cmd[1] == "bootout"):
                     print("  ! %s: %s" % (" ".join(cmd[:3]), (r.stderr or r.stdout).strip()[:200]))
             except Exception as e:
@@ -773,7 +842,7 @@ def autostart_uninstall():
         print("자동 시작이 켜져 있지 않았어요."); return 0
     for cmd in plan["stop"]:
         try:
-            subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            run_quiet(cmd, capture_output=True, text=True, timeout=20)
         except Exception:
             pass
     for f in found:
