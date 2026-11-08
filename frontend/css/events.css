@@ -95,7 +95,7 @@ html[data-motion="reduce"] .evt-card, html[data-motion="reduce"] .pcard, html[da
 .evt-foot .actions button{font-size:11px; padding:6px 10px;}
 
 @media (max-width:880px){
-  .home-hero{grid-template-columns:1fr;}
+  .home-hero{grid-template-columns:minmax(0,1fr);}
   .hh-title{font-size:32px;}
   .proj-row{grid-template-columns:1fr;}
   .cal-layout, .mypage-grid, .admin-member-grid{grid-template-columns:1fr;}

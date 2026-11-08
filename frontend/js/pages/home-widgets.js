@@ -237,6 +237,7 @@ var DURE_COUNT = 7, DURE_AI_INDEX = 4;
 var DURE_ANGLES = []; for(var _i = 0; _i < DURE_COUNT; _i++) DURE_ANGLES.push(Math.round(_i * 360 / DURE_COUNT * 100) / 100);
 var DURE_SLOTS = DURE_ANGLES.filter(function(_a, i){ return i !== DURE_AI_INDEX; });
 var dureSig = '';
+var DURE_PAGE = 6, dureOrbitPage = 0, dureOrbitProj = null, dureEnterDir = 0;   // 한 쪽에 팀원 6명씩, 넘으면 옆으로 넘겨서 본다
 /* 홈에서 고른 '지금 프로젝트': 궤도·팀원 위젯은 이 프로젝트의 팀원만 보여준다 (친구가 늘어도 홈이 복잡해지지 않게) */
 function homeProject(){
   if(!calApiMode || !myProjects.length) return null;
@@ -314,24 +315,45 @@ function renderDureOrbit(){
   var todayN = calApiMode ? calendarEvents.filter(function(e){ return e.start <= today && (e.end || e.start) >= today; }).length : 0;
   var notesN = calApiMode ? (meetingDocs || []).length : 0;
   var online = team.filter(function(t){ return pstOf(t.id) === 'online' || pstOf(t.id) === 'dnd' || pstOf(t.id) === 'away'; }).length;
-  var hp = homeProject(), sig = [hp ? hp.id + ':' + hp.title : '', team.map(function(t){ return t.id + ':' + pstOf(t.id); }).join(','), calApiMode ? 1 : 0, todayN, notesN, myProjects.map(function(p){ return p.id + p.title; }).join(',')].join('|');
+  var hp = homeProject(), sig = [hp ? hp.id + ':' + hp.title : '', team.map(function(t){ return t.id + ':' + pstOf(t.id); }).join(','), calApiMode ? 1 : 0, todayN, notesN, 'pg' + dureOrbitPage, myProjects.map(function(p){ return p.id + p.title; }).join(',')].join('|');
   if(sig === dureSig) return; dureSig = sig;
   dureRenderProj();
+  if(typeof homeStickSync === 'function') homeStickSync();
   box.innerHTML = '';
   var invite = function(){ openInviteFromHero(); };
-  var visible = team.length > DURE_SLOTS.length ? DURE_SLOTS.length - 1 : team.length;
-  DURE_SLOTS.forEach(function(angle, i){
-    if(i < visible){
-      var t = team[i], st = pstOf(t.id);
+  /* 팀원은 한 쪽에 6명씩 둘레에 놓고, 더 많으면 궤도 위에 마우스를 올려 옆으로 넘겨 본다 (< >, 점, 밀어서 넘기기).
+     쪽마다 [팀원 · 초대 '+' · AI] 를 고르게 나누고, 작은 팀은 7자리를 흐린 '+'로 채워 둥글게 보인다. */
+  var curId = hp ? hp.id : null;
+  if(curId !== dureOrbitProj){ dureOrbitProj = curId; dureOrbitPage = 0; }
+  var pages = Math.max(1, Math.ceil(team.length / DURE_PAGE));
+  if(dureOrbitPage >= pages) dureOrbitPage = pages - 1;
+  var pageTeam = team.slice(dureOrbitPage * DURE_PAGE, dureOrbitPage * DURE_PAGE + DURE_PAGE);
+  var shown = pageTeam.length;
+  var N = DURE_COUNT;                                               // 한 쪽은 언제나 7자리: AI 1 + 사람 6 (팀원이 6명보다 적으면 남는 자리가 초대 '+' 와 흐린 '+')
+  var aiIdx = DURE_AI_INDEX;
+  box.dataset.n = N; box.dataset.page = dureOrbitPage;
+  dureNavRefresh(pages);
+  var items = [];
+  for(var mi = 0; mi < shown; mi++) items.push({k:'m', t:pageTeam[mi]});
+  if(shown < DURE_PAGE) items.push({k:'inv'});
+  while(items.length < N - 1) items.push({k:'ghost'});
+  items.splice(aiIdx, 0, {k:'ai'});
+  items.forEach(function(it, i){
+    var angle = Math.round(i * 360 / N * 100) / 100;
+    if(it.k === 'm'){
+      var t = it.t, st = pstOf(t.id);
       box.appendChild(dureNode(angle, chatColor(t.name), String(t.name).slice(0, 1), t.name + (t.me ? ' (나)' : '') + ' · ' + PST_META[st].label, { pst:st }));
-    } else if(i === visible && team.length > DURE_SLOTS.length){
-      var rest = team.slice(visible).map(function(t){ return t.name; });
-      box.appendChild(dureNode(angle, '#64748B', '+' + rest.length, rest.join(', '), {}));
+    } else if(it.k === 'ai'){
+      box.appendChild(dureNode(angle, null, 'AI', '두레 AI — 채팅에서 "두레야"라고 불러보세요', { cls:'dn-ai' }));
     } else {
-      box.appendChild(dureNode(angle, null, '+', calApiMode ? '팀원 초대' : '로그인하고 팀원 초대', { cls:'dn-plus' + (i === visible ? '' : ' ghost'), click:invite }));
+      box.appendChild(dureNode(angle, null, '+', calApiMode ? '팀원 초대' : '로그인하고 팀원 초대', { cls:'dn-plus' + (it.k === 'inv' ? '' : ' ghost'), click:invite }));
     }
   });
-  var ai = dureNode(DURE_ANGLES[DURE_AI_INDEX], null, 'AI', '두레 AI — 채팅에서 "두레야"라고 불러보세요', { cls:'dn-ai' }); box.appendChild(ai);
+  if(dureEnterDir){                                   // 쪽을 넘겼을 때만: 새 쪽의 원들이 옆에서 미끄러져 들어온다
+    box.style.setProperty('--dir', dureEnterDir);
+    Array.prototype.forEach.call(box.children, function(n, k){ n.classList.add('enter'); n.style.setProperty('--k', k); });
+    dureEnterDir = 0;
+  }
   // 둘레에 떠 있는 말풍선: 진짜 숫자만 보여준다
   if(!calApiMode) dureChip('dureChip1', '👋 로그인하면 팀원이 여기 모여요', function(){ openLogin(); });
   else if(team.length <= 1) dureChip('dureChip1', '＋ 친구·팀원을 초대해 보세요', invite);
@@ -339,3 +361,58 @@ function renderDureOrbit(){
   dureChip('dureChip2', todayN ? '📅 오늘 일정 ' + todayN + '개' : '', function(){ goView('calendar'); });
   dureChip('dureChip3', notesN ? '📝 회의록 ' + notesN + '개' : '', function(){ goView('notes'); });
 }
+
+/* ---- 홈: 위젯 옆에서 따라 내려오는 덩어리 — 위쪽 메뉴 바 높이와 덩어리 높이를 CSS 에 알려 준다 ---- */
+(function(){
+  function sync(){
+    var tb = document.querySelector('.topbar'); if(tb && tb.offsetHeight) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
+    var left = document.querySelector('.home-hero-left'); if(left && left.offsetHeight) document.documentElement.style.setProperty('--lh', left.offsetHeight + 'px');
+  }
+  window.homeStickSync = sync;
+  window.addEventListener('resize', sync);
+  if(window.ResizeObserver){ var l0 = document.querySelector('.home-hero-left'); if(l0) new ResizeObserver(sync).observe(l0); }
+  setTimeout(sync, 300); setTimeout(sync, 1500);
+})();
+
+/* ---- 홈 궤도: 팀원이 많을 때 옆으로 넘기기 ---- */
+function dureNavRefresh(pages){
+  var prev = document.getElementById('dureNavPrev'), next = document.getElementById('dureNavNext'), dots = document.getElementById('dureDots');
+  var many = pages > 1;
+  if(prev) prev.hidden = !many; if(next) next.hidden = !many;
+  var stage = document.querySelector('.dure-stage'); if(stage) stage.classList.toggle('has-pages', many);
+  if(!dots) return;
+  dots.hidden = !many;
+  if(!many){ dots.innerHTML = ''; return; }
+  dots.innerHTML = '';
+  for(var i = 0; i < pages; i++){
+    var d = document.createElement('button'); d.type = 'button'; d.className = 'dd' + (i === dureOrbitPage ? ' on' : '');
+    d.setAttribute('aria-label', (i + 1) + '쪽'); (function(k){ d.onclick = function(e){ e.stopPropagation(); dureOrbitSet(k); }; })(i);
+    dots.appendChild(d);
+  }
+}
+function dureOrbitSet(page){
+  var team = dureTeammates(), pages = Math.max(1, Math.ceil(team.length / DURE_PAGE));
+  var np = ((page % pages) + pages) % pages; if(np === dureOrbitPage) return;
+  dureEnterDir = np > dureOrbitPage ? 1 : -1; dureOrbitPage = np; dureSig = ''; renderDureOrbit();
+}
+function dureOrbitGo(d){
+  var team = dureTeammates(), pages = Math.max(1, Math.ceil(team.length / DURE_PAGE)); if(pages < 2) return;
+  var np = ((dureOrbitPage + d) % pages + pages) % pages;
+  dureEnterDir = d > 0 ? 1 : -1; dureOrbitPage = np; dureSig = ''; renderDureOrbit();
+}
+(function(){
+  var stage = document.querySelector('.dure-stage'); if(!stage) return;
+  var sx = 0, sy = 0, down = false, swiped = false, lastWheel = 0;
+  stage.addEventListener('pointerdown', function(e){ if(e.target.closest('.dure-nav, .dure-dots')) return; down = true; swiped = false; sx = e.clientX; sy = e.clientY; });
+  window.addEventListener('pointerup', function(e){
+    if(!down) return; down = false;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if(Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.3){ swiped = true; dureOrbitGo(dx < 0 ? 1 : -1); setTimeout(function(){ swiped = false; }, 350); }
+  });
+  stage.addEventListener('click', function(e){ if(swiped){ e.stopPropagation(); e.preventDefault(); } }, true);   // 밀어 넘긴 끝에 '+' 가 눌려 초대 창이 뜨지 않게
+  stage.addEventListener('wheel', function(e){                                                         // 트랙패드를 옆으로 밀면 넘어간다 (세로 스크롤은 그대로 통과)
+    if(Math.abs(e.deltaX) < 18 || Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.4) return;
+    e.preventDefault(); var now = Date.now(); if(now - lastWheel < 520) return; lastWheel = now; dureOrbitGo(e.deltaX > 0 ? 1 : -1);
+  }, {passive:false});
+  stage.addEventListener('keydown', function(e){ if(e.key === 'ArrowRight'){ dureOrbitGo(1); } else if(e.key === 'ArrowLeft'){ dureOrbitGo(-1); } });
+})();

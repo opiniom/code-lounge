@@ -1,9 +1,9 @@
 /* ================= HOME ================= */
 .home-pad{padding-top:36px; position:relative;}
-.home-hero{display:grid; grid-template-columns:1fr 1.2fr; gap:44px; align-items:center;}
-.home-hero-left{display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px; padding-top:6px;}
+.home-hero{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:44px; align-items:center;}
+.home-hero-left{display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px; padding-top:6px; min-width:0;}
 
-.home-pad{overflow:hidden;}
+.home-pad{overflow:clip;}   /* hidden 이면 안쪽의 sticky(스크롤 따라오기)가 멈춘다 */
 .app.home-landing-mode .home-hero-right{display:none;}
 .app.home-landing-mode .home-hero{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -44,8 +44,8 @@
 @keyframes homeFadeUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
 
 /* ---- DureSync 브랜드 히어로: 두레(둥글게 모여 함께) ---- */
-.dure-stage{--S:300px; position:relative; width:var(--S); height:var(--S); margin:0 auto -8px; flex:0 0 auto;}
-.app:not(.home-landing-mode) .dure-stage{--S:176px;}
+.dure-stage{--S:clamp(260px, min(36vh, 36vw), 400px); position:relative; width:var(--S); height:var(--S); margin:0 auto -8px; flex:0 0 auto;}
+.app:not(.home-landing-mode) .dure-stage{--S:clamp(200px, min(19vw, 26vh), 270px);}
 .dure-ring{position:absolute; inset:0; isolation:isolate;}
 .dure-ring::before{content:''; position:absolute; inset:12%; border-radius:50%; border:1.5px dashed var(--border-strong); opacity:.85; z-index:0; pointer-events:none;}
 .dure-ring::after{ /* 둘레를 따라 도는 '싱크 신호' */
@@ -128,7 +128,7 @@
 .rot i{position:absolute; left:0; top:0; line-height:1.6em; font-style:normal; font-weight:700; color:var(--accent-ink); opacity:0; transform:translateY(100%); animation:rotWord 12.5s infinite;}
 .rot i:nth-child(1){animation-delay:0s;} .rot i:nth-child(2){animation-delay:2.5s;} .rot i:nth-child(3){animation-delay:5s;}
 .rot i:nth-child(4){animation-delay:7.5s;} .rot i:nth-child(5){animation-delay:10s;}
-@keyframes rotWord{0%{opacity:0; transform:translateY(100%);} 4%,17%{opacity:1; transform:translateY(0);} 21%,100%{opacity:0; transform:translateY(-100%);}}
+@keyframes rotWord{0%{opacity:0; transform:translateY(100%);} 5%,19%{opacity:1; transform:translateY(0);} 24%,100%{opacity:0; transform:translateY(-100%);}}
 
 .hh-features{display:none; width:100%; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-top:6px;}
 .app.home-landing-mode .hh-features{display:grid;}
@@ -144,8 +144,8 @@
 .hh-feat small{font-size:11.5px; color:var(--text-muted); line-height:1.5;}
 .home-hero.home-intro .hh-feat{animation:homeFadeUp .7s cubic-bezier(.16,.84,.44,1) both; animation-delay:calc(var(--i) * 90ms + 700ms);}
 @media (max-width:900px){ .hh-features{grid-template-columns:repeat(2, minmax(0,1fr));} .dure-chip{display:none;} }
-@media (max-width:560px){ .dure-stage{--S:230px !important;} .hh-features{grid-template-columns:1fr 1fr; gap:8px;} }
-.app.chat-docked .dure-stage{--S:200px;}
+@media (max-width:560px){ .dure-stage{--S:256px !important;} .hh-features{grid-template-columns:1fr 1fr; gap:8px;} }
+.app.chat-docked .dure-stage{--S:230px;}
 .app.chat-docked .dure-chip{display:none;}
 .app.chat-docked .hh-features{grid-template-columns:repeat(2, minmax(0,1fr));}
 html[data-motion="reduce"] .dure-orbit, html[data-motion="reduce"] .dn span, html[data-motion="reduce"] .dure-ring::after, html[data-motion="reduce"] .dure-core, html[data-motion="reduce"] .dure-chip, html[data-motion="reduce"] .rot i, html[data-motion="reduce"] .hh-feat, html[data-motion="reduce"] .hh-brand .lt{animation:none !important;}html[data-motion="reduce"] .rot i:first-child{opacity:1; transform:none;}
@@ -285,24 +285,62 @@ html[data-motion="reduce"] .dure-orbit, html[data-motion="reduce"] .dn span, htm
 .dure-proj-it b{flex:1; min-width:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .dure-proj-it small{color:var(--text-faint); font-size:11.5px;} .dure-proj-it i{font-style:normal; font-weight:800; color:var(--accent-ink); opacity:0;} .dure-proj-it.on i{opacity:1;}
 .app.home-landing-mode .dure-proj{margin-top:6px;}
 
-/* ---- 홈: 큰 버튼으로 [새 프로젝트 만들기] · [팀원 초대하기] (스크롤해서 입력창을 찾을 필요 없음) ---- */
-.home-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; width:100%; margin:2px auto 0;}
+/* ---- 홈: [새 프로젝트 만들기] · [팀원 초대하기] — 가로로 나란히, 작고 또렷하게 ---- */
+.home-cta{display:flex; flex-wrap:nowrap; gap:10px; justify-content:center; width:100%; max-width:540px; margin:0 auto;}
 .cta-btn{
-  display:flex; align-items:center; gap:12px; text-align:left; cursor:pointer; min-width:250px; max-width:340px; flex:1 1 250px;
-  padding:14px 20px; border-radius:16px; border:1.5px solid var(--border-strong); background:var(--surface); color:var(--text);
-  box-shadow:var(--shadow-sm); transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease; font-family:inherit;
+  display:flex; align-items:center; gap:10px; text-align:left; cursor:pointer; flex:1 1 0; min-width:0;
+  padding:10px 16px; border-radius:14px; border:1.5px solid var(--border-strong); background:var(--surface); color:var(--text);
+  box-shadow:var(--shadow-sm); transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease, padding .25s ease; font-family:inherit;
 }
-.cta-btn svg{flex:0 0 auto; color:var(--accent);}
-.cta-btn .cta-tx{display:flex; flex-direction:column; gap:2px; min-width:0;}
-.cta-btn b{font-size:16px; font-weight:700; letter-spacing:-.02em;}
-.cta-btn small{font-size:12.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.cta-btn:hover{transform:translateY(-2px); border-color:var(--accent); box-shadow:var(--shadow-md);}
+.cta-btn svg{flex:0 0 auto; width:18px; height:18px; color:var(--accent);}
+.cta-btn .cta-tx{display:flex; flex-direction:column; gap:1px; min-width:0; flex:1;}
+.cta-btn b{font-size:14.5px; font-weight:700; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cta-btn small{font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cta-btn:hover{transform:translateY(-1px); border-color:var(--accent); box-shadow:var(--shadow-md);}
 .cta-btn:focus-visible{outline:3px solid rgba(59,130,246,.35); outline-offset:2px;}
-.cta-btn.primary{background:var(--brand-grad); border-color:transparent; color:#fff; box-shadow:0 10px 26px rgba(59,130,246,.32);}
+.cta-btn.primary{background:var(--brand-grad); border-color:transparent; color:#fff; box-shadow:0 8px 20px rgba(59,130,246,.30);}
 .cta-btn.primary svg, .cta-btn.primary small{color:rgba(255,255,255,.92);}
-.cta-btn.primary:hover{filter:brightness(1.06); box-shadow:0 14px 32px rgba(59,130,246,.42);}
+.cta-btn.primary:hover{filter:brightness(1.06); box-shadow:0 12px 26px rgba(59,130,246,.40);}
 .home-quick{display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;}
 .home-quick-row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
 .home-quick .join-row{width:100%; max-width:520px;}
 .proj-empty .proj-empty-btn{margin-left:8px;}
-@media (max-width:640px){ .cta-btn{min-width:100%; max-width:100%;} }
+@media (max-width:480px){ .cta-btn{padding:9px 11px; gap:8px;} .cta-btn b{font-size:13px;} .cta-btn small{font-size:10.5px;} .cta-btn svg{width:16px; height:16px;} }
+
+/* ---- 홈: 궤도 · DureSync · 설명 · 버튼 · 바로가기가 한 덩어리 ----
+   위젯이 옆에 있는 넓은 화면(2단)에서는, 위젯을 보려고 스크롤을 내릴 때 이 덩어리도 옆에서 같이 따라 내려온다 (줄어들지 않고 그대로). */
+.home-brand, .home-extra{display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; width:100%;}
+.home-extra{gap:14px;}
+.app.home-landing-mode .home-brand{gap:16px;}
+.home-hero .dure-stage.has-pages{margin-bottom:22px;}                 /* 쪽 표시(점)가 들어갈 자리 */
+@media (min-width:881px){
+  .app:not(.home-landing-mode) .home-hero{align-items:start;}
+  .app:not(.home-landing-mode) .home-hero-left{
+    position:sticky; align-self:start;
+    top:min(calc(var(--topbar-h, 58px) + 12px), calc(100vh - var(--lh, 700px) - 12px));   /* 덩어리가 화면보다 크면, 아래쪽 끝이 보일 때까지 스크롤된 뒤 붙는다 */
+  }
+}
+
+/* ---- 팀원이 6명을 넘으면: 궤도 위에 마우스를 올려 옆으로 넘긴다 ---- */
+.dure-stage.has-pages{cursor:grab; touch-action:pan-y;}
+.dure-nav{
+  position:absolute; top:50%; z-index:6; width:34px; height:34px; margin-top:-17px; border-radius:50%; border:1px solid var(--border-strong);
+  background:color-mix(in srgb, var(--surface) 88%, transparent); color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  box-shadow:var(--shadow-md); opacity:0; transform:scale(.88); transition:opacity .2s ease, transform .2s ease, background .2s ease, border-color .2s ease; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+.dure-nav[hidden]{display:none;}
+.dure-nav.prev{left:-42px;} .dure-nav.next{right:-42px;}       /* 궤도 바깥쪽에 둬서 원을 가리지 않게 */
+.dure-stage:hover .dure-nav, .dure-stage:focus-within .dure-nav{opacity:1; transform:none;}
+.dure-nav:hover{background:var(--accent); border-color:var(--accent); color:#fff;}
+.dure-nav:focus-visible{outline:3px solid rgba(59,130,246,.4); outline-offset:2px; opacity:1; transform:none;}
+.dure-dots{position:absolute; left:50%; bottom:-24px; transform:translateX(-50%); z-index:6; display:flex; gap:6px; padding:5px 9px; border-radius:999px; background:color-mix(in srgb, var(--surface) 86%, transparent); border:1px solid var(--border); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+.dure-dots[hidden]{display:none;}
+.dure-dots .dd{width:7px; height:7px; padding:0; border-radius:50%; border:none; background:var(--border-strong); cursor:pointer; transition:width .2s ease, background .2s ease;}
+.dure-dots .dd.on{width:20px; border-radius:999px; background:var(--accent);}
+@media (hover:none){ .dure-nav{opacity:.9; transform:none; width:32px; height:32px; margin-top:-16px;} }   /* 터치 화면에는 마우스 올리기가 없어서 늘 보이게 (밀어서 넘기기도 됨) */
+/* 새 쪽의 원들이 넘긴 방향에서 미끄러져 들어온다 */
+.dure-orbit .dn.enter{animation:dnEnter .42s cubic-bezier(.2,.8,.2,1) both; animation-delay:calc(var(--k, 0) * 22ms);}
+@keyframes dnEnter{from{opacity:0; translate:calc(var(--dir, 1) * 42px) 0; scale:.86;} to{opacity:1; translate:0 0; scale:1;}}
+html[data-motion="reduce"] .dure-orbit .dn.enter{animation:none;}
+@media (prefers-reduced-motion:reduce){ .dure-orbit .dn.enter{animation:none;} .dure-nav{transition:none;} }
+

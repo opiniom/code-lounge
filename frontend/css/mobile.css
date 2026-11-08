@@ -4,7 +4,7 @@
 
 @media (max-width:820px){
   :root{--mnav-h:62px;}
-  html, body{overflow-x:hidden; max-width:100%;}
+  html, body{overflow-x:hidden; overflow-x:clip; max-width:100%;}   /* clip: 옆으로 넘치는 건 가리되 스크롤 영역은 만들지 않는다 (hidden 이면 body 가 스크롤 상자가 돼서 sticky 가 안 먹는다) */
   body{margin:0;}
   .app{min-height:100dvh; padding-bottom:calc(var(--mnav-h) + env(safe-area-inset-bottom));}
   .app.auth-mode{padding-bottom:0;}
@@ -64,7 +64,7 @@
   .view-eyebrow{margin-bottom:2px;}
 
   /* ---- 홈 ---- */
-  .home-hero{grid-template-columns:1fr; gap:22px;}
+  .home-hero{grid-template-columns:minmax(0,1fr); gap:22px;}
   .home-pad{padding-top:14px;}
   .home-hero-right{width:100%;}
   .widget-dyn-grid, .widget-dyn-grid.bento{grid-template-columns:1fr !important;}
@@ -73,8 +73,8 @@
   .prompt-box{width:100%; max-width:100%;}
   .hh-quicklinks{flex-wrap:wrap; justify-content:center;}
   .guest-banner{max-width:none;}
-  .dure-stage{--S:240px;}
-  .app:not(.home-landing-mode) .dure-stage{--S:170px;}
+  .dure-stage{--S:270px;}
+  .app:not(.home-landing-mode) .dure-stage{--S:200px;}
 
   /* ---- 마이페이지 · 프로필 · 팀원 ---- */
   .mypage-head{flex-wrap:wrap; gap:12px;}
