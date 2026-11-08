@@ -20,31 +20,38 @@ function wgPreview(id){
   if(id==='notes') return title('📝', '최근 회의록')+row('#22D3EE',76)+row('#8B5CF6',54);
   return '';
 }
+var wgFilter = 'all';
+function wgSetFilter(f){ wgFilter = f; wgRender(); }
 function wgRender(){
   var q = ((document.getElementById('wgSearch') || {}).value || '').trim().toLowerCase();
-  var list = WG_CATALOG.filter(function(w){ return !q || (w.name + ' ' + w.desc).toLowerCase().indexOf(q) >= 0; });
-  var l = document.getElementById('wgList'), g = document.getElementById('wgGrid'); if(!l || !g) return;
-  l.innerHTML = ''; g.innerHTML = '';
+  var list = WG_CATALOG.filter(function(w){
+    var on = wgShown(w.id);
+    if(wgFilter === 'on' && !on) return false; if(wgFilter === 'off' && on) return false;
+    return !q || (w.name + ' ' + w.desc).toLowerCase().indexOf(q) >= 0;
+  });
+  var g = document.getElementById('wgGrid'); if(!g) return;
+  g.innerHTML = '';
+  var plus = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  var check = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
   list.forEach(function(w){
     var on = wgShown(w.id);
-    var li = document.createElement('button'); li.type = 'button'; li.className = 'wg-li'; li.dataset.id = w.id;
-    li.innerHTML = '<span class="wg-lic" style="--wc:'+w.c+'">'+w.ic+'</span><span class="wg-ltx"><b></b><small></small></span><span class="wg-lck">'+(on ? '✓' : '')+'</span>';
-    li.querySelector('b').textContent = w.name; li.querySelector('small').textContent = w.size;
-    li.onclick = function(){ var t = document.getElementById('wgCard-'+w.id); if(t){ t.scrollIntoView({behavior:'smooth', block:'nearest'}); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); } };
-    l.appendChild(li);
-    var card = document.createElement('div'); card.className = 'wg-card' + (w.size === '넓게' ? ' wide' : ''); card.id = 'wgCard-'+w.id;
-    card.innerHTML = '<div class="wg-prev" style="--wc:'+w.c+'"><div class="wgp">'+wgPreview(w.id)+'</div><button type="button" class="wg-badge'+(on ? ' on' : '')+'" aria-label=""></button></div><div class="wg-cap"><b></b><small></small></div>';
+    var card = document.createElement('div'); card.className = 'wg-card' + (w.size === '넓게' ? ' wide' : '') + (on ? ' on' : ''); card.id = 'wgCard-'+w.id;
+    card.innerHTML = '<div class="wg-prev" style="--wc:'+w.c+'"><div class="wgp">'+wgPreview(w.id)+'</div></div>' +
+      '<div class="wg-foot"><span class="wg-lic" style="--wc:'+w.c+'">'+w.ic+'</span><div class="wg-cap"><b></b><small></small></div><button type="button" class="wg-act"></button></div>';
     card.querySelector('.wg-cap b').textContent = w.name; card.querySelector('.wg-cap small').textContent = w.desc;
-    var bd = card.querySelector('.wg-badge'); bd.setAttribute('aria-label', (on ? '제거: ' : '추가: ') + w.name); bd.innerHTML = on ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>' : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-    bd.onclick = function(){ setWidget(w.id, !wgShown(w.id)); wgRender(); if(wgShown(w.id)) pushToast('✅', w.name + ' 위젯을 추가했어요', '홈 화면에서 확인해 보세요.'); };
+    var bt = card.querySelector('.wg-act');
+    bt.className = 'wg-act' + (on ? ' on' : ''); bt.innerHTML = on ? check + '<span>추가됨</span>' : plus + '<span>추가</span>';
+    bt.setAttribute('aria-label', (on ? '홈에서 빼기: ' : '홈에 추가: ') + w.name); bt.title = on ? '눌러서 홈에서 빼기' : '홈에 추가';
+    bt.onclick = function(){ var was = wgShown(w.id); setWidget(w.id, !was); wgRender(); if(!was) pushToast('✅', w.name + ' 위젯을 추가했어요', '홈 화면에서 확인해 보세요. 꾹 눌러서 위치를 바꿀 수 있어요.'); };
     g.appendChild(card);
   });
-  if(!list.length) g.innerHTML = '<div class="wg-empty">검색 결과가 없어요</div>';
+  if(!list.length) g.innerHTML = '<div class="wg-none"><b>' + (q ? '검색 결과가 없어요' : (wgFilter === 'on' ? '아직 추가한 위젯이 없어요' : '모든 위젯을 추가했어요 🎉')) + '</b><span>' + (q ? '다른 이름으로 찾아 보세요.' : '') + '</span></div>';
   var n = WG_CATALOG.filter(function(w){ return wgShown(w.id); }).length;
-  var c = document.getElementById('wgCount'); if(c) c.textContent = '홈에 ' + n + '개 표시 중 · + 를 눌러 추가하세요';
+  var c = document.getElementById('wgCount'); if(c) c.textContent = '홈에 ' + n + ' / ' + WG_CATALOG.length + '개 올려 두었어요';
+  Array.prototype.forEach.call(document.querySelectorAll('.wg-seg button'), function(b){ b.classList.toggle('on', b.dataset.f === wgFilter); b.setAttribute('aria-pressed', b.dataset.f === wgFilter ? 'true' : 'false'); });
 }
-function wgOpen(){ wgToggleEdit(false); var m = document.getElementById('wgModal'); if(!m) return; var s = document.getElementById('wgSearch'); if(s) s.value = ''; wgRender(); m.classList.add('open'); }
-function wgClose(){ var m = document.getElementById('wgModal'); if(m) m.classList.remove('open'); }
+function wgOpen(){ wgToggleEdit(false); var m = document.getElementById('wgModal'); if(!m) return; var s = document.getElementById('wgSearch'); if(s) s.value = ''; wgFilter = 'all'; wgRender(); m.classList.add('open'); document.documentElement.classList.add('wg-modal-open'); }
+function wgClose(){ var m = document.getElementById('wgModal'); if(m) m.classList.remove('open'); document.documentElement.classList.remove('wg-modal-open'); }
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ var m = document.getElementById('wgModal'); if(m && m.classList.contains('open')) wgClose(); else if(document.getElementById('widgetGrid') && document.getElementById('widgetGrid').classList.contains('editing')) wgToggleEdit(false); } });
 /* 보이는 위젯이 하나도 없으면(처음 실행 포함) 빈 상태 안내를 보여준다 */
 function wgSyncEmpty(){
@@ -69,6 +76,8 @@ function saveWidgetPrefs(){
     var all = Array.from(document.querySelectorAll('.dyn-widget'));
     localStorage.setItem('root_home_widgets', JSON.stringify(all.filter(function(w){ return !w.hidden; }).map(function(w){ return w.dataset.widget; })));
     localStorage.setItem('root_home_widget_order', JSON.stringify(all.map(function(w){ return w.dataset.widget; })));
+    var wide = {}; all.forEach(function(w){ wide[w.dataset.widget] = w.classList.contains('wide'); });                 // 넓게/보통 (사용자가 ↔ 로 바꾼 크기)
+    localStorage.setItem('root_home_widget_wide', JSON.stringify(wide));
   }catch(e){}
 }
 function loadWidgetPrefs(){
@@ -81,6 +90,8 @@ function loadWidgetPrefs(){
       var tw = grid.querySelector('.dyn-widget[data-widget="team"]'), td = grid.querySelector('.dyn-widget[data-widget="today"]');
       if(tw && td && order.indexOf('team') < 0) grid.insertBefore(tw, td.nextSibling);
     }
+    var wideRaw = localStorage.getItem('root_home_widget_wide');
+    if(wideRaw && grid){ var wide = JSON.parse(wideRaw); Object.keys(wide).forEach(function(id){ var c = grid.querySelector('.dyn-widget[data-widget="'+id+'"]'); if(c) c.classList.toggle('wide', !!wide[id]); }); }
     var raw = localStorage.getItem('root_home_widgets');
     if(!raw) return;
     var ids = JSON.parse(raw);
@@ -88,26 +99,7 @@ function loadWidgetPrefs(){
   }catch(e){}
   wgSyncEmpty();
 }
-/* 편집 모드: 흔들리는 카드 + 빼기(−) 배지 + 끌어서 순서 바꾸기 */
-function wgToggleEdit(force){
-  var grid = document.getElementById('widgetGrid'); if(!grid) return;
-  var on = (typeof force === 'boolean') ? force : !grid.classList.contains('editing');
-  grid.classList.toggle('editing', on);
-  var b = document.getElementById('wgEditBtn'); if(b){ b.textContent = on ? '완료' : '편집'; b.classList.toggle('active', on); }
-  grid.querySelectorAll('.dyn-widget').forEach(function(c){ c.draggable = on; });
-}
-(function(){
-  var grid = document.getElementById('widgetGrid'); if(!grid) return;
-  var dragging = null;
-  grid.addEventListener('dragstart', function(e){ var c = e.target.closest && e.target.closest('.dyn-widget'); if(!c || !grid.classList.contains('editing')) { e.preventDefault(); return; } dragging = c; c.classList.add('dragging'); try{ e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.widget); }catch(x){} });
-  grid.addEventListener('dragover', function(e){
-    if(!dragging) return; e.preventDefault();
-    var over = e.target.closest('.dyn-widget'); if(!over || over === dragging || over.hidden) return;
-    var r = over.getBoundingClientRect(), after = (e.clientY - r.top) > r.height / 2 && (e.clientX - r.left) > r.width / 2 || (e.clientY - r.top) > r.height * .75;
-    grid.insertBefore(dragging, after ? over.nextSibling : over);
-  });
-  grid.addEventListener('dragend', function(){ if(dragging) dragging.classList.remove('dragging'); dragging = null; saveWidgetPrefs(); });
-})();
+/* 편집 모드(꾹 누르기 · 끌어서 옮기기 · − 빼기 · ↔ 크기)는 home-widget-edit.js 에 있어요 */
 
 /* ---- 살아 있는 위젯: 진짜 데이터로 채운다 ---- */
 var wgLiveCache = {events:{at:0, data:null}, community:{at:0, data:null}};
