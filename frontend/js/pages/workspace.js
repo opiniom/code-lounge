@@ -1375,7 +1375,8 @@ async function runCode(opts) {
   if (!target) { wsLangAlert(WS_RUN_LABEL[lang] || lang, wsExt(fobj.path || fobj.tab)); return; }
   var isLocal = target.kind === 'local';
   if (wantDbg) {                                       // 🐞 디버그: 서버의 파이썬·자바스크립트·자바만 한 줄씩 볼 수 있다. 그 밖의 언어는 그냥 실행하고 에러 설명을 도와준다
-    if (isLocal) { wsRunNotice('내 PC 에서는 디버그를 쓸 수 없어요', '지금 실행 위치가 "내 PC" 로 되어 있어요. 위의 실행 위치를 서버로 바꾸면 디버그를 쓸 수 있어요. (그냥 ▶ 실행은 지금도 돼요)'); return; }
+    if (isLocal && wsDbgSupported(lang) && authToken) { target = { kind: 'server', ver: null, options: target.options }; isLocal = false; pushToast('🐞', '이번 디버그는 서버에서 실행해요', '디버그(한 줄씩 보기)는 서버에서만 돼요. 평소 실행은 그대로 "내 PC" 로 돼요.'); }   // 내 PC 러너에는 디버거가 없어서, 이번 한 번만 서버로 돌린다
+    else if (isLocal && wsDbgSupported(lang)) { wsRunNotice('로그인하면 디버그를 쓸 수 있어요', '디버그는 서버에서 실행돼서 로그인이 필요해요. (그냥 ▶ 실행은 로그인 없이 내 PC 로 돼요)'); return; }
     if (!wsDbgSupported(lang)) { wantDbg = false; dbgFallback = true; }
   }
   if (!isLocal && !authToken) {
@@ -1482,7 +1483,7 @@ async function runCode(opts) {
         if (msg.data) appendLiveOutput(msg.data, false);
         if (!isLocal && msg.code && wsNeedsDisplay(runText)) wsGuiHint(lang);       // 창(GUI)을 띄우는 프로그램이라 서버에서는 실패했다 → 이유와 해결 방법을 알려 준다
         else if (!isLocal && msg.code && lang === 'python' && wsMissingModule(runText)) wsPkgHint(wsMissingModule(runText), lang);     // 서버에 없는 라이브러리(pyautogui 등)
-        if (msg.code && msg.code > 0 && !isLocal && typeof wsErrAfterRun === 'function' && !(runText && wsNeedsDisplay(runText))) {      // 에러로 끝났다 → 에러 줄 표시 + 'AI에게 물어보기'
+        if (msg.code && msg.code > 0 && typeof wsErrAfterRun === 'function' && !(runText && wsNeedsDisplay(runText))) {      // 에러로 끝났다 → 에러 줄 표시 + 'AI에게 물어보기'
           try { wsErrAfterRun({ lang: lang, code: srcRaw, err: errText, fname: fobj.path || fobj.tab, key: runKey }); } catch (e3) {}
         }
         finishRun(msg.code);

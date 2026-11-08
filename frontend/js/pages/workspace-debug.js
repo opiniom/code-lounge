@@ -223,7 +223,14 @@ function wsErrClear() {
   if (WSDBG.err) WSDBG.err.clear();
   try { var model = monacoEditor.getModel(); if (model) monaco.editor.setModelMarkers(model, 'duresync-err', []); } catch (e) {}
 }
-function wsErrMark(errLine, causeLine, errMsg, causeMsg) {
+/* 컴파일 에러는 한 번에 여러 개가 나오므로(자바·C) 줄마다 자기 메시지와 함께 모두 표시한다 */
+function wsErrCompileList(lang, text) {
+  if (lang !== 'java' && lang !== 'c' && lang !== 'cpp') return [];
+  var re = /:(\d+)(?::\d+)?:\s*(?:fatal )?error:\s*([^\n]*)/g, m, out = [], seen = {};
+  while ((m = re.exec(text)) && out.length < 10) { if (!seen[m[1]]) { seen[m[1]] = 1; out.push({ line: +m[1], msg: m[2].trim() }); } }
+  return out;
+}
+function wsErrMark(errLine, causeLine, errMsg, causeMsg, more) {
   if (!WSDBG.inited) return;
   var model = monacoEditor.getModel(); if (!model) return;
   var max = model.getLineCount(), marks = [], decos = [];
@@ -234,6 +241,7 @@ function wsErrMark(errLine, causeLine, errMsg, causeMsg) {
   }
   if (causeLine && causeLine !== errLine) add(causeLine, monaco.MarkerSeverity.Warning, causeMsg || '여기가 진짜 원인이에요', 'ws-cause-line', 'ws-cause-glyph');
   add(errLine, monaco.MarkerSeverity.Error, errMsg || '에러가 난 줄', 'ws-err-line', 'ws-err-glyph');
+  (more || []).forEach(function(x) { if (x.line !== errLine && x.line !== causeLine) add(x.line, monaco.MarkerSeverity.Error, x.msg, 'ws-err-line', 'ws-err-glyph'); });
   monaco.editor.setModelMarkers(model, 'duresync-err', marks);
   WSDBG.err.set(decos);
 }
@@ -241,19 +249,23 @@ function wsErrMark(errLine, causeLine, errMsg, causeMsg) {
 /* 실행이 에러로 끝났을 때 (workspace.js 의 finishRun 에서 부른다) */
 function wsErrAfterRun(info) {
   WSERR.last = info;
-  var err = String(info.err || '').trim();
+  var err = String(info.err || '').replace(/\x1b\[[0-9;]*m/g, '').trim();       // 색 코드(내 PC 러너·서버가 붙인 것)는 뺀다
+  info.err = err;
   if (!err) return;
   var line = wsErrLineOf(info.lang, err, info.fname);
   info.errLine = line;
   var sameFile = (typeof currentFileKey !== 'undefined') && info.key === currentFileKey;
-  if (sameFile && line) wsErrMark(line, null, wsErrHeadline(err));
+  var list = wsErrCompileList(info.lang, err);
+  info.errList = list;
+  if (list.length) line = info.errLine = list[0].line;
+  if (sameFile && line) wsErrMark(line, null, list.length ? list[0].msg : wsErrHeadline(err), null, list);
   var log = document.getElementById('termLiveLog');
   if (!log) return;
   var box = document.createElement('div');
   box.className = 'ws-err-box';
-  box.innerHTML = '<div class="eb-row">' + (line ? '📍 에러가 난 줄: <b>' + line + '번 줄</b> <button type="button" class="eb-link" data-go="' + line + '">줄로 이동</button>' : '에러가 났어요') +
-    '</div><button type="button" class="eb-ai" data-ai="1">🤖 AI에게 쉽게 설명 듣기</button>' +
-    '<div class="eb-sub">에러 글이 어려우면 눌러 보세요. 어디가 왜 틀렸는지 쉬운 말로 알려 줘요.</div>';
+  box.innerHTML = '<div class="eb-row">' + (line ? '📍 에러가 난 줄: <b>' + (list.length > 1 ? list.map(function(x) { return x.line; }).join('번, ') : line) + '번 줄</b> <button type="button" class="eb-link" data-go="' + line + '">줄로 이동</button>' : '에러가 났어요') +
+    '</div>' + (authToken ? '<button type="button" class="eb-ai" data-ai="1">🤖 AI에게 쉽게 설명 듣기</button>' +
+    '<div class="eb-sub">에러 글이 어려우면 눌러 보세요. 어디가 왜 틀렸는지 쉬운 말로 알려 줘요.</div>' : '<div class="eb-sub">로그인하면 AI가 에러를 쉬운 말로 설명해 줘요.</div>');
   box.addEventListener('click', function(ev) {
     var t = ev.target;
     if (t && t.getAttribute('data-go')) wsDbgGoto(+t.getAttribute('data-go'));
@@ -283,7 +295,7 @@ async function wsErrAsk(box, btn) {
   var sameFile = (typeof currentFileKey !== 'undefined') && info.key === currentFileKey;
   if (sameFile) {
     var el = out.error_line || info.errLine, cl = out.cause_line || el;
-    wsErrMark(el, cl, '에러가 보고된 줄: ' + wsErrHeadline(info.err), '여기가 진짜 원인이에요: ' + (out.summary || ''));
+    wsErrMark(el, cl, '에러가 보고된 줄: ' + ((info.errList && info.errList[0] && info.errList[0].msg) || wsErrHeadline(info.err)), '여기가 진짜 원인이에요: ' + (out.summary || ''), info.errList);
     if (cl) wsDbgGoto(cl);
   }
 }

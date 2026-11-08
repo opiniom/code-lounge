@@ -247,9 +247,16 @@ def rule_explain(lang: str, code: str, err: str, fname: str = "") -> Dict[str, A
     lines = code.split("\n")
     if err_line is not None and not (1 <= err_line <= len(lines) + 1):
         err_line = None
+    # 컴파일 에러가 여러 개(자바·C)면 맨 위 첫 에러부터 설명한다 (뒤의 에러는 앞을 고치면 같이 사라지는 경우도 많다)
+    focus, n_err = err, 0
+    if lang in ("java", "c", "cpp"):
+        starts = [m.start() for m in re.finditer(r"^[^\n]*?:\d+(?::\d+)?:\s*(?:fatal )?error:", err, re.M)]
+        n_err = len(starts)
+        if starts:
+            focus = err[starts[0]:(starts[1] if len(starts) > 1 else len(err))]
     hit = None
     for pat, summary, expl, steps, concept in _RULES:
-        m = re.search(pat, err)
+        m = re.search(pat, focus)
         if m:
             hit = (m, summary, expl, steps, concept)
             break
@@ -293,6 +300,8 @@ def rule_explain(lang: str, code: str, err: str, fname: str = "") -> Dict[str, A
             where = next((i + 1 for i, ln in enumerate(lines) if re.search(r"\b%s\b\s*=|def\s+%s\b|\bfor\s+%s\b|\blet\s+%s\b|\bconst\s+%s\b|\bvar\s+%s\b" % ((re.escape(close[0]),) * 6), ln)), None)
             if where and err_line and where != err_line:
                 note = "에러가 난 %d번 줄에서 '%s' 라고 썼는데, %d번 줄에서는 '%s' 라는 이름으로 만들었어요. 이름을 똑같이 맞춰야 해요." % (err_line, name, where, close[0])
+    if n_err > 1:
+        note = (note + " " if note else "") + "에러가 모두 %d개 나왔어요. 맨 위(첫 번째) 에러부터 고치고 다시 실행해 보세요. 뒤의 에러는 앞을 고치면 같이 사라지기도 해요." % n_err
     return {"summary": summary, "error_line": err_line, "cause_line": cause, "line_note": note, "explanation": expl, "steps": steps,
             "fixed_code": "", "concept": concept, "engine": "rules", "known": bool(hit)}
 

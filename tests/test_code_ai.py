@@ -83,6 +83,16 @@ if javac:
     chk("java 중괄호 짝 안 맞음 → 원인은 여는 중괄호 줄", r["known"] and r["cause_line"] in (1, 2), (r["error_line"], r["cause_line"], e[:200]))
     shutil.rmtree(d, ignore_errors=True)
 
+# 4-2) 컴파일 에러가 여러 개일 때는 첫 번째 에러를 설명한다
+if javac:
+    d = tempfile.mkdtemp()
+    code = 'public class Main {\n    public static void main(String[] args) {\n        int number = "100";\n        int r = 10 / 0;\n        System.out.println(total);\n    }\n}\n'
+    open(os.path.join(d, "Main.java"), "w").write(code); e = run([javac, "-encoding", "UTF-8", "Main.java"], d)
+    r = ex("java", code, e, "Main.java")
+    chk("java 여러 컴파일 에러: 첫 에러(자료형 불일치, 3번 줄)를 설명", r["error_line"] == 3 and "종류" in r["summary"] + r["explanation"] and "total" not in r["summary"], (r["summary"], r["error_line"]))
+    chk("java 여러 컴파일 에러: 개수 안내", "2개" in r["line_note"], r["line_note"])
+    shutil.rmtree(d, ignore_errors=True)
+
 # 5) 모르는 에러도 죽지 않고 안내
 r = ex("go", "package main\n", "weird thing happened at the end", "main.go")
 chk("모르는 에러도 일반 안내가 나온다", r["summary"] and r["steps"] and not r["known"], r)
