@@ -191,6 +191,16 @@
           </div>
           <div class="dure-proj" id="dureProj" hidden></div>
           <div class="guest-banner" id="guestBanner"><span class="gb-ic">👋</span><span class="gb-tx"><b>게스트로 둘러보는 중이에요</b><small>로그인하면 내 프로젝트·팀 채팅·AI가 열려요</small></span><button type="button" onclick="openLogin()">로그인</button></div>
+          <div class="home-cta" id="homeCta">
+            <button type="button" class="cta-btn primary" id="homeNewProjBtn" onclick="homeNewProject()">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              <span class="cta-tx"><b>새 프로젝트 만들기</b><small>이름만 정하면 바로 시작해요</small></span>
+            </button>
+            <button type="button" class="cta-btn" id="homeInviteBtn" onclick="openInviteFromHero()">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M18 8v6M15 11h6"/></svg>
+              <span class="cta-tx"><b>팀원 초대하기</b><small id="homeInviteSub">링크 하나로 팀원이 합류해요</small></span>
+            </button>
+          </div>
           <span class="hh-eyebrow">두레 · together, since forever</span>
           <h1 class="hh-brand" aria-label="DureSync"><span class="lt" style="--i:0">D</span><span class="lt" style="--i:1">u</span><span class="lt" style="--i:2">r</span><span class="lt" style="--i:3">e</span><span class="lt sy" style="--i:4">S</span><span class="lt sy" style="--i:5">y</span><span class="lt sy" style="--i:6">n</span><span class="lt sy" style="--i:7">c</span></h1>
           <p class="hh-tagline">Connect <i>·</i> Work <i>·</i> Grow</p>
@@ -198,15 +208,11 @@
           <p class="hh-tag-en">The old Korean way of working together — rebuilt with AI.</p>
           <p class="hh-rotor"><span class="rot-label">한곳에서</span><span class="rot"><i>팀 채팅</i><i>음성 통화</i><i>일정 관리</i><i>회의록 정리</i><i>코드 작성</i></span></p>
 
-          <div class="prompt-box">
-            <textarea id="promptInput" rows="1" maxlength="120" aria-label="프로젝트 이름" placeholder="프로젝트 이름을 입력하세요" oninput="autoGrow(this)" onkeydown="handlePromptKeydown(event)"></textarea>
-            <div class="prompt-actions">
-              <div class="left">
-                <button type="button" class="pill-btn" onclick="homeAddEvent()" title="캘린더에 일정 바로 추가"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M9 3.5v4M15 3.5v4M12 13v4M10 15h4"/></svg>일정 추가</button>
-                <button type="button" class="pill-btn" id="homeJoinBtn" onclick="homeToggleJoin()" title="팀원에게 받은 초대 링크로 참여"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>초대 링크로 참여</button>
-                <button type="button" class="pill-btn" onclick="homeRecruit()" title="커뮤니티에 팀원 모집 글 쓰기"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8v6M14 11h6"/></svg>팀원 구하기</button>
-              </div>
-              <button class="send-btn" onclick="createFromPrompt()" title="프로젝트 만들기 (Enter)" aria-label="프로젝트 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+          <div class="home-quick">
+            <div class="home-quick-row">
+              <button type="button" class="pill-btn" onclick="homeAddEvent()" title="캘린더에 일정 바로 추가"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M9 3.5v4M15 3.5v4M12 13v4M10 15h4"/></svg>일정 추가</button>
+              <button type="button" class="pill-btn" id="homeJoinBtn" onclick="homeToggleJoin()" title="팀원에게 받은 초대 링크로 참여"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>초대 링크로 참여</button>
+              <button type="button" class="pill-btn" onclick="homeRecruit()" title="커뮤니티에 팀원 모집 글 쓰기"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M17 8v6M14 11h6"/></svg>팀원 구하기</button>
             </div>
             <div class="join-row" id="homeJoinRow" hidden>
               <input type="text" id="homeJoinInput" placeholder="받은 초대 링크를 붙여넣으세요" autocomplete="off" spellcheck="false" onkeydown="if(isEnter(event)){event.preventDefault();homeJoin();}">
@@ -750,17 +756,18 @@
   <!-- ============ COMMUNITY ============ -->
   <section class="view" data-view="community">
     <div class="page-pad">
-      <div class="section-head"><div><span class="view-eyebrow">Community</span><h2>커뮤니티</h2><span class="sub">질문하고, 팀원을 찾고, 만들고 있는 걸 자랑해요</span></div><button class="btn primary" onclick="cmOpenEditor()">✏️ 글쓰기</button></div>
+      <div class="section-head"><div><span class="view-eyebrow">Community</span><h2>커뮤니티</h2><span class="sub">과제 질문부터 공모전 팀원, 스터디까지 — 학생들끼리 같이 해결해요</span></div><button class="btn primary" id="cmWriteBtn" onclick="cmOpenEditor()">글쓰기</button></div>
 
       <div class="cm-layout">
         <div class="cm-main">
           <div class="cm-tabs" id="cmTabs">
             <button class="active" data-cat="all" onclick="cmSetCat('all')">전체</button>
-            <button data-cat="question" onclick="cmSetCat('question')">❓ 질문</button>
-            <button data-cat="recruit" onclick="cmSetCat('recruit')">🤝 팀원 모집</button>
-            <button data-cat="showcase" onclick="cmSetCat('showcase')">🚀 프로젝트 자랑</button>
-            <button data-cat="share" onclick="cmSetCat('share')">💡 정보·노하우</button>
-            <button data-cat="free" onclick="cmSetCat('free')">💬 자유</button>
+            <button data-cat="question" onclick="cmSetCat('question')">질문·과제 도움</button>
+            <button data-cat="recruit" onclick="cmSetCat('recruit')">팀원 구하기</button>
+            <button data-cat="study" onclick="cmSetCat('study')">스터디 모집</button>
+            <button data-cat="showcase" onclick="cmSetCat('showcase')">결과물·피드백</button>
+            <button data-cat="share" onclick="cmSetCat('share')">정보·후기</button>
+            <button data-cat="free" onclick="cmSetCat('free')">자유</button>
           </div>
           <div class="cm-toolbar">
             <input type="search" id="cmSearch" placeholder="제목·내용·태그 검색" oninput="cmOnSearch()" autocomplete="off">
@@ -804,16 +811,17 @@
       <div class="cm-ed-hint" id="cmEdHint"></div>
       <div class="cm-field" id="cmEdEvent" hidden></div>
       <div class="cm-field"><label>제목</label><input type="text" id="cmEdTitleInput" maxlength="120" placeholder="제목을 입력하세요" autocomplete="off"></div>
+      <div class="cm-fgrid" id="cmEdFields" hidden></div>
       <div class="cm-recruit-box" id="cmEdRecruit" hidden>
         <div class="cm-field"><label>모집할 내 프로젝트 <small>(지원자를 수락하면 이 프로젝트 팀원이 돼요)</small></label><select id="cmEdProject"></select></div>
         <div class="cm-field"><label>찾는 역할 <small>(Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdRoles"><input type="text" id="cmEdRoleInput" maxlength="20" placeholder="역할 입력 후 Enter" autocomplete="off"></div><div class="cm-suggest" id="cmEdRoleSuggest"></div></div>
         <div class="cm-row2"><div class="cm-field"><label>모집 인원</label><input type="number" id="cmEdSlots" min="1" max="20" value="1"></div><div class="cm-field"><label>모집 마감일 <small>(선택)</small></label><input type="date" id="cmEdDeadline"></div></div>
       </div>
-      <div class="cm-field" id="cmEdShowcase" hidden><label>자랑할 프로젝트 <small>(선택)</small></label><select id="cmEdShowProject"></select></div>
-      <div class="cm-field"><div class="cm-body-head"><label>내용</label><span><button type="button" class="cm-link" id="cmEdPrevBtn" onclick="cmTogglePreview()">미리보기</button> <small id="cmEdCount">0 / 10000</small></span></div>
+      <div class="cm-field" id="cmEdShowcase" hidden><label>소개할 프로젝트 <small>(선택)</small></label><select id="cmEdShowProject"></select></div>
+      <div class="cm-field"><div class="cm-body-head"><label id="cmEdBodyLabel">내용</label><span><button type="button" class="cm-link" id="cmEdPrevBtn" onclick="cmTogglePreview()">미리보기</button> <small id="cmEdCount">0 / 10000</small></span></div>
         <textarea id="cmEdBody" rows="9" maxlength="10000" placeholder="내용을 입력하세요. **굵게**, `코드`, ```코드블록```, - 목록, 링크(https://…)를 쓸 수 있어요" oninput="cmEdCount()"></textarea>
         <div class="cm-preview" id="cmEdPreview" hidden></div></div>
-      <div class="cm-field"><label>태그 <small>(최대 5개, Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdTags"><input type="text" id="cmEdTagInput" maxlength="20" placeholder="태그 입력 후 Enter" autocomplete="off"></div></div>
+      <div class="cm-field"><label>태그 <small>(최대 5개, Enter로 추가)</small></label><div class="cm-chipinput" id="cmEdTags"><input type="text" id="cmEdTagInput" maxlength="20" placeholder="태그 입력 후 Enter" autocomplete="off"></div><div class="cm-suggest" id="cmEdTagSuggest"></div></div>
       <div class="cm-ed-foot"><span class="cm-ed-note" id="cmEdNote"></span><button class="btn ghost" onclick="cmCloseEditor()">취소</button><button class="btn primary" id="cmEdSubmit" onclick="cmSubmitEditor()">올리기</button></div>
     </div>
   </div>

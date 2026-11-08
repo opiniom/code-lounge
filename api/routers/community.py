@@ -1,4 +1,4 @@
-"""커뮤니티 API: 질문 · 팀원 모집 · 프로젝트 자랑 · 정보·노하우 · 자유.
+"""커뮤니티 API: 질문·과제 도움 · 팀원 구하기 · 스터디 모집 · 결과물·피드백 · 정보·후기 · 자유.
 
 다른 개발자 커뮤니티(OKKY, DEV, GeekNews, 디스콰이엇, 인프런)의 구조를 비교해 가져온 것
 - 용도별 분류 + 최신/인기/댓글 많은 순, 태그, 검색 (OKKY·DEV)
@@ -29,7 +29,7 @@ from services.auth_service import get_current_user, get_current_user_optional
 router = APIRouter(prefix="/api/community", tags=["Community"])
 
 CATEGORIES = {
-    "question": "질문", "recruit": "팀원 모집", "showcase": "프로젝트 자랑", "share": "정보·노하우", "free": "자유",
+    "question": "질문·과제 도움", "recruit": "팀원 구하기", "study": "스터디 모집", "showcase": "결과물·피드백", "share": "정보·후기", "free": "자유",
 }
 HIDE_AFTER_REPORTS = 5            # 서로 다른 사용자 신고가 이만큼 쌓이면 목록에서 가린다
 LIMITS = {"post_per_day": 10, "comment_per_hour": 40, "apply_per_day": 20, "report_per_day": 20}
@@ -50,9 +50,23 @@ def _tags(raw: Optional[str]) -> List[str]:
     return [t for t in v if isinstance(t, str)][:5]
 
 
+_FORM_LINE = re.compile(r"^\s*-\s+\*\*[^*\n]{1,30}\*\*:\s.*$")
+
+
+def _strip_form_lines(body: str) -> str:
+    """글쓰기 양식으로 고른 항목(맨 위의 '- **항목**: 값' 목록)은 목록 미리보기에서 뺀다 — 카드의 칩·태그와 같은 내용이 되풀이되지 않게.
+    상세 내용이 없으면(항목만 고른 글) 원문 그대로 둔다."""
+    lines = (body or "").split("\n")
+    i = 0
+    while i < len(lines) and (_FORM_LINE.match(lines[i]) or not lines[i].strip()):
+        i += 1
+    rest = "\n".join(lines[i:]).strip()
+    return rest if rest else (body or "")
+
+
 def _preview(body: str) -> str:
     """목록용 미리보기: 마크다운 기호를 걷어내고 한 줄로"""
-    t = re.sub(r"```.*?```", " [코드] ", body or "", flags=re.S)
+    t = re.sub(r"```.*?```", " [코드] ", _strip_form_lines(body), flags=re.S)
     t = re.sub(r"^\s*[-*•]\s+", " · ", t, flags=re.M)
     t = re.sub(r"^#{1,3}\s+|^>\s?", "", t, flags=re.M)
     t = re.sub(r"\*\*([^*]+)\*\*|`([^`]+)`", lambda m: m.group(1) or m.group(2), t)
@@ -618,10 +632,11 @@ async def seed_community(session_maker) -> None:
             tags=json.dumps(["공지"], ensure_ascii=False),
             body=("DureSync 커뮤니티에 오신 걸 환영해요 👋\n\n"
                   "**이런 글을 올릴 수 있어요**\n"
-                  "- ❓ 질문: 막힌 걸 물어보고, 도움이 된 답변을 채택해요\n"
-                  "- 🤝 팀원 모집: 공모전·해커톤·프로젝트 팀원을 찾아요. 지원을 수락하면 바로 프로젝트 팀원이 돼요\n"
-                  "- 🚀 프로젝트 자랑: 만들고 있는 것을 보여주세요\n"
-                  "- 💡 정보·노하우, 💬 자유\n\n"
+                  "- ❓ 질문·과제 도움: 막힌 과제·코드를 물어보고, 도움이 된 답변을 채택해요\n"
+                  "- 🤝 팀원 구하기: 공모전·해커톤·팀플 팀원을 찾아요. 지원을 수락하면 바로 프로젝트 팀원이 돼요\n"
+                  "- 📚 스터디 모집: 코딩테스트·자격증·과제를 같이 할 사람을 찾아요\n"
+                  "- 🚀 결과물·피드백: 만든 걸 보여주고 의견을 받아요\n"
+                  "- 💡 정보·후기, 💬 자유\n\n"
                   "**함께 지켜요**\n"
                   "- 서로 존중하고, 개인정보와 광고성 링크는 올리지 않아요\n"
                   "- 신고가 쌓인 글은 자동으로 가려져요\n\n"

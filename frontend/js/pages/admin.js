@@ -92,7 +92,7 @@ function mpTab(tab){
     rows.forEach(function(p){
       var cat = (typeof CM_CATS !== 'undefined' && CM_CATS[p.category]) || { label:'글', ic:'', color:'#64748B' };
       var r = mpEl('div', 'mp-row'), main = mpEl('div', 'mp-main'); main.appendChild(mpEl('b', null, p.title));
-      var sub = mpEl('div', 'mp-sub'); var tg = mpEl('span', 'mp-tag', cat.ic + ' ' + cat.label); sub.appendChild(tg);
+      var sub = mpEl('div', 'mp-sub'); var tg = mpEl('span', 'mp-tag', cat.label); sub.appendChild(tg);
       sub.appendChild(mpEl('span', null, '♡ ' + p.like_count + ' · 💬 ' + p.comment_count + ' · ☆ ' + p.bookmark_count)); sub.appendChild(mpEl('span', null, cmAgo(p.created_at)));
       if(p.category === 'question' && p.solved) sub.appendChild(mpEl('span', 'mp-tag', '✓ 해결됨')); if(p.category === 'recruit' && p.recruit) sub.appendChild(mpEl('span', 'mp-tag', p.recruit.open ? '모집중' : '모집 마감'));
       main.appendChild(sub); main.onclick = function(){ goView('community'); cmOpenPost(p.id); }; r.appendChild(main);

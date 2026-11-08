@@ -246,24 +246,14 @@ function homeRecruit(){
   if(cmNeedLogin('팀원 모집 글을 쓰려면 로그인이 필요해요')) return;
   goView('community'); cmOpenEditor({cat:'recruit'});
 }
-function handlePromptKeydown(e){
-  if(isEnter(e) && !e.altKey){
-    e.preventDefault();
-    createFromPrompt();
+/* 홈의 [＋ 새 프로젝트 만들기] 버튼: 스크롤해서 입력창을 찾을 필요 없이, 누르면 바로 이름을 적는 창이 뜬다 */
+function homeNewProject(){
+  if(!calApiMode){
+    pushToast('🔒','로그인하면 프로젝트를 만들 수 있어요','로그인하면 파일·회의록·캘린더·팀 채팅이 프로젝트 단위로 열려요.');
+    if(typeof openLogin === 'function') openLogin();
+    return;
   }
-}
-function createFromPrompt(){
-  var input = document.getElementById('promptInput');
-  function go(){
-    var v = input.value.trim();
-    if(!v) return;
-    input.value = '';
-    autoGrow(input);
-    addProjectFromPrompt(v);
-    dismissHomeLanding();
-  }
-  // 조합이 끝나지 않은 상태에서 값을 비우면 마지막 글자가 입력창에 다시 남는다 → 먼저 입력을 확정(blur)하고 처리
-  if(imeComposing){ input.blur(); setTimeout(go, 30); } else go();
+  openNewProjectModal();
 }
 var myProjects = [];
 var currentWorkspaceId = null;
@@ -290,7 +280,7 @@ function renderProjRow(){
   if(!row) return;
   row.innerHTML = '';
   if(myProjects.length===0){
-    row.innerHTML = "<p class='proj-empty'>아직 워크스페이스가 없어요. 위 입력창에 프로젝트를 설명하면 여기에 만들어져요.</p>";
+    row.innerHTML = "<p class='proj-empty'>아직 프로젝트가 없어요. <button type='button' class='btn primary proj-empty-btn' onclick='homeNewProject()'>＋ 새 프로젝트 만들기</button></p>";
   } else {
     var totalPages = Math.ceil(myProjects.length / PROJ_PAGE_SIZE);
     if(projPageIndex > totalPages-1) projPageIndex = totalPages-1;

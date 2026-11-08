@@ -17,7 +17,7 @@ var SA_TABS = [
 ];
 var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'user.delete':'계정 삭제(탈퇴 처리)', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
   'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'lang.enable':'언어 공개', 'lang.disable':'언어 비공개', 'lang.install':'언어 설치', 'lang.default':'언어 기본 버전 지정', 'lang.remove':'언어 버전 삭제', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
-var SA_CATS = { question:'질문', recruit:'팀원 모집', showcase:'프로젝트 자랑', share:'정보 공유', free:'자유', comment:'댓글' };
+var SA_CATS = { question:'질문·과제 도움', recruit:'팀원 구하기', study:'스터디 모집', showcase:'결과물·피드백', share:'정보·후기', free:'자유', comment:'댓글' };
 
 /* ----- 작은 도구들 ----- */
 function saH(tag, attrs, kids){

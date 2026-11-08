@@ -1049,6 +1049,7 @@ function submitNewProject(){
   if (!name) return;
   closeNewProjectModal();
   addProjectFromPrompt(name);
+  if (typeof dismissHomeLanding === 'function') dismissHomeLanding();
 }
 
 function toggleSidebar() {

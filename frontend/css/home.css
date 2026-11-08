@@ -284,3 +284,25 @@ html[data-motion="reduce"] .dure-orbit, html[data-motion="reduce"] .dn span, htm
 .dure-proj-it{display:flex; align-items:center; gap:9px; padding:9px 10px; border:none; background:none; border-radius:11px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left;} .dure-proj-it:hover{background:var(--surface-2);} .dure-proj-it.on{background:var(--accent-soft);}
 .dure-proj-it b{flex:1; min-width:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .dure-proj-it small{color:var(--text-faint); font-size:11.5px;} .dure-proj-it i{font-style:normal; font-weight:800; color:var(--accent-ink); opacity:0;} .dure-proj-it.on i{opacity:1;}
 .app.home-landing-mode .dure-proj{margin-top:6px;}
+
+/* ---- 홈: 큰 버튼으로 [새 프로젝트 만들기] · [팀원 초대하기] (스크롤해서 입력창을 찾을 필요 없음) ---- */
+.home-cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; width:100%; margin:2px auto 0;}
+.cta-btn{
+  display:flex; align-items:center; gap:12px; text-align:left; cursor:pointer; min-width:250px; max-width:340px; flex:1 1 250px;
+  padding:14px 20px; border-radius:16px; border:1.5px solid var(--border-strong); background:var(--surface); color:var(--text);
+  box-shadow:var(--shadow-sm); transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease; font-family:inherit;
+}
+.cta-btn svg{flex:0 0 auto; color:var(--accent);}
+.cta-btn .cta-tx{display:flex; flex-direction:column; gap:2px; min-width:0;}
+.cta-btn b{font-size:16px; font-weight:700; letter-spacing:-.02em;}
+.cta-btn small{font-size:12.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cta-btn:hover{transform:translateY(-2px); border-color:var(--accent); box-shadow:var(--shadow-md);}
+.cta-btn:focus-visible{outline:3px solid rgba(59,130,246,.35); outline-offset:2px;}
+.cta-btn.primary{background:var(--brand-grad); border-color:transparent; color:#fff; box-shadow:0 10px 26px rgba(59,130,246,.32);}
+.cta-btn.primary svg, .cta-btn.primary small{color:rgba(255,255,255,.92);}
+.cta-btn.primary:hover{filter:brightness(1.06); box-shadow:0 14px 32px rgba(59,130,246,.42);}
+.home-quick{display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;}
+.home-quick-row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
+.home-quick .join-row{width:100%; max-width:520px;}
+.proj-empty .proj-empty-btn{margin-left:8px;}
+@media (max-width:640px){ .cta-btn{min-width:100%; max-width:100%;} }

@@ -212,14 +212,14 @@ class CallRoom(Base):
 
 
 # ======================================================================
-# 커뮤니티 (질문 · 팀원 모집 · 프로젝트 자랑 · 정보 공유 · 자유)
+# 커뮤니티 (질문·과제 도움 · 팀원 구하기 · 스터디 모집 · 결과물·피드백 · 정보·후기 · 자유)
 # ======================================================================
 class CommunityPost(Base):
     __tablename__ = "community_posts"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)   # NULL = 운영팀 글
-    category = Column(String(20), nullable=False, index=True)       # question | recruit | showcase | share | free
+    category = Column(String(20), nullable=False, index=True)       # question | recruit | study | showcase | share | free
     title = Column(String(150), nullable=False)
     body = Column(Text, nullable=False)
     tags = Column(Text, nullable=True)                              # JSON 배열

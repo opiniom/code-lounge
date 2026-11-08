@@ -5,8 +5,8 @@ function openInviteFromHero(){
   if(!calApiMode){ openInviteModal(); return; }                     // 로그인 안내
   var id = chatProject || (typeof calDefaultProject === 'function' && calDefaultProject()) || (myProjects[0] && myProjects[0].id) || null;
   if(!id || !calProjectById(id)){
-    pushToast('🗂️','먼저 프로젝트를 만들어 주세요','프로젝트 이름을 입력하면 바로 팀원을 초대할 수 있어요.');
-    var pi = document.getElementById('promptInput'); if(pi) pi.focus();
+    pushToast('🗂️','먼저 프로젝트를 만들어 주세요','프로젝트를 만든 뒤 [팀원 초대하기]를 누르면 초대 링크가 만들어져요.');
+    if(typeof openNewProjectModal === 'function') openNewProjectModal();
     return;
   }
   openInviteModal(id);
@@ -240,7 +240,7 @@ function renderTeamPage(){
   };
   fl.hidden = !cur; inv.hidden = !cur;
   if(!calApiMode){ empty('로그인하면 팀원을 볼 수 있어요', '프로젝트를 만들고 팀원을 초대하면 누가 접속 중인지 한눈에 보여요.', '로그인', openLogin); return; }
-  if(!cur){ empty('아직 프로젝트가 없어요', '프로젝트를 만들면 팀원을 초대하고 관리할 수 있어요.', '프로젝트 만들러 가기', function(){ goView('home'); var pi = document.getElementById('promptInput'); if(pi) setTimeout(function(){ pi.focus(); }, 200); }); return; }
+  if(!cur){ empty('아직 프로젝트가 없어요', '프로젝트를 만들면 팀원을 초대하고 관리할 수 있어요.', '＋ 새 프로젝트 만들기', function(){ homeNewProject(); }); return; }
   // 프로젝트 선택
   myProjects.forEach(function(p){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'tm-proj' + (p.id === cur.id ? ' on' : '');

@@ -297,7 +297,16 @@ function dureChip(id, text, onclick){
   if(!text){ c.hidden = true; c.onclick = null; c.classList.remove('click'); return; }
   c.hidden = false; c.textContent = text; c.classList.toggle('click', !!onclick); c.onclick = onclick || null;
 }
+/* 홈의 [팀원 초대하기] 버튼 설명을 지금 상태(로그인 전 / 프로젝트 없음 / 있음)에 맞게 바꾼다 */
+function homeCtaRefresh(){
+  var sub = document.getElementById('homeInviteSub'); if(!sub) return;
+  var hp = null; try { hp = homeProject(); } catch(e){}
+  if(!calApiMode) sub.textContent = '로그인하면 초대 링크를 만들 수 있어요';
+  else if(!hp) sub.textContent = '프로젝트를 만들면 초대할 수 있어요';
+  else sub.textContent = '‘' + hp.title + '’ 초대 링크 만들기';
+}
 function renderDureOrbit(){
+  homeCtaRefresh();
   var box = document.getElementById('dureOrbit'); if(!box) return;
   if(typeof CAL_TODAY === 'undefined' || !CAL_TODAY || !Array.isArray(calendarEvents)) return;   // 화면 코드가 다 불러와지기 전에는 건너뜀
   var team = dureTeammates();
