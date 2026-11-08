@@ -3,6 +3,8 @@
 워크스페이스의 '▶ 실행' 버튼: 프로그램이 돌아가는 동안 키보드 입력(input)을 stdin 으로 바로 넘겨 주고, 출력은 실시간으로 흘려보낸다.
 통신(클라이언트 → 서버): {action:"start", language, source_code, file_name?, runtime_version?} · {action:"input", data} · {action:"stop"}
 통신(서버 → 클라이언트): {type:"stdout"|"stderr", data} · {type:"exit", code, data?}
+디버그: start 에 debug:true · breakpoints:[줄 번호…] 를 주면 파이썬·자바스크립트·자바를 디버거(services/debugger)로 띄운다.
+  클라이언트 → 서버 {action:"dbg", cmd:"continue"|"next"|"step"|"out"|"breakpoints"|"stop", lines?} · 서버 → 클라이언트 {type:"dbg", ev:"ready"|"paused"|"running"|"notice", …}
 
 안전장치 (서버에서 사용자 코드를 직접 돌리는 기능이라 꼭 필요하다):
   · 로그인한 사용자만 쓸 수 있다 (?token=…). PUBLIC_MODE 에서는 꺼진다.
@@ -24,6 +26,7 @@ from sqlalchemy import select
 from config import settings
 from database import async_session_maker
 from models import Submission, User
+from services import debugger as dbg
 from services import sandbox_runner as sb
 from services.auth_service import decode_access_token
 
@@ -126,7 +129,7 @@ async def websocket_terminal(websocket: WebSocket):
         await websocket.close(code=4401); return
 
     state: Dict[str, object] = {"proc": None, "tmp": None, "tasks": [], "sent": 0, "stopped": False,
-                                "lang": "", "code": "", "t0": 0.0, "out": "", "err": ""}
+                                "lang": "", "code": "", "t0": 0.0, "out": "", "err": "", "dbg": None, "dbg_held": False}
 
     async def record(status: str, exit_code, compile_output: Optional[str] = None) -> None:
         """실행 한 번을 '실행 이력'(submissions)에 남긴다. 실패해도 실행 자체에는 영향이 없다."""
@@ -144,8 +147,16 @@ async def websocket_terminal(websocket: WebSocket):
         if proc is not None and proc.returncode is None:
             sb._kill(proc)
 
+    def drop_dbg() -> None:
+        """디버그 세션을 닫고 자리를 돌려준다 (동시에 쓸 수 있는 수가 정해져 있다)"""
+        if state["dbg"] is not None:
+            state["dbg"].close(); state["dbg"] = None
+        if state["dbg_held"]:
+            dbg.release(); state["dbg_held"] = False
+
     def cleanup() -> None:
         kill_now()
+        drop_dbg()
         tmp = state["tmp"]
         if tmp and os.path.exists(tmp):
             shutil.rmtree(tmp, ignore_errors=True)
@@ -168,6 +179,10 @@ async def websocket_terminal(websocket: WebSocket):
                     sb._kill(proc)
                     break
                 text = sb.decode_bytes(chunk)
+                if state["dbg"] is not None:
+                    text = state["dbg"].filter(kind, text)           # 디버거가 만든 안내 줄(Debugger listening …)은 화면에 내보내지 않는다
+                    if not text:
+                        continue
                 key = "out" if kind == "stdout" else "err"
                 if len(str(state[key])) < 20_000:
                     state[key] = str(state[key]) + text
@@ -178,17 +193,36 @@ async def websocket_terminal(websocket: WebSocket):
     async def watch(proc) -> None:
         out_t = asyncio.create_task(pipe(proc.stdout, "stdout", proc)); err_t = asyncio.create_task(pipe(proc.stderr, "stderr", proc))
         limit = max(5, int(settings.TERMINAL_MAX_SECONDS))
+        if state["dbg"] is not None:
+            limit = dbg.WALL_SECONDS                     # 한 줄씩 보는 동안은 시간이 더 걸리므로 평소 실행보다 길게
         timed_out = False
-        try:
-            await asyncio.wait_for(proc.wait(), timeout=limit)
-        except asyncio.TimeoutError:
-            timed_out = True
+        idle_out = False
+        t_end = time.monotonic() + limit
+        while True:
+            try:
+                await asyncio.wait_for(asyncio.shield(proc.wait()), timeout=5)
+                break
+            except asyncio.TimeoutError:
+                d = state["dbg"]
+                if d is not None and d.idle_expired():
+                    idle_out = True
+                elif time.monotonic() >= t_end:
+                    timed_out = True
+                else:
+                    continue
+                break
+        if idle_out or timed_out:
             sb._kill(proc)
             try:
                 await asyncio.wait_for(proc.wait(), timeout=3)
             except Exception:
                 pass
         await asyncio.gather(out_t, err_t, return_exceptions=True)
+        drop_dbg()
+        if idle_out:
+            await say("exit", f"\n\x1b[33m[멈춰 있는 시간이 {dbg.IDLE_SECONDS // 60}분을 넘어서 디버그를 끝냈어요]\x1b[0m\n", code=-1)
+            await record("Stopped", -1)
+            return
         if state["stopped"]:            # 사용자가 직접 중지한 경우: 중지 안내와 이력 저장은 stop 쪽에서 한다
             return
         code = proc.returncode
@@ -221,6 +255,10 @@ async def websocket_terminal(websocket: WebSocket):
                     await say("stderr", "코드가 너무 길어요. (최대 20만 자)\n"); await say("exit", "", code=1)
                     continue
                 fname = str(msg.get("file_name") or "")[:200] or None
+                want_debug = bool(msg.get("debug"))
+                if want_debug and not dbg.supported(lang):
+                    await say("stderr", "디버그는 파이썬 · 자바스크립트 · 자바에서 쓸 수 있어요.\n"); await say("exit", "", code=1)
+                    continue
                 state["lang"] = lang; state["code"] = code; state["t0"] = time.monotonic()
                 if lang == "java":                 # 자바: public 클래스 이름 = 파일 이름. 어긋나면 컴파일하지 않고 바로 알려 준다 (javac 와 같은 규칙)
                     mm = sb.java_class_mismatch(code, fname)
@@ -236,10 +274,25 @@ async def websocket_terminal(websocket: WebSocket):
                     await say("stderr", bad + "\n"); await say("exit", "", code=1)
                     continue
                 rt = sb.registry.runtime_for_lang(lang)
+                if want_debug:
+                    if not dbg.acquire():
+                        await say("stderr", "지금 디버그를 쓰는 사람이 많아요. 잠시 뒤에 다시 눌러 주세요. (그냥 ▶ 실행은 바로 돼요)\n"); await say("exit", "", code=1)
+                        continue
+                    state["dbg_held"] = True
                 tmp = tempfile.mkdtemp(prefix="cl_term_"); state["tmp"] = tmp
+                spawn_extra: Dict[str, object] = {}
                 with sb.runtime_override({rt: rv} if (rt and rv) else None):
                     env = sb._clean_env(tmp); env["PYTHONUNBUFFERED"] = "1"
-                    comp, run = _prepare(lang, code, tmp, fname)
+                    if want_debug:
+                        try:
+                            bps = [int(x) for x in (msg.get("breakpoints") or [])][:100]
+                        except (TypeError, ValueError):
+                            bps = []
+                        ds = dbg.create(lang, tmp, fname, code, bps, websocket.send_json)
+                        state["dbg"] = ds
+                        comp, run, spawn_extra = ds.comp, ds.run, ds.spawn_kwargs
+                    else:
+                        comp, run = _prepare(lang, code, tmp, fname)
                 if comp:
                     await say("stdout", f"\x1b[36m[{sb.LABELS[lang]} 컴파일 중...]\x1b[0m\n")
                     try:
@@ -248,10 +301,12 @@ async def websocket_terminal(websocket: WebSocket):
                         c_out, c_err = await asyncio.wait_for(cp.communicate(), timeout=COMPILE_SECONDS)
                     except asyncio.TimeoutError:
                         sb._kill(cp)
+                        drop_dbg()
                         await say("stderr", "\x1b[31m[컴파일 시간이 너무 오래 걸려서 중단했어요]\x1b[0m\n"); await say("exit", "", code=1)
                         continue
                     if cp.returncode != 0:
                         err = sb.decode_bytes(c_err) or sb.decode_bytes(c_out)
+                        drop_dbg()
                         await record("Compilation Error", cp.returncode, err[:20_000])
                         await say("stderr", f"\x1b[31m[컴파일 에러]\n{err}\x1b[0m\n"); await say("exit", "", code=cp.returncode)
                         continue
@@ -259,11 +314,15 @@ async def websocket_terminal(websocket: WebSocket):
                     kw = {}
                     if not sb.IS_WINDOWS:
                         kw = {"start_new_session": True, "preexec_fn": sb._limits(int(settings.TERMINAL_MAX_SECONDS) + 5)}
+                    kw.update(spawn_extra)
                     proc = await asyncio.create_subprocess_exec(*run, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=tmp, env=env, **kw)
                 except Exception as e:
+                    cleanup()
                     await say("stderr", f"\x1b[31m실행 실패: {e}\x1b[0m\n"); await say("exit", "", code=1)
                     continue
                 state["proc"] = proc
+                if state["dbg"] is not None:
+                    await state["dbg"].attach(proc)
                 state["tasks"].append(asyncio.create_task(watch(proc)))
 
             elif action == "input":
@@ -275,6 +334,11 @@ async def websocket_terminal(websocket: WebSocket):
                         await proc.stdin.drain()
                     except (BrokenPipeError, ConnectionResetError, OSError):
                         pass
+
+            elif action == "dbg":
+                d = state["dbg"]
+                if d is not None:
+                    await d.command(str(msg.get("cmd") or ""), msg)
 
             elif action == "stop":
                 running = state["proc"] is not None and state["proc"].returncode is None and not state["stopped"]

@@ -1,0 +1,67 @@
+/* 워크스페이스 디버거 · AI 에러 설명 (js/pages/workspace-debug.js) */
+.ws-dbg-btn{ background:#7c3aed; }
+.ws-dbg-btn:hover{ background:#6d28d9; }
+.monaco-editor .ws-bp-glyph{ background:#e5484d; border-radius:50%; width:11px !important; height:11px !important; margin:4px 0 0 7px; box-shadow:0 0 0 2px rgba(229,72,77,.28); cursor:pointer; }
+.monaco-editor .ws-bp-hover{ background:rgba(229,72,77,.38); border-radius:50%; width:11px !important; height:11px !important; margin:4px 0 0 7px; cursor:pointer; }
+.monaco-editor .ws-dbg-arrow{ background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2l10 6-10 6z' fill='%23facc15' stroke='%23a16207' stroke-width='1'/></svg>") center/12px no-repeat; }
+.monaco-editor .ws-dbg-line{ background:rgba(250,204,21,.24) !important; }
+.monaco-editor .ws-err-line{ background:rgba(229,72,77,.18) !important; }
+.monaco-editor .ws-cause-line{ background:rgba(245,158,11,.22) !important; }
+.monaco-editor .ws-err-glyph{ background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e5484d'/><path d='M8 4v5M8 11v1' stroke='white' stroke-width='1.8' stroke-linecap='round'/></svg>") center/13px no-repeat; }
+.monaco-editor .ws-cause-glyph{ background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 1l7 13H1z' fill='%23f59e0b'/><path d='M8 6v4M8 12v1' stroke='white' stroke-width='1.6' stroke-linecap='round'/></svg>") center/13px no-repeat; }
+
+/* 디버그 바 (에디터 위) */
+.ws-dbg-bar{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:5px 10px; background:#1e1b2e; color:#e9e5ff; border-bottom:2px solid #7c3aed; font-size:12px; }
+.ws-dbg-bar[hidden]{ display:none; }
+.ws-dbg-bar button{ display:inline-flex; align-items:center; gap:4px; background:#2e2750; color:#f3f0ff; border:1px solid #4c3f8a; border-radius:6px; padding:4px 9px; font-size:12px; cursor:pointer; font-weight:600; }
+.ws-dbg-bar button:hover:not(:disabled){ background:#4c3f8a; }
+.ws-dbg-bar button:disabled{ opacity:.4; cursor:not-allowed; }
+.ws-dbg-bar button kbd{ font-size:10px; opacity:.7; font-family:inherit; }
+.ws-dbg-bar .stop{ background:#7f1d1d; border-color:#b91c1c; }
+.ws-dbg-status{ margin-left:auto; font-weight:600; color:#c4b5fd; min-width:0; }
+.ws-dbg-status.pause{ color:#fde047; } .ws-dbg-status.err{ color:#fca5a5; }
+
+/* 변수 패널 (콘솔 오른쪽) */
+#termBodyInteractive{ position:relative; }
+.ws-dbg-pane{ position:absolute; top:0; right:0; bottom:0; width:min(340px,48%); background:#0f1722; border-left:1px solid #30363d; overflow:auto; padding:8px 10px; color:#e6edf3; font-size:12px; z-index:2; }
+.ws-dbg-pane[hidden]{ display:none; }
+#termBodyInteractive.dbg-on #termLiveLog{ padding-right:min(356px,50%) !important; }
+.dbg-h{ font-weight:700; color:#c4b5fd; margin-bottom:5px; }
+.dbg-sub{ font-weight:400; color:#8b949e; font-size:11px; }
+.dbg-empty{ color:#8b949e; line-height:1.5; }
+.dbg-scope{ margin:6px 0 2px; font-size:10.5px; color:#8b949e; letter-spacing:.3px; }
+.dbg-row{ display:grid; grid-template-columns:minmax(0,.9fr) auto minmax(0,1.6fr); gap:6px; align-items:baseline; padding:3px 4px; border-radius:4px; }
+.dbg-row.chg{ background:rgba(250,204,21,.13); }
+.dbg-n{ color:#79c0ff; font-weight:600; overflow:hidden; text-overflow:ellipsis; }
+.dbg-t{ color:#8b949e; font-size:10.5px; }
+.dbg-v{ color:#e6edf3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dbg-frame{ padding:3px 4px; cursor:pointer; border-radius:4px; color:#c9d1d9; }
+.dbg-frame:hover{ background:#1c2636; } .dbg-frame.top{ color:#fde047; font-weight:600; }
+.dbg-tip{ margin-top:12px; padding:7px 8px; background:#161b22; border-radius:6px; color:#8b949e; line-height:1.5; }
+
+/* 에러 알림 + AI 설명 카드 (콘솔 안) */
+.ws-err-box{ margin:10px 0 4px; padding:9px 12px; border:1px solid #6e2b30; border-left:3px solid #e5484d; background:#1c1114; border-radius:8px; white-space:normal; }
+.ws-err-box .eb-row{ color:#fecaca; margin-bottom:6px; }
+.ws-err-box .eb-ai{ background:#7c3aed; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.ws-err-box .eb-ai:disabled{ opacity:.6; cursor:wait; }
+.eb-sub{ margin-top:6px; font-size:11px; color:#8b949e; }
+.eb-link{ background:none; border:none; color:#79c0ff; cursor:pointer; text-decoration:underline; font-size:inherit; padding:0 4px; }
+.ws-ai-card{ margin-top:10px; padding:12px 14px; background:#111a2e; border:1px solid #2b3a63; border-left:3px solid #7c3aed; border-radius:8px; color:#dbe4f5; line-height:1.65; font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; font-size:13px; }
+.ai-head{ font-weight:800; color:#c4b5fd; margin-bottom:6px; }
+.ai-eng{ font-size:10.5px; font-weight:600; background:#2b2250; color:#c4b5fd; padding:1px 7px; border-radius:99px; margin-left:4px; }
+.ai-sum{ font-size:14.5px; font-weight:700; color:#fff; margin-bottom:8px; }
+.ai-lines{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:8px; }
+.ai-chip{ border:none; border-radius:99px; padding:3px 11px; font-size:12px; cursor:pointer; color:#fff; }
+.ai-chip.err{ background:#b42329; } .ai-chip.cause{ background:#c27803; }
+.ai-arrow{ color:#8b949e; } .ai-same{ color:#8b949e; font-size:12px; }
+.ai-note{ background:#2a2111; border:1px solid #6b4e12; color:#fde68a; padding:7px 10px; border-radius:6px; margin-bottom:8px; }
+.ai-sec{ margin:10px 0 3px; font-weight:700; color:#93c5fd; }
+.ai-txt{ white-space:pre-wrap; }
+.ai-steps{ margin:2px 0 0; padding-left:20px; } .ai-steps li{ margin:2px 0; }
+.ai-code{ margin:4px 0 0; padding:8px 10px; background:#0b1020; border-radius:6px; color:#e6edf3; font-family:'JetBrains Mono','D2Coding',Consolas,monospace; font-size:12px; white-space:pre-wrap; }
+.ai-concept{ margin-top:10px; padding:7px 10px; background:#0f2a22; border:1px solid #1d5a46; color:#a7f3d0; border-radius:6px; }
+@media (max-width: 720px){
+  .ws-dbg-pane{ width:100%; top:auto; height:48%; border-left:none; border-top:1px solid #30363d; }
+  #termBodyInteractive.dbg-on #termLiveLog{ padding-right:14px !important; padding-bottom:48% !important; }
+  .ws-dbg-bar button span{ display:none; }
+}

@@ -402,6 +402,7 @@ function initMonacoEditor() {
       fontFamily: "'JetBrains Mono', 'D2Coding', 'Cascadia Code', Consolas, monospace",
       fontLigatures: true,
       lineNumbers: 'on',
+      glyphMargin: true,                                           // 줄 번호 왼쪽 빈칸: 중단점(빨간 점)을 거는 자리
       minimap: { enabled: true, side: 'right' },
       scrollBeyondLastLine: false,
       tabSize: 4,
@@ -429,6 +430,7 @@ function initMonacoEditor() {
 
     monacoLoaded = true;
     wsRegisterSnippets(); wsQuickKeysInit();
+    if (typeof wsDbgInit === 'function') wsDbgInit();
     if (typeof wsPresHookEditor === 'function') wsPresHookEditor();
 
     // 실시간 코드 변경 동기화
@@ -573,6 +575,7 @@ var wsSettingValue = false;
 function renderFileContent(key, keepCursor) {
   var f = files[key];
   if (!f) return;
+  if (typeof wsDbgBeforeRender === 'function') wsDbgBeforeRender(key);     // 중단점 위치를 기억해 두고, 다른 파일이면 예전 에러 표시를 지운다
   if (window.monaco && monacoEditor) {
     var lang = getMonacoLanguage(key);
     var model = monacoEditor.getModel();
@@ -586,6 +589,7 @@ function renderFileContent(key, keepCursor) {
     monacoEditor.revealPosition(pos || { lineNumber: 1, column: 1 });
     if (pos) monacoEditor.setPosition(pos);
   }
+  if (typeof wsDbgRender === 'function') wsDbgRender();                    // 이 파일의 중단점을 다시 그린다
   updateEditorStatusBar();
   wsUpdateSaveStatus();
   wsRenderConflict();
@@ -1337,7 +1341,8 @@ function wsNameWarnClick() {
   wsRunNotice('파일 이름과 클래스 이름이 달라요', '파일: ' + wsFileBase(files[currentFileKey]) + '\npublic 클래스: ' + iss.cls + '\n\n자바는 public 클래스 이름과 파일 이름이 같아야 실행돼요. 어느 쪽에 맞출까요?', wsNameFixButtons(currentFileKey, false));
 }
 var wsRunning = false;
-async function runCode() {
+async function runCode(opts) {
+  var wantDbg = !!(opts && opts.debug), dbgFallback = false;
   if (wsRunning && !(typeof GUI !== 'undefined' && GUI.key)) { pushToast('ℹ️', '이미 실행 중이에요', '끝날 때까지 기다리거나 ■ 중지를 눌러 주세요.'); return; }      // (GUI 창이 떠 있는 중에는 ▶ 로 다시 실행할 수 있다)
   if (currentFileKey && files[currentFileKey] && files[currentFileKey].dirty) wsSave(currentFileKey);
   var fobj = currentFileKey && files[currentFileKey];
@@ -1369,6 +1374,10 @@ async function runCode() {
   var target = await wsRunTarget(lang);
   if (!target) { wsLangAlert(WS_RUN_LABEL[lang] || lang, wsExt(fobj.path || fobj.tab)); return; }
   var isLocal = target.kind === 'local';
+  if (wantDbg) {                                       // 🐞 디버그: 서버의 파이썬·자바스크립트·자바만 한 줄씩 볼 수 있다. 그 밖의 언어는 그냥 실행하고 에러 설명을 도와준다
+    if (isLocal) { wsRunNotice('내 PC 에서는 디버그를 쓸 수 없어요', '지금 실행 위치가 "내 PC" 로 되어 있어요. 위의 실행 위치를 서버로 바꾸면 디버그를 쓸 수 있어요. (그냥 ▶ 실행은 지금도 돼요)'); return; }
+    if (!wsDbgSupported(lang)) { wantDbg = false; dbgFallback = true; }
+  }
   if (!isLocal && !authToken) {
     wsRunNotice('로그인하면 코드를 실행할 수 있어요', '코드 실행은 로그인한 사용자만 쓸 수 있어요.');
     return;
@@ -1385,7 +1394,7 @@ async function runCode() {
   }
 
   // 자바 Swing/AWT(창이 뜨는 프로그램)는 서버에 화면이 없어서, 서버가 컴파일만 하고 창은 이 화면 안에서 연다 (내 PC 로 실행하기로 고른 경우는 내 컴퓨터의 창으로)
-  if (!isLocal && lang === 'java' && typeof wsGuiRun === 'function' && wsIsGuiJava(code)) { await wsGuiRun(currentFileKey, code); return; }
+  if (!wantDbg && !isLocal && lang === 'java' && typeof wsGuiRun === 'function' && wsIsGuiJava(code)) { await wsGuiRun(currentFileKey, code); return; }
 
   // 내 PC 에서 실행하기 전 확인 (처음 한 번 안내 · 팀원이 고친 코드면 동의)
   if (isLocal && !(await runnerGate(currentFileKey, code))) return;
@@ -1397,8 +1406,11 @@ async function runCode() {
 
   var log = document.getElementById('termLiveLog');
   if (log) {
-    log.innerHTML = '<div style="color:#06b6d4; font-weight:600;">// ▶ ' + escapeHtml(wsFileBase(fobj)) + ' 실행</div><div style="color:#8b949e; margin-bottom:8px;">// 프로그램이 입력을 기다리면 아래 INPUT 칸에 값을 넣고 Enter 를 누르세요.</div>';
+    log.innerHTML = '<div style="color:#06b6d4; font-weight:600;">// ' + (wantDbg ? '🐞 디버그 시작: ' : '▶ ') + escapeHtml(wsFileBase(fobj)) + (wantDbg ? '' : ' 실행') + '</div><div style="color:#8b949e; margin-bottom:8px;">// 프로그램이 입력을 기다리면 아래 INPUT 칸에 값을 넣고 Enter 를 누르세요.</div>';
+    if (dbgFallback) log.innerHTML += '<div style="color:#d29922; margin-bottom:8px;">// ℹ️ ' + escapeHtml(WS_RUN_LABEL[lang] || lang) + ' 은(는) 한 줄씩 보기가 아직 안 돼요. 대신 그냥 실행하고, 에러가 나면 줄 표시와 AI 설명으로 도와 드려요.</div>';
+    if (wantDbg && !wsDbgLines(currentFileKey).length) log.innerHTML += '<div style="color:#d29922; margin-bottom:8px;">// 💡 중단점(빨간 점)이 없어서 첫 줄에서 멈춰요. 줄 번호 왼쪽 빈칸을 누르면 원하는 줄에 중단점을 걸 수 있어요.</div>';
   }
+  if (typeof wsErrClear === 'function') wsErrClear();            // 지난 에러 표시는 지운다
   focusLiveInput();
 
   var runBtn = document.getElementById('wsRunBtn');
@@ -1408,6 +1420,7 @@ async function runCode() {
 
   wsRunning = true;
   if (runBtn) runBtn.disabled = true;
+  if (typeof wsDbgBtnState === 'function') wsDbgBtnState(true);
   if (stopBtn) stopBtn.style.display = 'inline-flex';
   if (statusChip) {
     statusChip.style.display = 'inline-block';
@@ -1433,7 +1446,7 @@ async function runCode() {
   var ws;
   try { ws = new WebSocket(wsUrl); } catch (e) { appendLiveOutput('\n[내 PC 러너에 연결할 수 없어요]\n', true); finishRun(-1); return; }
   activeTermSocket = ws;
-  var started = false, runText = '';
+  var started = false, runText = '', errText = '', runKey = currentFileKey, srcRaw = (window.monaco && monacoEditor) ? monacoEditor.getValue() : (fobj.raw || '');
   function sendStart() {
     started = true;
     ws.send(JSON.stringify({
@@ -1441,7 +1454,9 @@ async function runCode() {
       language: lang,
       file_name: fobj.path || fobj.tab,
       runtime_version: target.ver || undefined,          // 사용자가 고른 언어 버전 (없으면 기본 버전)
-      source_code: code
+      source_code: wantDbg || !isLocal ? srcRaw : code,  // 서버로 보낼 때는 앞쪽 빈 줄을 자르지 않는다 (에러·중단점 줄 번호가 에디터와 같아야 한다)
+      debug: wantDbg || undefined,
+      breakpoints: wantDbg ? wsDbgLines(runKey) : undefined
     }));
     focusLiveInput();
   }
@@ -1460,10 +1475,16 @@ async function runCode() {
         appendLiveOutput(msg.data, false); if (!isLocal && runText.length < 20000) runText += msg.data;
       } else if (msg.type === 'stderr') {
         appendLiveOutput(msg.data, true); if (!isLocal && runText.length < 20000) runText += msg.data;
+        if (errText.length < 20000) errText += msg.data;
+      } else if (msg.type === 'dbg') {
+        if (typeof wsDbgEvent === 'function') wsDbgEvent(msg);
       } else if (msg.type === 'exit') {
         if (msg.data) appendLiveOutput(msg.data, false);
         if (!isLocal && msg.code && wsNeedsDisplay(runText)) wsGuiHint(lang);       // 창(GUI)을 띄우는 프로그램이라 서버에서는 실패했다 → 이유와 해결 방법을 알려 준다
         else if (!isLocal && msg.code && lang === 'python' && wsMissingModule(runText)) wsPkgHint(wsMissingModule(runText), lang);     // 서버에 없는 라이브러리(pyautogui 등)
+        if (msg.code && msg.code > 0 && !isLocal && typeof wsErrAfterRun === 'function' && !(runText && wsNeedsDisplay(runText))) {      // 에러로 끝났다 → 에러 줄 표시 + 'AI에게 물어보기'
+          try { wsErrAfterRun({ lang: lang, code: srcRaw, err: errText, fname: fobj.path || fobj.tab, key: runKey }); } catch (e3) {}
+        }
         finishRun(msg.code);
       }
     } catch(e) {
@@ -1486,6 +1507,8 @@ async function runCode() {
     if (finished) return; finished = true;          // 종료 메시지 뒤에 연결이 닫혀도 결과 표시를 덮어쓰지 않는다
     wsRunning = false;
     if (runBtn) runBtn.disabled = false;
+    if (typeof wsDbgBtnState === 'function') wsDbgBtnState(false);
+    if (typeof wsDbgEnd === 'function') wsDbgEnd();
     if (stopBtn) stopBtn.style.display = 'none';
     if (statusChip) {
       var ok = (code === 0);

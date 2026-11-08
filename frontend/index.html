@@ -399,6 +399,10 @@
               <span class="pv-btn-lbl">내 PC</span><i class="ws-runner-dot"></i>
             </button>
             <select class="ws-rt-sel" id="wsRuntimeSel" onchange="wsRtChange()" hidden aria-label="실행 위치와 언어 버전"></select>
+            <button class="ws-run-btn ws-dbg-btn" id="wsDbgBtn" onclick="wsDbgStart()" title="디버그 — 줄 번호 왼쪽을 눌러 빨간 점(중단점)을 걸고 시작하면, 프로그램이 거기서 멈추고 변수를 보면서 한 줄씩 실행할 수 있어요 (F9: 중단점)">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 7.5V6a3 3 0 0 1 6 0v1.5M7 10a5 5 0 0 1 10 0v5a5 5 0 0 1-10 0zM12 10v10M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 20l3-2.5M20 20l-3-2.5"/></svg>
+              <span>디버그</span>
+            </button>
             <button class="ws-run-btn" id="wsRunBtn" onclick="runCode()" title="실행 (Ctrl+Enter) · 실행 중에도 키보드 입력(input)을 바로 넣을 수 있어요">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
               <span>실행</span>
@@ -414,6 +418,14 @@
           </div>
         </div>
 
+        <div class="ws-dbg-bar" id="wsDbgBar" hidden>
+          <button type="button" data-cmd="continue" onclick="wsDbgCmd('continue')" title="계속 — 다음 중단점까지(없으면 끝까지) 쭉 실행해요" disabled>▶ <span>계속</span> <kbd>F8</kbd></button>
+          <button type="button" data-cmd="next" onclick="wsDbgCmd('next')" title="한 줄 실행 — 노란 줄 하나만 실행하고 다시 멈춰요 (함수 호출은 통째로 지나가요)" disabled>⤵ <span>한 줄 실행</span> <kbd>F10</kbd></button>
+          <button type="button" data-cmd="step" onclick="wsDbgCmd('step')" title="함수 안으로 — 노란 줄이 함수를 부르면 그 함수 안의 첫 줄로 들어가요" disabled>↧ <span>안으로</span> <kbd>F11</kbd></button>
+          <button type="button" data-cmd="out" onclick="wsDbgCmd('out')" title="함수 밖으로 — 지금 함수를 끝내고 부른 곳으로 돌아가요" disabled>↥ <span>밖으로</span> <kbd>⇧F11</kbd></button>
+          <button type="button" class="stop" onclick="stopInteractiveCode()" title="디버그 끝내기">■ <span>중지</span></button>
+          <span class="ws-dbg-status" id="wsDbgStatus"></span>
+        </div>
         <div class="ws-conflict" id="wsConflictBar" hidden></div>
         <div class="ws-same" id="wsSameBar" hidden></div>
 
@@ -483,6 +495,8 @@
               <input id="termLiveInput" type="text" placeholder="입력할 값을 타이핑하고 Enter를 누르세요 (예: 1, 10, 20...)" autocomplete="off" spellcheck="false" style="flex:1; background:transparent; border:none; outline:none; color:#f0f6fc; font-family:inherit; font-size:12.5px;" />
               <button type="submit" style="background:#238636; color:#fff; border:none; border-radius:4px; padding:3px 10px; font-size:11px; font-weight:600; cursor:pointer;">전송 (↵)</button>
             </form>
+            <!-- 디버그 중에만 보이는 변수·호출 순서 패널 -->
+            <div class="ws-dbg-pane" id="wsDbgPane" hidden></div>
           </div>
 
           <!-- 터미널 탭 본문 3: 실행 이력(submissions) -->
