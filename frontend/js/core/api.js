@@ -239,7 +239,7 @@ async function checkAutoLogin() {
     }
   } catch(e){}
 
-  if (!authToken) { setTimeout(function(){ enterGuestHome(true); }, 0); return; }
+  if (!authToken) { setTimeout(function(){ enterLanding(); }, 0); return; }
   try {
     var res = await fetch(API_BASE + '/api/auth/me', {
       headers: { 'Authorization': 'Bearer ' + authToken }
@@ -264,11 +264,14 @@ async function checkAutoLogin() {
     } else {
       authToken = null;
       try{ localStorage.removeItem('sync_auth_token'); localStorage.removeItem('sync_auth_user'); }catch(e){}
-      enterGuestHome(true);
+      enterLanding();
       if (res.status === 401) pushToast('⏰', '로그인이 만료됐어요', '다시 로그인하면 이전 프로젝트와 채팅이 그대로 이어져요.');
       processPendingInvite();
     }
-  } catch(e){ if(!currentUser) enterGuestHome(true); }
+  } catch(e){ if(!currentUser) enterLanding(); }
 }
+/* 세션 확인이 끝나면(성공·실패 모두) 설치한 앱의 인사 화면을 걷는다 */
+var _checkAutoLoginInner = checkAutoLogin;
+checkAutoLogin = async function(){ try { return await _checkAutoLoginInner(); } finally { if(typeof splashReady === 'function') splashReady(); } };
 checkAutoLogin();
 

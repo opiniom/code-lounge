@@ -25,13 +25,14 @@ function resetCalToday(real){
   calYear = CAL_TODAY.y; calMonth = CAL_TODAY.m;
   buildCalGrid(); updateCalMonthLabel();
 }
-function enterDemoMode(){
+/* 로그인 전/로그아웃 상태: 서버 연결 없이 비어 있는 상태로 되돌린다 */
+function enterLoggedOutState(){
   calApiMode = false; calProjectsLoaded = true;
   wsResetForSessionChange();
   stopChat();
   meetingDocs = []; renderMeetingDocs();
   resetCalToday(true);
-  loadDemoCalendar();
+  clearCalendarState();
   detectCache = {};
   syncCalProjects();
 }
@@ -46,7 +47,6 @@ function projFromServer(p){
 function startRealSession(){
   if(typeof saSyncAccess === 'function') saSyncAccess();      // 관리자라면 메뉴·배지 표시
   setTimeout(liveConnect, 400);                     // 로그인한 상태에서 실시간 연결 시작
-  document.querySelector('.app').classList.remove('guest-mode');
   myAiName = (currentUser && currentUser.ai_name) || '';
   updateChatPlaceholder();
   calProjectsLoaded = false;

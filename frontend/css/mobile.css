@@ -14,7 +14,6 @@
   .tabnav{display:none !important;}
   .wm-text{font-size:17px;}
   .topbar-right{gap:6px; margin-left:auto;}
-  .top-login{height:32px; padding:0 14px;}
   .pst-btn{height:32px;}
 
   /* ---- 아래쪽 탭 바: 두 쪽짜리. 옆으로 밀면 부드럽게 다음 쪽으로 넘어간다 ---- */
@@ -72,7 +71,6 @@
   .proj-row{grid-template-columns:1fr !important;}
   .prompt-box{width:100%; max-width:100%;}
   .hh-quicklinks{flex-wrap:wrap; justify-content:center;}
-  .guest-banner{max-width:none;}
   .dure-stage{--S:270px;}
   .app:not(.home-landing-mode) .dure-stage{--S:200px;}
 

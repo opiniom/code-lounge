@@ -924,7 +924,11 @@ function renderWsHeader(){
   var cur = calProjectById(wsProject);
   var invBtn = document.getElementById('wsInviteBtn');
   if (invBtn) invBtn.hidden = !!(calApiMode && cur && cur.isOwner === false);   // 팀장만 초대 가능
-  if (!calApiMode || !cur) { return; }
+  if (!calApiMode || !cur) {                       // 프로젝트를 열기 전에는 팀원 표시를 비워 둔다 (가짜 팀원을 보여주지 않는다)
+    if (chip) { chip.hidden = true; chip.textContent = ''; }
+    if (stack) { stack.hidden = true; stack.innerHTML = ''; }
+    return;
+  }
   var members = cur.members || [];
   if (chip) { chip.hidden = false; chip.textContent = '팀원 ' + (members.length || 1) + '명'; chip.title = members.map(function(m){ return m.username; }).join(', '); }
   if (stack) {

@@ -1,0 +1,43 @@
+/* ================= 설치한 앱(PWA) 인사 화면 (스플래시) =================
+   홈 화면에서 앱을 열면: 로고가 떠오르고 → "어서 오세요" 가 한 글자씩 부드럽게 나타나고 → 앱이 준비되면 스르륵 사라진다.
+   웹 브라우저에서는 보이지 않는다 (html.is-standalone 일 때만. 주소 뒤에 ?splash=1 을 붙이면 브라우저에서도 미리 볼 수 있다). */
+.splash{display:none;}
+html.is-standalone .splash{
+  position:fixed; inset:0; z-index:5000; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden;
+  background:var(--bg); color:var(--text); padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  transition:opacity .55s cubic-bezier(.4,0,.2,1), transform .55s cubic-bezier(.4,0,.2,1), visibility 0s linear .55s;
+}
+html.is-standalone .splash.out{opacity:0; transform:scale(1.025); visibility:hidden; pointer-events:none;}
+.splash-bg i{position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; will-change:transform;}
+.splash-bg i:nth-child(1){width:46vmax; height:46vmax; left:-14vmax; top:-16vmax; background:radial-gradient(closest-side, rgba(59,130,246,.55), transparent); animation:spDrift1 9s ease-in-out infinite alternate;}
+.splash-bg i:nth-child(2){width:42vmax; height:42vmax; right:-14vmax; bottom:-14vmax; background:radial-gradient(closest-side, rgba(139,92,246,.5), transparent); animation:spDrift2 11s ease-in-out infinite alternate;}
+.splash-bg i:nth-child(3){width:30vmax; height:30vmax; left:30%; top:55%; background:radial-gradient(closest-side, rgba(34,211,238,.35), transparent); animation:spDrift1 13s ease-in-out infinite alternate-reverse;}
+@keyframes spDrift1{from{transform:translate3d(0,0,0) scale(1);} to{transform:translate3d(5vmax,4vmax,0) scale(1.12);}}
+@keyframes spDrift2{from{transform:translate3d(0,0,0) scale(1);} to{transform:translate3d(-5vmax,-3vmax,0) scale(1.1);}}
+.splash-core{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0;}
+.splash-mark-wrap{position:relative; width:112px; height:112px; display:flex; align-items:center; justify-content:center; margin-bottom:26px;}
+.splash-mark{display:block; width:68px; height:74px; background-image:var(--mark-128); background-size:contain; background-repeat:no-repeat; background-position:center; opacity:0;
+  animation:spMark .9s cubic-bezier(.2,.9,.3,1.25) .15s both, spFloat 4.8s ease-in-out 1.1s infinite;}
+.splash-ring{position:absolute; inset:0; border-radius:50%; border:1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); opacity:0; animation:spRing 2.6s cubic-bezier(.2,.6,.3,1) .5s infinite;}
+.splash-ring.r2{animation-delay:1.4s;}
+@keyframes spMark{from{opacity:0; transform:translateY(16px) scale(.78) rotate(-8deg);} to{opacity:1; transform:none;}}
+@keyframes spFloat{0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);}}
+@keyframes spRing{0%{opacity:.7; transform:scale(.55);} 100%{opacity:0; transform:scale(1.35);}}
+.splash-hello{display:flex; gap:.32em; font-family:var(--font-brand); font-weight:800; font-size:clamp(34px, 9vw, 52px); letter-spacing:-.05em; line-height:1.1;}
+.splash-hello span{display:inline-block; opacity:0; animation:spUp .75s cubic-bezier(.16,.84,.44,1) both;}
+.splash-hello span:nth-child(1){animation-delay:.55s;} .splash-hello span:nth-child(2){animation-delay:.72s; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.splash-name{margin-top:12px; font-size:clamp(17px, 4.6vw, 20px); font-weight:700; color:var(--text); letter-spacing:-.03em; opacity:0; animation:spUp .7s cubic-bezier(.16,.84,.44,1) .98s both;}
+.splash-name:empty{display:none;}
+.splash-sub{margin-top:8px; font-size:13.5px; color:var(--text-muted); letter-spacing:-.01em; opacity:0; animation:spUp .7s cubic-bezier(.16,.84,.44,1) 1.15s both;}
+@keyframes spUp{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;}}
+.splash-bar{position:absolute; left:50%; bottom:calc(11vh + env(safe-area-inset-bottom)); width:110px; height:3px; margin-left:-55px; border-radius:3px; background:color-mix(in srgb, var(--accent) 16%, transparent); overflow:hidden; opacity:0; animation:spFade .5s ease 1.2s forwards;}
+.splash-bar i{position:absolute; inset:0 auto 0 0; width:42%; border-radius:3px; background:var(--brand-grad); animation:spBar 1.35s cubic-bezier(.5,0,.5,1) 1.2s infinite;}
+@keyframes spBar{0%{transform:translateX(-110%);} 100%{transform:translateX(260%);}}
+@keyframes spFade{to{opacity:1;}}
+/* 움직임 줄이기: 한 번에 부드럽게 나타났다 사라지기만 한다 */
+html[data-motion="reduce"] .splash-bg i, html[data-motion="reduce"] .splash-ring, html[data-motion="reduce"] .splash-bar i, html[data-motion="reduce"] .splash-mark{animation:none;}
+html[data-motion="reduce"] .splash-mark, html[data-motion="reduce"] .splash-hello span, html[data-motion="reduce"] .splash-name, html[data-motion="reduce"] .splash-sub, html[data-motion="reduce"] .splash-bar{opacity:1; animation:none; transform:none;}
+@media (prefers-reduced-motion: reduce){
+  .splash-bg i, .splash-ring, .splash-bar i, .splash-mark{animation:none;}
+  .splash-mark, .splash-hello span, .splash-name, .splash-sub, .splash-bar{opacity:1; animation:none; transform:none;}
+}

@@ -19,7 +19,7 @@ cd code-lounge
 
 **http://localhost:8000/app**
 
-- 처음 실행하면 `.env` 가 자동으로 만들어집니다. 키가 없어도 **게스트로 둘러보기**와 규칙 기반 일정 분석이 동작해요.
+- 처음 실행하면 `.env` 가 자동으로 만들어집니다. 키가 없어도 규칙 기반 일정 분석과 AI 에러 설명(기본 설명)이 동작해요.
 - 구글/네이버 로그인, Gemini AI 분석을 쓰려면 `.env` 에 키를 넣으세요 (`docs/social_login_setup.md` 참고). `.env` 는 git 에 올라가지 않습니다.
 - 서버 API 문서: http://localhost:8000/docs
 - 발표 자료: `presentation.html` (브라우저에서 바로 열기)

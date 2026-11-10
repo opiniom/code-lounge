@@ -10,9 +10,9 @@ frontend/
 │   ├─ base.css          색·글꼴 토큰, 공통 레이아웃
 │   ├─ home.css · workspace.css · notes.css · calendar.css · events.css · community.css · mypage.css · admin.css · auth.css
 │   ├─ notifications.css · components.css · editor.css(코드 에디터 테마)
-│   └─ polish.css · widgets.css · presence.css · guest.css   (타이포·위젯 갤러리·내 상태·게스트 화면)
+│   └─ polish.css · widgets.css · presence.css · landing.css · splash.css   (타이포·위젯 갤러리·내 상태·소개 첫 화면·앱 인사 화면)
 └─ js/
-    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(게스트/로그인 전환)
+    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면)
     ├─ shell/    menus · presence(내 상태) · notifications(알림·토스트)
     └─ pages/    home-widgets · events · workspace · chat · call · team · notes · calendar · community · admin
 ```
@@ -21,7 +21,8 @@ frontend/
 
 | 주소 | 화면 |
 |---|---|
-| `/app` | 홈 (처음 들어오면 게스트 화면) |
+| `/app` | 로그인 전: 서비스 소개(첫 화면) · 로그인 후: 홈 (로그인해야 쓸 수 있고, 게스트 둘러보기는 없어요) |
+| `/app?pwa=1` | 브라우저에서 '설치한 앱'처럼 미리 보기 (인사 화면 → 로그인 전이면 바로 로그인 화면). `?splash=1` 은 인사 화면만 |
 | `/app/login` | 로그인 |
 | `/app/workspace` | 워크스페이스 (코드 에디터) |
 | `/app/meetings` | 회의록 |

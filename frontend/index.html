@@ -15,6 +15,19 @@
 <meta name="apple-mobile-web-app-title" content="DureSync">
 <meta name="apple-mobile-web-app-status-bar-style" content="default" id="pwaStatusBar">
 <script>
+/* 첫 화면이 그려지기 전에 상태를 표시해 둔다 (깜빡임 방지)
+   · no-session : 로그인 정보가 없다 → 홈이 잠깐 보였다가 소개 화면으로 바뀌지 않게, 처음부터 소개 화면을 보여준다
+   · is-standalone : 홈 화면에 설치한 앱(PWA)으로 열렸다 → 어서 오세요 인사 화면(스플래시)을 먼저 보여준다 (?splash=1 로 브라우저에서도 미리 볼 수 있다) */
+(function(){ try{
+  var r = document.documentElement, q = location.search || '';
+  var has = false; try{ has = !!localStorage.getItem('sync_auth_token'); }catch(e){}
+  if(!has && !/[?&]token=/.test(q)) r.classList.add('no-session');
+  var sa = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if(/[?&]pwa=1/.test(q)) window.__pwaPreview = true;        // 브라우저에서 '설치한 앱' 모습을 미리 보기
+  if(sa || window.__pwaPreview || /[?&]splash=1/.test(q)) r.classList.add('is-standalone');
+}catch(e){} })();
+</script>
+<script>
 /* 첫 화면이 그려지기 전에: 저장된 화면 모드(없으면 기기 설정)에 맞는 아이콘·상단 색을 정한다 (js/core/pwa.js 가 이후 변화를 따라간다) */
 (function(){ try{
   var t = localStorage.getItem('root_theme'), dark = t === 'dark' || ((!t || t === 'system') && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches), k = dark ? 'dark' : 'light', $ = function(i){ return document.getElementById(i); };
@@ -60,7 +73,26 @@
 <link rel="stylesheet" href="/static/bundle.css?v=__BUILD__">
 </head>
 <body>
-<div class="app guest-mode">
+<!-- 설치한 앱(PWA)으로 열었을 때만 보이는 인사 화면. 앱이 준비되면 부드럽게 사라진다 (css/splash.css · js/core/splash.js) -->
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash-bg"><i></i><i></i><i></i></div>
+  <div class="splash-core">
+    <div class="splash-mark-wrap"><span class="splash-ring"></span><span class="splash-ring r2"></span><span class="bm splash-mark" role="img" aria-hidden="true"></span></div>
+    <div class="splash-hello"><span>어서</span><span>오세요</span></div>
+    <div class="splash-name" id="splashName"></div>
+    <div class="splash-sub" id="splashSub">함께 일하는 가장 오래된 방식</div>
+  </div>
+  <div class="splash-bar"><i></i></div>
+</div>
+<script>
+(function(){ try{
+  var u = JSON.parse(localStorage.getItem('sync_auth_user') || 'null'), n = u && u.username ? String(u.username) : '';
+  if(n){ var el = document.getElementById('splashName'); el.textContent = n + '님'; }
+  var h = new Date().getHours(), t = h >= 5 && h < 11 ? '좋은 아침이에요' : (h >= 11 && h < 17 ? '활기찬 오후예요' : (h >= 17 && h < 22 ? '좋은 저녁이에요' : '늦은 시간까지 수고 많아요'));
+  document.getElementById('splashSub').textContent = t;
+}catch(e){} })();
+</script>
+<div class="app">
   <!-- ============ TOP BAR ============ -->
   <div class="topbar">
     <button class="wordmark" onclick="goView('home')" aria-label="DureSync 홈"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="wm-text">DureSync</span></button>
@@ -101,7 +133,6 @@
           <div class="pst-srv" id="pstSrv"><span class="pst-sdot"></span><span id="pstSrvText">서버 확인 중</span><button type="button" onclick="promptBackendUrl()">주소 설정</button></div>
         </div>
       </div>
-      <button type="button" class="top-login" id="topLogin" onclick="openLogin()">로그인</button>
       <span class="chip accent2" id="adminBadge" hidden>관리자</span>
       <button type="button" class="icon-btn m-chat" id="mChatBtn" onclick="toggleChat()" title="팀 채팅" aria-label="팀 채팅">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7.5 7.5 0 0 1-10.9 6.7L4 20l1.4-4.3A7.5 7.5 0 1 1 20 12Z"/></svg>
@@ -140,6 +171,174 @@
     </div>
   </div>
 
+  <!-- ============ LANDING (로그인 전 첫 화면: 서비스 소개) ============ -->
+  <section class="view" data-view="landing" id="landing">
+    <!-- 아이콘 모음 (선 아이콘 · 모두 같은 굵기) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+      <symbol id="ic-sprout" viewBox="0 0 24 24"><path d="M12 21v-8.5"/><path d="M12 12.5C12 8.6 9.2 6 5 6c0 4 2.8 6.5 7 6.5Z"/><path d="M12 15c0-3.2 2.4-5.6 6.5-5.6 0 3.6-2.5 5.6-6.5 5.6Z"/></symbol>
+      <symbol id="ic-laptop" viewBox="0 0 24 24"><rect x="4" y="4.5" width="16" height="11" rx="2"/><path d="M2.5 19.5h19"/><path d="m10 8.5-2 2 2 2M14 8.5l2 2-2 2"/></symbol>
+      <symbol id="ic-cap" viewBox="0 0 24 24"><path d="m2.5 9.5 9.5-4.6 9.5 4.6-9.5 4.6Z"/><path d="M6.5 11.8v4.4c0 1.4 2.5 2.8 5.5 2.8s5.5-1.4 5.5-2.8v-4.4"/><path d="M21.5 9.5v5"/></symbol>
+      <symbol id="ic-rocket" viewBox="0 0 24 24"><path d="M5 15.5c-1.4.9-2 3.5-2 5.5 2 0 4.6-.6 5.5-2"/><path d="m9 15-3-3c.9-3.9 3.9-7.7 8.8-8.6 2.8-.5 4.8-.3 5.8-.2.1 1 .3 3-.2 5.8-.9 4.9-4.7 7.9-8.6 8.8Z"/><circle cx="15" cy="9" r="1.6"/></symbol>
+      <symbol id="ic-board" viewBox="0 0 24 24"><path d="M3 4.5h18"/><path d="M5 4.5V15h14V4.5"/><path d="M12 15v3.5M8.5 21l3.5-2.5 3.5 2.5"/><path d="m8.5 11 2.5-2.5 2 2 2.5-3"/></symbol>
+      <symbol id="ic-school" viewBox="0 0 24 24"><path d="M3 6c3-1.6 6.2-1.4 9 .7 2.8-2.1 6-2.3 9-.7v13c-3-1.6-6.2-1.4-9 .7-2.8-2.1-6-2.3-9-.7Z"/><path d="M12 6.7V19.7"/></symbol>
+      <symbol id="ic-code" viewBox="0 0 24 24"><path d="m8 7.5-4.5 4.5L8 16.5M16 7.5l4.5 4.5-4.5 4.5M13.5 5 10.5 19"/></symbol>
+      <symbol id="ic-bug" viewBox="0 0 24 24"><path d="M9 7.5V6a3 3 0 0 1 6 0v1.5"/><path d="M7 11.5a5 5 0 0 1 10 0v3.5a5 5 0 0 1-10 0Z"/><path d="M12 10.5V20M3 13.5h4M17 13.5h4M4.5 7.5 7.5 9M19.5 7.5 16.5 9M4.5 20l3-2.5M19.5 20l-3-2.5"/></symbol>
+      <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M20.5 12a8 8 0 0 1-11.6 7.1L3.5 20.5l1.5-4.6A8 8 0 1 1 20.5 12Z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></symbol>
+      <symbol id="ic-phone" viewBox="0 0 24 24"><path d="M21.5 16.6v2.8a2 2 0 0 1-2.2 2 19.5 19.5 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.5 19.5 0 0 1-3-8.6 2 2 0 0 1 2-2.2h2.8a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1l-1.2 1.2a16 16 0 0 0 5.9 5.9l1.2-1.2a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.8 2Z"/></symbol>
+      <symbol id="ic-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15.2 2 2 4-4.2"/></symbol>
+      <symbol id="ic-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.3"/><path d="M2.8 20c0-3.4 2.8-6 6.2-6s6.2 2.6 6.2 6"/><path d="M16.5 5.4a3.3 3.3 0 0 1 0 6.2M18.3 14.4c1.9.7 3 2.4 3.2 5.1"/></symbol>
+      <symbol id="ic-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 3.5h10v5a5 5 0 0 1-10 0Z"/><path d="M7 5.5H4v1.2a3.3 3.3 0 0 0 3.3 3.3M17 5.5h3v1.2a3.3 3.3 0 0 1-3.3 3.3"/></symbol>
+      <symbol id="ic-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2 5.2-5.2 2 2-5.2Z"/></symbol>
+      <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M5 21V4.5"/><path d="M5 5c3-1.6 5.5 1.6 9 0 1.6-.7 3-.7 5 0v8c-2-.7-3.4-.7-5 0-3.5 1.6-6-1.6-9 0"/></symbol>
+      <symbol id="ic-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="4.5" r="1.8"/><circle cx="18.6" cy="16" r="1.8"/><circle cx="5.4" cy="16" r="1.8"/><path d="M12 6.3V9M17.1 15.1l-2.5-1.5M6.9 15.1l2.5-1.5"/></symbol>
+      <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></symbol>
+      <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1.1.9-1.1 1.7M12 16.8v.01"/></symbol>
+      <symbol id="ic-spark" viewBox="0 0 24 24"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.3l-1.9-5.5L4.5 10.9 10.1 9Z"/><path d="M19 3v3M17.5 4.5h3"/></symbol>
+      <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></symbol>
+      <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"/></symbol>
+      <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="ic-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    </defs></svg>
+
+    <header class="ld-nav" id="ldNav">
+      <div class="ld-nav-in">
+        <button type="button" class="ld-wm" onclick="ldScrollTop()" aria-label="두레 DureSync 소개 맨 위로"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="ld-wm-tx"><b>DureSync</b><small>두레 · AI 워크스페이스</small></span></button>
+        <nav class="ld-menu" id="ldMenu" aria-label="주요 메뉴"></nav>
+        <div class="ld-nav-act">
+          <button type="button" class="ld-ibtn" id="ldTheme" onclick="ldToggleTheme()" aria-label="화면 모드 바꾸기" title="라이트 / 다크"><svg class="i" viewBox="0 0 24 24"><use href="#ic-moon"/></svg></button>
+          <button type="button" class="ld-login" onclick="openLogin()">로그인</button>
+        </div>
+      </div>
+      <div class="ld-mega" id="ldMega" aria-hidden="true"></div>
+    </header>
+    <div class="ld-scrim" id="ldScrim" onclick="ldCloseMenus()"></div>
+
+    <main class="ld-main">
+      <!-- 첫 화면: 홈과 같은 두레 궤도 · DureSync · 한 줄 소개 · 시작 버튼 (가운데 정렬) -->
+      <section class="ld-hero" id="ldHero">
+        <div class="ld-hero-in">
+          <div class="dure-stage ld-stage">
+            <div class="dure-ring">
+              <div class="dure-orbit" id="ldOrbit"></div>
+              <button type="button" class="dure-core" onclick="openLogin()" aria-label="로그인하고 시작하기"><span class="bm dure-core-mark" role="img" aria-hidden="true"></span><span class="dure-core-tip">로그인하고 시작</span></button>
+            </div>
+          </div>
+          <div class="home-brand">
+            <span class="hh-eyebrow">두레 · together, since forever</span>
+            <h1 class="hh-brand" aria-label="DureSync"><span class="lt" style="--i:0">D</span><span class="lt" style="--i:1">u</span><span class="lt" style="--i:2">r</span><span class="lt" style="--i:3">e</span><span class="lt sy" style="--i:4">S</span><span class="lt sy" style="--i:5">y</span><span class="lt sy" style="--i:6">n</span><span class="lt sy" style="--i:7">c</span></h1>
+            <p class="hh-tagline">Connect <i>·</i> Work <i>·</i> Grow</p>
+            <p class="hh-tag">함께 일하는 가장 오래된 방식, <b>AI</b>로 다시.</p>
+            <p class="hh-tag-en">The old Korean way of working together — rebuilt with AI.</p>
+          </div>
+          <p class="ld-lead">코딩을 이제 막 시작한 사람부터 팀 프로젝트를 이끄는 사람까지.<br>설치 없이 브라우저에서 코드를 쓰고, 실행하고, 함께 만들어요.</p>
+          <div class="home-cta ld-cta">
+            <button type="button" class="cta-btn primary" onclick="openLogin()">
+              <svg class="i" viewBox="0 0 24 24"><use href="#ic-arrow"/></svg>
+              <span class="cta-tx"><b>지금 시작하기</b><small>구글 · 네이버 계정으로 바로</small></span>
+            </button>
+            <button type="button" class="cta-btn" onclick="ldScroll('ldMission')">
+              <svg class="i" viewBox="0 0 24 24"><use href="#ic-help"/></svg>
+              <span class="cta-tx"><b>어떤 서비스인가요?</b><small>먼저 둘러보기</small></span>
+            </button>
+          </div>
+          <p class="hh-rotor"><span class="rot-label">한곳에서</span><span class="rot"><i>팀 채팅</i><i>음성 통화</i><i>일정 관리</i><i>회의록 정리</i><i>코드 작성</i></span></p>
+        </div>
+        <button type="button" class="ld-down" onclick="ldScroll('ldMission')" aria-label="아래로 내려서 소개 보기"><svg class="i" viewBox="0 0 24 24"><use href="#ic-chev"/></svg></button>
+      </section>
+
+      <!-- 우리가 지향하는 방향 -->
+      <section class="ld-sec" id="ldMission">
+        <div class="ld-wrap narrow">
+          <span class="view-eyebrow ld-rv">우리가 지향하는 방향</span>
+          <h2 class="ld-h2 ld-rv" style="--d:.05s">처음 시작하는 사람에게는 쉽게,<br>함께 만드는 팀에게는 자연스럽게</h2>
+          <p class="ld-p ld-rv" style="--d:.1s">코딩은 시작하는 순간이 가장 어렵고, 함께 하는 순간이 가장 복잡해요. 두레는 그 두 가지를 한 곳에서 풀어요. 처음이어도 막히지 않고, 혼자 시작해도 팀으로 자연스럽게 넓어지도록요.</p>
+          <figure class="ld-dure ld-rv" style="--d:.14s">
+            <span class="bm ld-dure-mark" role="img" aria-hidden="true"></span>
+            <figcaption><b>두레</b><span>마을 사람들이 힘을 모아 함께 일하던 우리의 오래된 협동 방식. 두레는 그 마음을 코딩 공간에 옮겨 왔어요.</span></figcaption>
+          </figure>
+          <div class="ld-dirs">
+            <article class="ld-dir ld-rv" style="--d:.06s"><span class="ld-ico lg" style="--c:#3B82F6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-monitor"/></svg></span><h3>설치도 설정도 없이</h3><p>브라우저만 열면 바로 코드를 쓰고 실행해요. 환경 설정 때문에 시작도 못 하고 포기하는 일이 없도록요.</p></article>
+            <article class="ld-dir ld-rv" style="--d:.12s"><span class="ld-ico lg" style="--c:#8B5CF6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-help"/></svg></span><h3>에러는 쉬운 말로</h3><p>처음 보면 막막한 에러 글을 AI가 "어디가, 왜 틀렸는지" 풀어서 알려줘요. 에러가 난 줄과 진짜 원인 줄이 달라도요.</p></article>
+            <article class="ld-dir ld-rv" style="--d:.18s"><span class="ld-ico lg" style="--c:#22C55E"><svg class="i" viewBox="0 0 24 24"><use href="#ic-users"/></svg></span><h3>혼자에서 팀으로</h3><p>초대 링크 하나로 팀원·친구·학생을 부르면, 같은 파일을 실시간으로 함께 써요. 채팅과 통화, 일정까지 이어서요.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 누구를 위한 서비스 -->
+      <section class="ld-sec" id="ldWho">
+        <div class="ld-wrap">
+          <span class="view-eyebrow ld-rv">누구를 위한 서비스인가요</span>
+          <h2 class="ld-h2 ld-rv" style="--d:.05s">전공도 경력도 목적도 달라도 괜찮아요</h2>
+          <p class="ld-p ld-rv" style="--d:.1s">처음 코딩을 만나는 사람부터 수업을 이끄는 선생님까지, 각자의 상황에 맞게 써요.</p>
+          <div class="ld-persona">
+            <article class="card ld-pc ld-rv" id="ldp-beginner" style="--d:.04s"><span class="ld-ico" style="--c:#22C55E"><svg class="i" viewBox="0 0 24 24"><use href="#ic-sprout"/></svg></span><h3>코딩 입문자</h3><p class="q">"에러 글이 무슨 말인지 모르겠어요"</p><p>설치 없이 바로 코드를 실행하고, 에러가 나면 AI가 어디가 왜 틀렸는지 쉬운 한국어로 알려줘요.</p><div class="ld-tags"><span class="chip accent">설치 없이</span><span class="chip accent">AI 에러 설명</span><span class="chip accent">한 줄씩 실행</span></div></article>
+            <article class="card ld-pc ld-rv" id="ldp-solo" style="--d:.1s"><span class="ld-ico" style="--c:#3B82F6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-laptop"/></svg></span><h3>개인 개발자</h3><p class="q">"혼자 만들어도 정리는 제대로 하고 싶어요"</p><p>코드 작성·실행·디버그, 일정과 회의 메모까지 한곳에서. 나중에 팀원을 부르면 그대로 협업 공간이 돼요.</p><div class="ld-tags"><span class="chip accent">여러 언어</span><span class="chip accent">디버거</span><span class="chip accent">일정 · 메모</span></div></article>
+            <article class="card ld-pc ld-rv" id="ldp-student" style="--d:.16s"><span class="ld-ico" style="--c:#8B5CF6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-cap"/></svg></span><h3>전공 무관 학생</h3><p class="q">"전공은 아닌데 팀플에서 코딩을 맡게 됐어요"</p><p>과제, 팀플, 공모전 준비까지. 비전공자도 따라갈 수 있게 단계마다 쉽게 안내해요.</p><div class="ld-tags"><span class="chip accent">팀플</span><span class="chip accent">공모전</span><span class="chip accent">쉬운 설명</span></div></article>
+            <article class="card ld-pc ld-rv" id="ldp-biz" style="--d:.04s"><span class="ld-ico" style="--c:#F59E0B"><svg class="i" viewBox="0 0 24 24"><use href="#ic-rocket"/></svg></span><h3>상업 · 창업 프로젝트</h3><p class="q">"사이드 프로젝트를 서비스로 키우고 싶어요"</p><p>팀 채팅, 음성 통화, 회의록, 일정을 하나의 워크스페이스에서. 회의록에서 일정은 AI가 찾아 캘린더에 넣어줘요.</p><div class="ld-tags"><span class="chip accent">팀 채팅</span><span class="chip accent">통화방</span><span class="chip accent">자동 일정</span></div></article>
+            <article class="card ld-pc ld-rv" id="ldp-teacher" style="--d:.1s"><span class="ld-ico" style="--c:#EC4899"><svg class="i" viewBox="0 0 24 24"><use href="#ic-board"/></svg></span><h3>선생님</h3><p class="q">"학생들 코드를 같이 보면서 도와주고 싶어요"</p><p>초대 링크 하나로 학생을 모으고, 같은 파일을 실시간으로 함께 보며 도와줄 수 있어요. 기초 에러는 AI가 먼저 설명해요.</p><div class="ld-tags"><span class="chip accent">초대 링크</span><span class="chip accent">실시간 공동 편집</span><span class="chip accent">에러 설명</span></div></article>
+            <article class="card ld-pc ld-rv" id="ldp-edu" style="--d:.16s"><span class="ld-ico" style="--c:#06B6D4"><svg class="i" viewBox="0 0 24 24"><use href="#ic-school"/></svg></span><h3>교육 목적</h3><p class="q">"동아리·스터디·수업 팀이 함께 배울 곳이 필요해요"</p><p>팀마다 프로젝트를 만들고, 커뮤니티에서 스터디와 팀원을 구해요. 함께 배우는 공간이 필요한 모든 곳에요.</p><div class="ld-tags"><span class="chip accent">스터디</span><span class="chip accent">동아리</span><span class="chip accent">수업</span></div></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 기능 -->
+      <section class="ld-sec" id="ldFeatures">
+        <div class="ld-wrap">
+          <span class="view-eyebrow ld-rv">한곳에서 모두</span>
+          <h2 class="ld-h2 ld-rv" style="--d:.05s">코딩부터 팀 운영까지, 여기서 이어져요</h2>
+          <div class="ld-bento">
+            <article class="card ld-fc wide ld-rv" id="ldf-workspace" style="--d:.04s">
+              <div class="ld-fc-tx"><h3><span class="ld-ico" style="--c:#3B82F6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-code"/></svg></span>코드 워크스페이스</h3><p>파이썬 · 자바 · 자바스크립트 · C 등 여러 언어를 브라우저에서 바로 실행해요. 팀원과 같은 파일을 글자 하나까지 실시간으로 함께 편집해요.</p></div>
+              <div class="ld-vis ld-ed" aria-hidden="true">
+                <div class="ld-ed-bar"><span class="on">main.py</span><span>notes.md</span><b>▶ 실행</b><div class="avatar-stack"><div class="mini" style="background:#3B82F6"></div><div class="mini" style="background:#8B5CF6"></div><div class="mini" style="background:#EC4899"></div></div></div>
+                <div class="ld-ed-body"><p><s>1</s><u style="--w:46%"></u></p><p><s>2</s><u style="--w:70%"></u></p><p><s>3</s><u style="--w:38%"></u></p><p class="co"><s>4</s><u style="--w:58%"></u><em></em></p><p><s>5</s><u style="--w:30%"></u></p></div>
+                <div class="ld-ed-out"><u style="--w:34%"></u><u style="--w:52%"></u></div>
+              </div>
+            </article>
+            <article class="card ld-fc wide ld-rv" id="ldf-debug" style="--d:.1s">
+              <div class="ld-fc-tx"><h3><span class="ld-ico" style="--c:#E5484D"><svg class="i" viewBox="0 0 24 24"><use href="#ic-bug"/></svg></span>디버거 + AI 에러 설명</h3><p>줄 번호 옆을 눌러 중단점을 걸고 한 줄씩 실행하며 변수를 확인해요. 에러가 나면 AI가 쉬운 말로 풀어주고, 진짜 원인 줄을 짚어줘요.</p></div>
+              <div class="ld-vis ld-dbg" aria-hidden="true">
+                <div class="ld-dbg-bar"><span>▶ 계속</span><span>⤵ 한 줄 실행</span><span>↧ 안으로</span><span class="stop">■ 중지</span></div>
+                <div class="ld-ed-body"><p><s>10</s><u style="--w:50%"></u></p><p class="bp"><s>11</s><u style="--w:64%"></u></p><p class="cur"><s>12</s><u style="--w:44%"></u></p><p><s>13</s><u style="--w:36%"></u></p></div>
+                <div class="ld-dbg-ai"><span class="e">에러 13번</span><i>→</i><span class="c">진짜 원인 11번</span><u style="--w:86%"></u></div>
+              </div>
+            </article>
+            <article class="card ld-fc ld-rv" id="ldf-chat" style="--d:.04s"><h3><span class="ld-ico" style="--c:#8B5CF6"><svg class="i" viewBox="0 0 24 24"><use href="#ic-chat"/></svg></span>팀 채팅 · 두레 AI</h3><p>"두레야"라고 부르면 일정과 회의록까지 알아서 정리해요.</p><div class="ld-vis ld-chat" aria-hidden="true"><div class="b l"><u style="--w:72%"></u></div><div class="b r"><u style="--w:54%"></u></div><div class="b l ai"><em>AI</em><u style="--w:80%"></u></div></div></article>
+            <article class="card ld-fc ld-rv" id="ldf-call" style="--d:.1s"><h3><span class="ld-ico" style="--c:#22C55E"><svg class="i" viewBox="0 0 24 24"><use href="#ic-phone"/></svg></span>팀 통화방</h3><p>프로젝트마다 음성 통화방을 만들고 바로 연결해요.</p><div class="ld-vis ld-call" aria-hidden="true"><div class="avatar-stack"><div class="mini" style="background:#22C55E"></div><div class="mini" style="background:#3B82F6"></div><div class="mini" style="background:#F59E0B"></div></div><i class="wave"><b></b><b></b><b></b><b></b><b></b></i></div></article>
+            <article class="card ld-fc ld-rv" id="ldf-cal" style="--d:.16s"><h3><span class="ld-ico" style="--c:#F59E0B"><svg class="i" viewBox="0 0 24 24"><use href="#ic-cal"/></svg></span>자동 일정</h3><p>회의록에 적은 기간을 AI가 찾아 팀 캘린더에 넣어줘요.</p><div class="ld-vis ld-cal" aria-hidden="true"><i></i><i></i><i></i><i class="r s"></i><i class="r"></i><i class="r e"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+            <article class="card ld-fc half ld-rv" id="ldf-community" style="--d:.04s"><h3><span class="ld-ico" style="--c:#EC4899"><svg class="i" viewBox="0 0 24 24"><use href="#ic-users"/></svg></span>커뮤니티</h3><p>막힌 과제 질문, 팀원 구하기, 스터디 모집을 학생들끼리 해결해요.</p><div class="ld-vis ld-tags2" aria-hidden="true"><span class="chip accent">질문</span><span class="chip accent2">팀원 구하기</span><span class="chip">스터디</span></div></article>
+            <article class="card ld-fc half ld-rv" id="ldf-contest" style="--d:.1s"><h3><span class="ld-ico" style="--c:#06B6D4"><svg class="i" viewBox="0 0 24 24"><use href="#ic-trophy"/></svg></span>공모전 · 해커톤</h3><p>흩어진 공모전과 행사를 자동으로 모아 마감 순으로 보여줘요.</p><div class="ld-vis ld-tags2" aria-hidden="true"><span class="chip accent">해커톤</span><span class="chip accent2">공모전</span><span class="chip">세미나</span></div></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 시작하는 방법 -->
+      <section class="ld-sec" id="ldHow">
+        <div class="ld-wrap narrow">
+          <span class="view-eyebrow ld-rv">시작하는 법</span>
+          <h2 class="ld-h2 ld-rv" style="--d:.05s">세 걸음이면 시작해요</h2>
+          <ol class="ld-steps">
+            <li class="ld-rv" style="--d:.04s"><span class="dn dn-ai"><span>1</span></span><h3>로그인</h3><p>구글 또는 네이버 계정으로 바로 들어와요.</p></li>
+            <li class="ld-rv" style="--d:.12s"><span class="dn dn-ai"><span>2</span></span><h3>프로젝트 만들기</h3><p>이름만 정하면 끝. 필요하면 초대 링크로 팀원을 불러요.</p></li>
+            <li class="ld-rv" style="--d:.2s"><span class="dn dn-ai"><span>3</span></span><h3>함께 만들기</h3><p>코드를 쓰고 실행하고, 채팅·회의록·일정까지 한곳에서 이어가요.</p></li>
+          </ol>
+          <div class="ld-final ld-rv" style="--d:.1s">
+            <span class="bm ld-final-mark" role="img" aria-hidden="true"></span>
+            <h2>지금, 첫 프로젝트를 시작해 보세요</h2>
+            <p>가장 쉬운 시작과 가장 자연스러운 협업을 두레가 도울게요.</p>
+            <div class="home-cta ld-cta one"><button type="button" class="cta-btn primary" onclick="openLogin()"><svg class="i" viewBox="0 0 24 24"><use href="#ic-arrow"/></svg><span class="cta-tx"><b>로그인하고 시작하기</b><small>구글 · 네이버 계정으로 바로</small></span></button></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ld-foot">
+      <div class="ld-foot-in"><span class="ld-foot-brand"><span class="bm wm-mark" role="img" aria-hidden="true"></span>DureSync</span><span class="ld-foot-tag">함께 일하는 가장 오래된 방식, AI로 다시.</span></div>
+    </footer>
+  </section>
+
   <!-- ============ AUTH ============ -->
   <section class="view" data-view="auth">
     <div class="auth-wrap">
@@ -170,7 +369,7 @@
         <p class="auth-devnote" id="authDevNote" hidden>🧪 임시 서버예요 — 로그인 버튼을 누르면 자동으로 로그인돼요.</p>
         <p class="auth-terms" id="authTerms">계속 진행하면 DureSync의 <a>이용약관</a> 및 <a>개인정보 처리방침</a>에 동의하게 됩니다.</p>
         <p class="auth-remote-note" id="authRemoteNote" hidden>이 주소에서는 구글/네이버 로그인을 쓸 수 없어요.<br>팀원에게 받은 <b>초대 링크</b>로 들어오거나, 서버를 켠 컴퓨터에서 로그인하세요.</p>
-        <button class="auth-skip" id="authSkip" onclick="enterGuestHome(true)">← 로그인 없이 둘러보기</button>
+        <button class="auth-skip" id="authSkip" onclick="goView('landing')">← 서비스 소개 보기</button>
       </div>
     </div>
   </section>
@@ -233,7 +432,6 @@
             </div>
 
         </div>
-          <div class="guest-banner" id="guestBanner"><span class="gb-ic">👋</span><span class="gb-tx"><b>게스트로 둘러보는 중이에요</b><small>로그인하면 내 프로젝트·팀 채팅·AI가 열려요</small></span><button type="button" onclick="openLogin()">로그인</button></div>
           <div class="hh-features">
             <button class="hh-feat" style="--i:0" onclick="toggleChat()"><span class="fi">💬</span><b>AI 채팅 에이전트</b><small>"두레야"라고 부르면 일정·회의록까지 알아서</small></button>
             <button class="hh-feat" style="--i:1" onclick="toggleCall()"><span class="fi">📞</span><b>팀 통화방</b><small>지연 없이 바로 연결, 방도 만들 수 있어요</small></button>
@@ -336,11 +534,9 @@
       </button>
       <b id="wsCrumbName" hidden></b>
       <div class="ws-now" id="wsNow" hidden></div>
-      <span class="chip accent2" id="wsPresenceChip">팀원 3명</span>
+      <span class="chip accent2" id="wsPresenceChip" hidden></span>
       <div class="members">
-        <div class="avatar-stack" id="wsMemberStack">
-          <div class="mini" style="background:#3B82F6;">지</div><div class="mini" style="background:#8B5CF6;">민</div><div class="mini" style="background:#EC4899;">하</div>
-        </div>
+        <div class="avatar-stack" id="wsMemberStack" hidden></div>
       </div>
     </div>
     <div class="ws-shell">

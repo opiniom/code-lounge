@@ -1,7 +1,7 @@
 /* ---- calendar: data-driven events (cap + overflow + delete) ---- */
 var CAL_CAP = 2;
 var calendarEvents = [];
-function loadDemoCalendar(){
+function clearCalendarState(){
   calendarEvents = []; calDetect = []; calDetectEngine = null; calDetectNote = null;
 }
 function memberColor(m){

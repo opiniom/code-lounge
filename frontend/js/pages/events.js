@@ -402,11 +402,6 @@ function openWorkspace(id){
   if (wsEditorCol) wsEditorCol.hidden = false;
   renderWsEmpty();
 
-  var chip = document.getElementById('wsPresenceChip');
-  var stack = document.getElementById('wsMemberStack');
-  if (chip) chip.hidden = false;
-  if (stack) stack.hidden = false;
-
   goView('workspace');
   if (window.monaco && monacoEditor) {
     setTimeout(function() { monacoEditor.layout(); }, 120);

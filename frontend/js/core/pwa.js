@@ -5,7 +5,7 @@
 var PWA = { deferred:null, reg:null, hadController:false, updateShown:false };
 
 function pwaDark(){ try { return (typeof isDarkMode === 'function') ? isDarkMode() : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); } catch(e){ return false; } }
-function pwaStandalone(){ try { return !!((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true); } catch(e){ return false; } }
+function pwaStandalone(){ try { return !!(window.__pwaPreview || (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true); } catch(e){ return false; } }      // ?pwa=1 은 브라우저에서 설치한 앱처럼 미리 보는 용도
 function pwaIsIOS(){ var ua = navigator.userAgent || ''; return /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1); }
 
 /* 라이트/다크에 맞게: 매니페스트 · 탭 아이콘 · iOS 홈 화면 아이콘 · 상단 상태 표시줄 색 */

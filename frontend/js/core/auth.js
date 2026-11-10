@@ -12,7 +12,8 @@ function resetToNewMemberState(){
   renderProjRow();
   NT.items = []; ntRecount(); ntRender();
 }
-function restoreDemoState(){
+/* 로그아웃/로그인 전 상태로 되돌린다 (보여 줄 가짜 데이터는 없다) */
+function restoreLoggedOutState(){
   if(savedMyProjects!==null){ myProjects = savedMyProjects.slice(); projPageIndex = savedProjPageIndex; }
   renderProjRow();
   ntRecount(); ntRender();
@@ -33,8 +34,7 @@ function applyAuthMode(){
     ['authButtons','authTerms','authSkip'].forEach(function(id){ var el = document.getElementById(id); if(el) el.hidden = !oauthHere; });
     var or = document.getElementById('inviteCardOr'); if(or) or.hidden = !oauthHere;
     var note = document.getElementById('authRemoteNote'); if(note) note.hidden = oauthHere || cardShown;
-    // 게스트 둘러보기는 언제나 접근 가능하도록 유지
-    var skip = document.getElementById('authSkip'); if(skip) skip.hidden = false;
+    var skip = document.getElementById('authSkip'); if(skip) skip.hidden = false;      // '서비스 소개 보기' 는 언제나 보인다
   }).catch(function(){});
 }
 async function handleSocialLogin(provider){
@@ -81,18 +81,18 @@ async function handleSocialLogin(provider){
   }
 }
 
-/* 처음 들어오면 로그인 창 대신 게스트 화면(둘러보기)을 보여주고, 로그인하면 내 계정으로 바뀐다 */
-function enterGuestHome(quiet){
-  enterDemoMode();
+/* 로그인 전에는 '서비스 소개' 첫 화면만 보여준다. (둘러보기용 게스트 화면은 없다 — 로그인해야 쓸 수 있다.)
+   · 웹 브라우저: 소개 화면 → [시작하기] → 로그인 → 홈
+   · 설치한 앱(PWA): 인사 화면 → 바로 로그인 화면 (소개는 '서비스 소개 보기' 로)
+   · 초대 링크로 들어왔다면 소개 대신 초대 카드(로그인 화면) */
+function enterLanding(){
+  enterLoggedOutState();
   isAdmin = false;
   document.getElementById('adminBadge').hidden = true;
-  restoreDemoState();
-  document.querySelector('.app').classList.add('guest-mode');
-  goView('home');
+  restoreLoggedOutState();
+  goView((getPendingInvite() || (typeof pwaStandalone === 'function' && pwaStandalone())) ? 'auth' : 'landing');
   routerBoot();
-  if(!quiet) pushToast('👋', '게스트 접속', '게스트 모드로 둘러봅니다.');
 }
-function mockLogin(provider){ enterGuestHome(false); }
 function openLogin(){ goView('auth'); applyAuthMode(); }
 function wsResetForSessionChange(){
   wsStopPolling(); wsProject = null; wsLoaded = false; wsLoading = false;
@@ -121,7 +121,7 @@ function mockLogout(reason){
   } catch(e){}
   document.getElementById('adminBadge').hidden = true;
   if(typeof saSyncAccess === 'function') saSyncAccess();
-  enterGuestHome(true);
+  enterLanding();
   if(reason === 'expired') pushToast('⏰', '로그인이 만료됐어요', '보안을 위해 로그인 유효기간이 지났어요. 다시 로그인하면 채팅·AI를 이어서 쓸 수 있어요.');
   else if(reason === 'withdrawn') { /* 탈퇴 완료 안내 창이 따로 뜬다 */ }
   else pushToast('👋', '로그아웃', '로그아웃되었습니다.');
