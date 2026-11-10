@@ -18,8 +18,8 @@ button, [role="button"], a, .btn, .pill-btn, select{touch-action:manipulation;}
 
 /* iOS Safari: 주소창이 접히고 펴질 때 높이가 튀지 않게(dvh) + 노치·홈 바 안전 영역 */
 @supports (height:100dvh){
-  .app{min-height:calc(100dvh / var(--ui-zoom) - 16px);}
-  .view[data-view="workspace"].active{height:calc(100dvh / var(--ui-zoom) - 58px - 16px); max-height:calc(100dvh / var(--ui-zoom) - 58px - 16px);}
+  .app{min-height:calc(100dvh / var(--ui-zoom));}
+  .view[data-view="workspace"].active{height:calc(100dvh / var(--ui-zoom) - 58px); max-height:calc(100dvh / var(--ui-zoom) - 58px);}
 }
 .topbar{padding-left:max(20px, env(safe-area-inset-left)); padding-right:max(20px, env(safe-area-inset-right));}
 .chat-input{padding-bottom:max(12px, env(safe-area-inset-bottom));}

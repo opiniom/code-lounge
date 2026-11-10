@@ -111,8 +111,7 @@ function ldThemeIcon(){
 }
 function ldToggleTheme(){
   if(typeof setTheme !== 'function') return;
-  setTheme((typeof isDarkMode === 'function' && isDarkMode()) ? 'light' : 'dark');
-  setTimeout(ldThemeIcon, 60);
+  setTheme((typeof isDarkMode === 'function' && isDarkMode()) ? 'light' : 'dark');       // 아이콘은 테마가 실제로 바뀐 뒤(themechange)에 맞춘다
 }
 function ldScrollTop(){ window.scrollTo({ top: 0, behavior: ldReduced() ? 'auto' : 'smooth' }); }
 function ldScroll(id){
@@ -156,3 +155,5 @@ function ldEnter(){
   }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
   requestAnimationFrame(function(){ items.forEach(function(el){ LD.io.observe(el); }); });
 }
+document.addEventListener('themechange', ldThemeIcon);
+try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ldThemeIcon); }catch(e){}

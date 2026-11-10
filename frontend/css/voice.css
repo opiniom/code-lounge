@@ -1,0 +1,52 @@
+/* ================= 음성으로 AI 부르기 (js/pages/voice.js) ================= */
+.chat-input .chat-mic{background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border); transition:background .18s, color .18s, border-color .18s, transform .12s;}
+.chat-input .chat-mic[hidden]{display:none;}
+.chat-input .chat-mic:hover{color:var(--accent-ink); border-color:var(--accent);}
+.chat-input .chat-mic:active{transform:scale(.92);}
+.chat-input .chat-mic svg{width:16px; height:16px;}
+.chat-input .chat-mic.on{background:#E5484D; color:#fff; border-color:transparent; animation:micPulse 1.4s ease-out infinite;}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.5);} 100%{box-shadow:0 0 0 12px rgba(229,72,77,0);}}
+
+.voice-bar{position:relative; display:flex; align-items:center; gap:10px; margin:0 12px 8px; padding:9px 10px 9px 14px; border-radius:16px; background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 28%, transparent); color:var(--accent-ink); font-size:12.8px; font-weight:600; overflow:hidden; flex:0 0 auto; animation:vbIn .24s cubic-bezier(.2,.9,.3,1) both;}
+.voice-bar[hidden]{display:none;}
+@keyframes vbIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+.voice-bar .vb-ic{display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center; flex:0 0 auto;} .voice-bar .vb-ic svg{width:18px; height:18px;}
+.voice-bar .vb-tx{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.015em;}
+.voice-bar .vb-lv{display:none; align-items:center; gap:3px; height:20px; flex:0 0 auto; --lv:0;}
+.voice-bar.listening .vb-lv{display:inline-flex;}
+.voice-bar .vb-lv i{display:block; width:3px; border-radius:2px; background:currentColor; height:calc(5px + var(--lv) * 15px); transition:height .09s linear; opacity:.85;}
+.voice-bar .vb-lv i:nth-child(2){height:calc(5px + var(--lv) * 20px);} .voice-bar .vb-lv i:nth-child(3){height:calc(5px + var(--lv) * 24px);} .voice-bar .vb-lv i:nth-child(4){height:calc(5px + var(--lv) * 18px);}
+.voice-bar .vb-btn{flex:0 0 auto; border:none; background:var(--accent); color:#fff; font:inherit; font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px; cursor:pointer; min-height:30px;}
+.voice-bar .vb-btn[hidden], .voice-bar .vb-prog[hidden]{display:none;}
+.voice-bar .vb-x{flex:0 0 auto; width:26px; height:26px; border:none; background:none; color:inherit; opacity:.6; cursor:pointer; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;} .voice-bar .vb-x:hover{opacity:1; background:rgba(0,0,0,.08);}
+.voice-bar.listening{background:rgba(229,72,77,.1); border-color:rgba(229,72,77,.35); color:#B42329;}
+.voice-bar.listening .vb-btn{background:#E5484D;}
+.voice-bar.listening .vb-ic{animation:vbBlink 1.2s ease-in-out infinite;} @keyframes vbBlink{50%{opacity:.45;}}
+.voice-bar.error{background:rgba(245,158,11,.12); border-color:rgba(245,158,11,.4); color:#B45309;}
+.voice-bar.error .vb-tx{white-space:normal; line-height:1.4;}
+.voice-bar .vb-prog{position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--accent); transform-origin:left; animation:vbProg 1.6s linear forwards;}
+@keyframes vbProg{from{transform:scaleX(0);} to{transform:scaleX(1);}}
+.chat-panel.ai-private .voice-bar{background:rgba(124,58,237,.1); border-color:rgba(124,58,237,.3); color:#6D28D9;}
+.chat-panel.ai-private .voice-bar.listening{background:rgba(229,72,77,.1); color:#B42329; border-color:rgba(229,72,77,.35);}
+.chat-panel.ai-private .voice-bar .vb-btn, .chat-panel.ai-private .voice-bar .vb-prog{background:#7C3AED;} .chat-panel.ai-private .voice-bar.listening .vb-btn{background:#E5484D;}
+.chat-panel.ai-private .voice-bar.error{background:rgba(245,158,11,.12); border-color:rgba(245,158,11,.4); color:#B45309;}      /* 오류는 나만 보는 AI 탭에서도 주황색으로 */
+/* 어두운 화면: 글자색을 밝게 (배경이 어두워서 진한 색은 안 읽힘) */
+:root[data-theme="dark"] .voice-bar.listening, :root[data-theme="dark"] .chat-panel.ai-private .voice-bar.listening{color:#FFB4B7; background:rgba(229,72,77,.18);}
+:root[data-theme="dark"] .voice-bar.error{color:#FCD34D; background:rgba(245,158,11,.16);}
+:root[data-theme="dark"] .chat-panel.ai-private .voice-bar{color:#D8C4FF; background:rgba(124,58,237,.2);}
+:root[data-theme="dark"] .voice-bar .vb-x:hover{background:rgba(255,255,255,.1);}
+:root[data-theme="dark"] .chat-panel.ai-private .voice-bar.error{color:#FCD34D; background:rgba(245,158,11,.16);}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .voice-bar.listening, :root:not([data-theme="light"]) .chat-panel.ai-private .voice-bar.listening{color:#FFB4B7; background:rgba(229,72,77,.18);}
+  :root:not([data-theme="light"]) .voice-bar.error{color:#FCD34D; background:rgba(245,158,11,.16);}
+  :root:not([data-theme="light"]) .chat-panel.ai-private .voice-bar{color:#D8C4FF; background:rgba(124,58,237,.2);}
+  :root:not([data-theme="light"]) .voice-bar .vb-x:hover{background:rgba(255,255,255,.1);}
+  :root:not([data-theme="light"]) .chat-panel.ai-private .voice-bar.error{color:#FCD34D; background:rgba(245,158,11,.16);}
+}
+/* 터치 화면(폰·PWA): 누르기 쉽게 크게 */
+@media (pointer: coarse){
+  .chat-input button{width:42px; height:42px;} .chat-input button svg{width:19px; height:19px;}      /* 마이크·보내기 버튼 크기를 같게 */
+  .voice-bar{margin:0 12px calc(8px); padding:10px 8px 10px 14px; font-size:13.5px;} .voice-bar .vb-btn{min-height:36px; padding:8px 16px; font-size:13px;} .voice-bar .vb-x{width:34px; height:34px;}
+}
+@media (prefers-reduced-motion: reduce){ .chat-input .chat-mic.on, .voice-bar, .voice-bar.listening .vb-ic{animation:none;} .voice-bar .vb-lv i{transition:none;} }
+html[data-motion="reduce"] .chat-input .chat-mic.on, html[data-motion="reduce"] .voice-bar{animation:none;}

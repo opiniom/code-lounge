@@ -140,7 +140,35 @@
 /* 아주 좁은 폰 */
 @media (max-width:380px){
   .mnav button span{font-size:10px;}
-  .wm-text{display:none;}
 }
+@media (max-width:310px){ .wm-text{display:none;} }      /* 이름(DureSync)은 폰에서도 보이게 하고(320px 폰까지), 그보다 작은 화면에서만 로고 마크만 */
 
 html[data-motion="reduce"] #mnavMoreBtn svg{animation:none;} html[data-motion="reduce"] .mnav-track{scroll-behavior:auto;}
+
+/* ===== 폰 · 설치한 앱(PWA) 최적화: 손가락으로 누르기 쉽게 (최소 ~40px) · 잘리는 곳 정리 ===== */
+@media (max-width:820px){
+  .wordmark{min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center; margin-left:-6px;}
+  .ws-run-btn{min-height:38px; padding:8px 14px;} #wsDbgBtn, #wsRunBtn, #wsStopBtn{min-height:38px;}
+  .ws-term-tab{min-height:38px; padding-top:9px; padding-bottom:9px;}
+  #termLiveInputForm button[type="submit"]{min-height:36px; padding:7px 14px; font-size:12px !important;}
+  .editor-actions .btn{min-height:38px;}
+  .member-chip{min-height:34px; padding-top:7px; padding-bottom:7px;}
+  .cm-tag, .cm-taglink, .mp-fbtn{min-height:32px; display:inline-flex; align-items:center;}
+  /* 웹사이트와 같은 내용을 유지하되 폰 폭에 맞게 줄인다: '팀원 N명'은 그대로 보이게 하고(칩), 겹쳐 보이는 프로필 동그라미 줄만 뺀다. 프로젝트 이름 칸이 남는 폭에 맞춰 줄어든다 */
+  .ws-projectbar .members{display:none !important;}
+  #wsPresenceChip{font-size:11px; padding:3px 8px; flex:0 0 auto;}
+  .ws-projectbar #wsSelBtn{min-width:0 !important; width:min(230px, calc(100vw - 190px));}
+  .ws-projectbar #wsSelBtn #wsSelLabel{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* 터미널 머리줄: 웹사이트처럼 실행 상태 · 지우기 · 크게 · 닫기를 폰에서도 쓸 수 있게 */
+  .ws-term-meta{display:flex !important; gap:2px; align-items:center; flex:0 0 auto; margin-left:auto;}
+  #termExecTime{display:none !important;}
+  .ws-term-meta .icon-btn{min-width:34px; min-height:34px; display:inline-flex; align-items:center; justify-content:center;}
+  .ws-term-meta .term-status-chip{font-size:10.5px; padding:3px 8px;}
+  .calsel-menu{max-width:calc(100vw - 16px);}
+}
+/* 날짜·시간 입력칸은 기본 폭이 커서 두 칸짜리 격자를 옆으로 밀어내 창이 잘렸다 → 줄어들 수 있게 하고, 아주 좁으면 한 줄씩 쌓는다 */
+@media (max-width:820px){
+  input[type="date"], input[type="time"], input[type="datetime-local"], .form-row input, .form-row select, .form-row textarea{min-width:0; max-width:100%; box-sizing:border-box;}
+  .form-grid2{grid-template-columns:repeat(2, minmax(0,1fr));}
+}
+@media (max-width:560px){ .form-grid2{grid-template-columns:minmax(0,1fr);} }

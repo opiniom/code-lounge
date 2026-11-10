@@ -8,22 +8,35 @@ function isDarkMode(){
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 function setTheme(mode){
+  /* 테마 바꾸기: 한 번만 눌러도 바로 반응해야 한다.
+     화면 전환 효과(startViewTransition)는 변경을 한 박자 늦게 실행하는데, 선택 표시(syncThemeButtons)를 그보다 먼저 계산해서
+     한 번 눌러서는 표시가 안 바뀌고 두 번째 눌러야 바뀌는 문제가 있었다. → 실제 변경이 끝난 '뒤'에 표시·아이콘을 맞추고,
+     효과가 늦거나 건너뛰어져도 0.35초 안에는 반드시 적용한다. */
+  var done = false;
   function apply(){
-    if(mode==='system'){ document.documentElement.removeAttribute('data-theme'); }
+    if(done) return; done = true;
+    if(mode === 'system'){ document.documentElement.removeAttribute('data-theme'); }
     else{ document.documentElement.setAttribute('data-theme', mode); }
     if(window.monaco && monacoEditor){
-      monaco.editor.setTheme(isDarkMode() ? 'vs-dark' : 'vs');
+      try{ monaco.editor.setTheme(isDarkMode() ? 'vs-dark' : 'vs'); }catch(e){}
     }
+    syncThemeButtons();
+    try{ document.dispatchEvent(new Event('themechange')); }catch(e){}
   }
-  if(document.startViewTransition){
-    document.startViewTransition(apply);
+  var calm = document.documentElement.getAttribute('data-motion') === 'reduce' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if(document.startViewTransition && document.visibilityState === 'visible' && !calm){
+    try{
+      var vt = document.startViewTransition(apply);
+      if(vt && vt.finished) vt.finished.then(apply, apply);
+      setTimeout(apply, 350);                       // 안전장치: 효과가 막혀도 적용은 된다
+    }catch(e){ apply(); }
   } else {
     document.documentElement.classList.add('theme-fading');
     apply();
     setTimeout(function(){ document.documentElement.classList.remove('theme-fading'); }, 400);
   }
   try{ localStorage.setItem('root_theme', mode); }catch(e){}
-  syncThemeButtons();
+  syncThemeButtons(mode);                           // 누른 즉시 선택 표시도 먼저 맞춘다
   pushToast(mode==='dark'?'🌙':mode==='light'?'☀️':'🖥️','테마 변경됨', mode==='system' ? '시스템 설정을 따라가요' : (mode==='dark'?'다크 모드로 바꿨어요':'라이트 모드로 바꿨어요'));
 }
 /* ---- 움직임 (켜기 / 줄이기) ---- */
@@ -62,8 +75,8 @@ window.addEventListener('resize', function(){
   clearTimeout(__scaleTimer);
   __scaleTimer = setTimeout(function(){ if ((window.__uiScalePref || 'auto') === 'auto') { applyUiScale(); syncScaleButtons(); } }, 150);
 });
-function syncThemeButtons(){
-  var current = document.documentElement.getAttribute('data-theme') || 'system';
+function syncThemeButtons(forced){
+  var current = forced || document.documentElement.getAttribute('data-theme') || 'system';
   document.querySelectorAll('.theme-opt').forEach(function(b){ b.classList.toggle('active', b.dataset.themeChoice===current); });
 }
 

@@ -265,7 +265,7 @@ function renderFileTree() {
         '<span class="fdot" style="background:' + (item.file.dot || '#888') + ';"></span>';
       fileNode.querySelector('.fname').textContent = item.name;
       fileNode.title = item.file.tab + (item.file.updatedBy ? ' · 마지막 수정 ' + item.file.updatedBy : '');
-      fileNode.onclick = function(e) { e.stopPropagation(); wsSelDir = wsDirOf(item.file.path); wsPaintSel(); openFile(item.key, fileNode); };      // 파일을 누르면 그 파일이 있는 폴더가 선택된다
+      fileNode.onclick = function(e) { e.stopPropagation(); wsSelDir = wsDirOf(item.file.path); wsPaintSel(); openFile(item.key, fileNode); wsMobileCloseTree(); };      // 파일을 누르면 그 파일이 있는 폴더가 선택된다
       fileNode.ondblclick = function(e) { e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
       fileNode.querySelector('.ren').onclick = function(e){ e.stopPropagation(); wsRenaming = item.key; renderFileTree(); };
       fileNode.querySelector('.del').onclick = function(e){ e.stopPropagation(); wsDeleting = item.key; renderFileTree(); };
@@ -944,11 +944,17 @@ function selectWsProject(id){
   if (!calApiMode) { openWorkspace(id); return; }
   loadWorkspace(id);
 }
+/* 폰·설치한 앱: 파일 목록은 에디터 위에 덮이는 창이라, 파일을 고르면 바로 닫아서 열린 파일이 보이게 한다 */
+function wsMobileCloseTree(){
+  if(!document.documentElement.classList.contains('is-mobile')) return;
+  var tree = document.getElementById('wsFileTree');
+  if(tree && !tree.classList.contains('collapsed')) toggleSidebar();
+}
 var wsMobileInited = false;
 function enterWorkspaceView(){
   wsEnsureMonaco();
   /* 폰에서는 파일 목록을 처음엔 접어 둔다 (에디터가 화면을 다 쓰도록) */
-  if(!wsMobileInited && document.documentElement.classList.contains('is-mobile')){ wsMobileInited = true; var ft = document.getElementById('wsFileTree'); if(ft) ft.classList.add('collapsed'); }
+  if(!wsMobileInited && document.documentElement.classList.contains('is-mobile')){ wsMobileInited = true; var ft = document.getElementById('wsFileTree'); if(ft) ft.classList.add('collapsed'); var li = document.getElementById('termLiveInput'); if(li) li.placeholder = '입력할 값 + Enter'; }
   renderWsSelector();
   if (!calApiMode) { renderWsEmpty(); return; }
   var target = (calSelected !== 'all' && calProjectById(calSelected)) ? calSelected

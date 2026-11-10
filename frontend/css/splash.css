@@ -41,3 +41,5 @@ html[data-motion="reduce"] .splash-mark, html[data-motion="reduce"] .splash-hell
   .splash-bg i, .splash-ring, .splash-bar i, .splash-mark{animation:none;}
   .splash-mark, .splash-hello span, .splash-name, .splash-sub, .splash-bar{opacity:1; animation:none; transform:none;}
 }
+
+.splash-sub{display:inline-flex; align-items:center; justify-content:center; gap:7px;} .splash-sub .gi{width:16px; height:16px; color:var(--accent);}

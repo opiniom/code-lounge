@@ -68,7 +68,7 @@ svg.i{width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; s
 
 /* ---------- 첫 화면: 보고 있는 화면(모니터) 크기에 꼭 맞춘다 — 높이·너비에 따라 크기가 같이 변해서 스크롤 없이 한눈에 보인다 ---------- */
 #landing{--navh:58px; --lvh:calc(100dvh / var(--ui-zoom)); --lvw:calc(100vw / var(--ui-zoom)); word-break:keep-all; overflow-wrap:break-word;}   /* 한글은 단어 중간에서 줄이 바뀌지 않게 */
-.ld-hero{position:relative; min-height:calc(var(--lvh) - var(--navh) - 16px); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:clamp(10px, calc(var(--lvh) * .03), 34px) 24px clamp(14px, calc(var(--lvh) * .04), 40px); overflow:hidden;}
+.ld-hero{position:relative; min-height:calc(var(--lvh) - var(--navh)); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:clamp(10px, calc(var(--lvh) * .03), 34px) 24px clamp(14px, calc(var(--lvh) * .04), 40px); overflow:hidden;}
 .ld-hero::before{content:''; position:absolute; top:-8%; left:50%; transform:translateX(-50%); width:min(1000px, 110vw); height:min(1000px, 110vw); border-radius:50%; background:radial-gradient(circle, var(--accent-soft) 0%, transparent 68%); filter:blur(36px); opacity:.75; pointer-events:none; animation:homeGlow 9s ease-in-out infinite;}
 .ld-hero-in{position:relative; z-index:1; width:100%; max-width:900px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:clamp(8px, calc(var(--lvh) * .019), 22px);}
 #landing .dure-stage{--S:clamp(170px, min(calc(var(--lvh) * .27), calc(var(--lvw) * .62)), 420px); margin:0 auto -4px;}
@@ -222,7 +222,7 @@ html[data-motion="reduce"] .ld-anim .ld-rv{opacity:1; transform:none; transition
   .ld-mega-in{padding:14px max(14px, env(safe-area-inset-left)) 20px; max-height:calc(var(--lvh) - 120px); overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
   .ld-feat{padding:16px;}
 }
-@media (max-width: 900px){ .ld-wm-tx small{display:none;} }
+@media (max-width: 400px){ .ld-wm-tx small .r{display:none;} }
 /* 폰(760px 이하): 한 줄에 다 못 들어가서, 카테고리 줄만 로고 아래로 내려온다 */
 @media (max-width: 760px){
   #landing{--navh:106px;}
@@ -232,6 +232,19 @@ html[data-motion="reduce"] .ld-anim .ld-rv{opacity:1; transform:none; transition
   .ld-mb{flex:0 0 auto; background:var(--surface-2); padding:8px 14px;} .ld-mb.on{background:var(--bg-elevated); box-shadow:var(--shadow-sm);}
 }
 @media (max-width: 640px){ .ld-pn-cols{grid-template-columns:1fr;} }
-@media (max-width: 560px){ #landing{--navh:100px;} .ld-menu{justify-content:center; gap:5px;} .ld-mb{padding:8px 11px; font-size:13px; gap:4px;} .ld-mb .chev{display:none;} .ld-wm-tx small{display:none;} .ld-wm-tx b{font-size:17px;} .ld-login{padding:0 16px;} }
+@media (max-width: 560px){ #landing{--navh:100px;} .ld-menu{justify-content:center; gap:5px;} .ld-mb{padding:8px 11px; font-size:13px; gap:4px;} .ld-mb .chev{display:none;} .ld-wm-tx b{font-size:17px;} .ld-login{padding:0 16px;} }
 /* 터치 화면은 누르기 쉽게 */
 @media (pointer: coarse){ .ld-it{padding:12px 10px;} .ld-ibtn{width:40px; height:40px;} .ld-login{height:40px;} .ld-mb{padding:10px 14px;} }
+
+/* ---------- 시간대별 인사 줄 (소개 화면 · 홈 · 앱 인사 화면 공통) ---------- */
+.gi{width:1em; height:1em; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto; overflow:visible;}
+.ld-greet, .hh-greet{display:inline-flex; align-items:center; justify-content:center; gap:7px; margin:0; font-size:clamp(12.5px, calc(var(--lvh, 100vh) * .017), 15px); font-weight:600; letter-spacing:-.02em; color:var(--text-muted);}
+.ld-greet:empty{display:none;}
+.hh-greet[hidden]{display:none;}
+.ld-greet .gi, .hh-greet .gi{font-size:1.2em; color:var(--accent);}
+.ld-greet[data-slot="night"] .gi, .ld-greet[data-slot="eve"] .gi, .ld-greet[data-slot="dawn"] .gi, .hh-greet[data-slot="night"] .gi, .hh-greet[data-slot="eve"] .gi, .hh-greet[data-slot="dawn"] .gi{color:var(--accent-2);}
+.ld-greet[data-slot="lunch"] .gi, .hh-greet[data-slot="lunch"] .gi{color:#F59E0B;}
+.greet-in{animation:greetIn .6s cubic-bezier(.16,.84,.44,1) both;}
+@keyframes greetIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+@media (prefers-reduced-motion: reduce){ .greet-in{animation:none;} }
+html[data-motion="reduce"] .greet-in{animation:none;}

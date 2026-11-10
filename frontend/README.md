@@ -10,12 +10,18 @@ frontend/
 │   ├─ base.css          색·글꼴 토큰, 공통 레이아웃
 │   ├─ home.css · workspace.css · notes.css · calendar.css · events.css · community.css · mypage.css · admin.css · auth.css
 │   ├─ notifications.css · components.css · editor.css(코드 에디터 테마)
-│   └─ polish.css · widgets.css · presence.css · landing.css · splash.css   (타이포·위젯 갤러리·내 상태·소개 첫 화면·앱 인사 화면)
+│   └─ polish.css · widgets.css · presence.css · landing.css · splash.css · voice.css   (타이포·위젯 갤러리·내 상태·소개 첫 화면·앱 인사 화면·음성 입력)
 └─ js/
-    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면)
+    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사)
     ├─ shell/    menus · presence(내 상태) · notifications(알림·토스트)
-    └─ pages/    home-widgets · events · workspace · chat · call · team · notes · calendar · community · admin
+    └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · call · team · notes · calendar · community · admin
 ```
+
+## 음성으로 AI 부르기 (`js/pages/voice.js`)
+
+채팅 입력줄의 마이크 버튼을 누르고 "두레야 내일 3시에 회의 잡아줘"처럼 말하면, 글로 바뀌어 **직접 친 것과 똑같이** 채팅 → AI 로 처리됩니다 (AI 호출어로 시작하면 1.6초 뒤 자동 전송, 그 안에 [취소]·글 수정 가능. 호출어 없이 말하면 입력칸에만 채워 줘요. '나만 보는 AI' 탭에서는 호출어 없이도 보냄).
+- 브라우저 음성 인식(Web Speech)이 되면 그걸 쓰고, 안 되는 곳(아이폰 설치 앱 등)은 녹음 → `POST /api/ai/transcribe` (Gemini 받아쓰기, 서버에 `GEMINI_API_KEY` 필요, 사용자당 시간당 40회) 로 처리. 소리는 저장하지 않아요.
+- 호출어 오인식('두래야', '듀레야')은 AI 이름(기본 이름 + 내가 정한 이름)에 맞게 보정합니다.
 
 ## 화면 주소
 

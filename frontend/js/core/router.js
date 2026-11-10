@@ -68,6 +68,7 @@ function goView(name){
   closeMenus();
   routerSync(name);
   if(name==='landing' && typeof ldEnter === 'function') ldEnter();
+  if(typeof greetRefresh === 'function') greetRefresh();
   if(name==='calendar') refreshDetections(false);
   if(name==='events') loadEvents();
   if(name==='community') cmEnter();

@@ -228,7 +228,27 @@ function toggleCalMenu(e, prefix){
   var willOpen = !menu.classList.contains('open');
   closeCalMenu();
   menu.classList.toggle('open', willOpen);
+  if(willOpen) calMenuPlace(menu);
 }
+/* 폰·설치한 앱: 프로젝트 줄이 옆으로 밀어서 보는 줄(overflow)이라, 그 아래로 펼쳐지는 메뉴가 잘려서 안 보였다.
+   그런 줄 안에 있는 메뉴는 화면에 고정(fixed)해서 줄 밖으로 나오게 한다. (잘리지 않는 곳은 예전 그대로) */
+function calMenuPlace(menu){
+  menu.style.position = ''; menu.style.top = ''; menu.style.left = ''; menu.style.width = ''; menu.style.minWidth = '';
+  var clipped = false, p = menu.parentNode;
+  while(p && p.nodeType === 1 && !(p.classList && p.classList.contains('view'))){
+    var cs = getComputedStyle(p);
+    if(/(auto|scroll|clip)/.test(cs.overflowX) || /(auto|scroll|clip)/.test(cs.overflowY)){ clipped = true; break; }
+    p = p.parentNode;
+  }
+  if(!clipped) return;
+  var btn = menu.parentNode.querySelector('.calsel-btn'); if(!btn) return;
+  var z = parseFloat(document.documentElement.style.zoom) || 1, b = btn.getBoundingClientRect(), vw = window.innerWidth / z;
+  var w = Math.min(300, vw - 16), left = Math.min(Math.max(8, b.left / z), Math.max(8, vw - w - 8));
+  menu.style.position = 'fixed'; menu.style.top = (b.bottom / z + 6) + 'px'; menu.style.left = left + 'px'; menu.style.width = w + 'px'; menu.style.minWidth = '0';
+  menu.style.maxHeight = Math.max(160, window.innerHeight / z - b.bottom / z - 90) + 'px'; menu.style.overflowY = 'auto';
+}
+window.addEventListener('resize', function(){ if(typeof closeCalMenu === 'function') closeCalMenu(); });
+(function(){ var pb = document.querySelector('.ws-projectbar'); if(pb) pb.addEventListener('scroll', function(){ closeCalMenu(); }, { passive: true }); })();
 function closeCalMenu(){
   ['calSelMenu','noteSelMenu','wsSelMenu'].forEach(function(id){ var m = document.getElementById(id); if(m) m.classList.remove('open'); });
 }

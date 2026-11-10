@@ -17,6 +17,7 @@
     "css/events.css",
     "css/editor.css",
     "css/debug.css",
+    "css/voice.css",
     "css/polish.css",
     "css/profile.css",
     "css/shell.css",
@@ -32,6 +33,7 @@
   "js": [
     "js/core/theme.js",
     "js/core/splash.js",
+    "js/core/greeting.js",
     "js/core/sfx.js",
     "js/core/router.js",
     "js/core/home-landing.js",
@@ -53,6 +55,7 @@
     "js/pages/workspace-debug.js",
     "js/core/api.js",
     "js/pages/chat.js",
+    "js/pages/voice.js",
     "js/pages/call.js",
     "js/pages/team.js",
     "js/pages/notes.js",
