@@ -988,9 +988,36 @@ function loadWorkspace(id){
       : files[wsKey('main.py')] ? wsKey('main.py') : files[wsKey('README.md')] ? wsKey('README.md') : (Object.keys(files)[0] || null);
     renderWsEmpty(); renderFileTree();
     if (openKey) wsOpenKey(openKey); else renderTabs();
+    wsApplyJump();
     wsStartPolling();
     if (typeof wsPresStart === 'function') wsPresStart();
   }).catch(function(e){ wsLoading = false; renderWsEmpty(); pushToast('⚠️', '파일을 불러오지 못했어요', e.message); });
+}
+/* 알림·AI 답변의 '파일 위치' 링크: 그 프로젝트의 워크스페이스를 열고 파일의 그 줄로 이동 */
+var wsJumpPending = null, wsJumpDeco = [];
+function wsJumpTo(pid, path, line){
+  if(!path) return;
+  wsJumpPending = { path: path, line: line || 0, pid: 'p' + pid };
+  var pr = (typeof calProjectById === 'function') ? calProjectById('p' + pid) : null;
+  if(!pr){ wsJumpPending = null; pushToast('⚠️', '프로젝트를 열 수 없어요', '이 프로젝트의 팀원이 아니거나 목록에 없어요.'); return; }
+  if(wsProject === 'p' + pid && wsLoaded){ goView('workspace'); wsApplyJump(); return; }
+  openWorkspace('p' + pid);                  // 파일을 다 불러오면 loadWorkspace 가 wsApplyJump 를 부른다
+}
+function wsApplyJump(){
+  var j = wsJumpPending; if(!j || !wsLoaded) return;
+  wsJumpPending = null;
+  var key = wsKey(j.path);
+  if(!files[key]){ pushToast('📄', '파일을 찾지 못했어요', j.path + ' — 이름이 바뀌었거나 삭제됐을 수 있어요.'); return; }
+  wsOpenKey(key);
+  if(typeof wsMobileCloseTree === 'function') wsMobileCloseTree();
+  if(j.line) wsRevealLine(j.line, 0);
+}
+function wsRevealLine(n, tries){
+  if(!(window.monaco && monacoEditor && monacoEditor.getModel())){ if(tries < 40) setTimeout(function(){ wsRevealLine(n, tries + 1); }, 150); return; }
+  var max = monacoEditor.getModel().getLineCount(); n = Math.min(Math.max(1, n), max);
+  monacoEditor.revealLineInCenter(n); monacoEditor.setPosition({ lineNumber: n, column: 1 });
+  wsJumpDeco = monacoEditor.deltaDecorations(wsJumpDeco, [{ range: new monaco.Range(n, 1, n, 1), options: { isWholeLine: true, className: 'ws-jump-line' } }]);
+  setTimeout(function(){ if(monacoEditor) wsJumpDeco = monacoEditor.deltaDecorations(wsJumpDeco, []); }, 4500);
 }
 function renderFileContent_empty(){
   wsLiveDetach();

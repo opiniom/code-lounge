@@ -617,6 +617,8 @@ function openNotifLink(link){
   if(m){ goView('community'); cmOpenPost(parseInt(m[1], 10)); return; }
   m = /^profile:(\d+)$/.exec(link);
   if(m){ openProfile(parseInt(m[1], 10)); return; }
+  m = /^file:(\d+):(\d+):(.+)$/.exec(link);
+  if(m){ wsJumpTo(parseInt(m[1], 10), m[3], parseInt(m[2], 10)); return; }
   m = /^project:(\d+)$/.exec(link);
   if(m){ openWorkspace('p' + m[1]); return; }
   if(/^\/calendar/.test(link)) goView('calendar');

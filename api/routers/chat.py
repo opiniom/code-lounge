@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db, async_session_maker
-from models import User, ChatMessage, CalendarEvent
+from models import User, ChatMessage, CalendarEvent, Project
 from schemas import ChatMessageCreate, ChatMessageResponse, CalendarEventResponse
 from services.auth_service import get_current_user
 from services.access import get_member_project
@@ -122,6 +122,21 @@ async def analyze_message(project_id: int, message_id: int):
         return
 
 
+async def notify_member_requests(project_id: int, user_id: int, text: str):
+    """평범한 팀 대화에서 '○○님 파일 N번 줄 수정 부탁' 을 알아채 그 팀원에게 알림 (규칙 기반, AI 호출 없음)"""
+    from services.chat_ai import catch_member_requests
+    try:
+        async with async_session_maker() as db:
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+            if user is None or project is None:
+                return
+            if await catch_member_requests(db, project, user, text):
+                await db.commit()
+    except Exception:
+        logger.exception("팀원 요청 알림 실패 (project=%s)", project_id)
+
+
 async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None, private: bool = False):
     """AI 요청을 처리해 답변(과 실행 결과)을 AI 메시지로 저장 (백그라운드). 일정·회의록 변경도 여기서 일어난다."""
     from services.chat_ai import run_agent
@@ -172,6 +187,7 @@ async def send_message(
         background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id)
     else:
         background.add_task(analyze_message, project_id, msg.id)
+        background.add_task(notify_member_requests, project_id, current_user.id, data.text.strip())
     return _to_response(msg, current_user.username)
 
 

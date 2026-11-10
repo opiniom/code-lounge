@@ -84,11 +84,11 @@ function renderAiGuide(){
   h('AI 부르기');
   ul(['메시지 맨 앞에 이름을 붙이면 돼요: <code>' + esc(n) + '야 …</code> 또는 <code>@' + esc(n) + ' …</code>', '명령어는 외울 필요 없어요. <b>평소 말투</b>로 시키면 AI가 알아서 판단해요.']);
   h('이런 것을 시킬 수 있어요 (눌러서 입력)');
-  chips([n + '야 이번 주 마감이 뭐야?', n + '야 내가 맡은 일 알려줘', n + '야 어제 회의 내용 요약해줘', n + '야 다음 주 화요일 3시에 중간발표 일정 잡아줘', n + '야 그 일정 4시로 바꿔줘', n + '야 오늘 대화 정리해서 회의록 만들어줘']);
+  chips([n + '야 이번 주 마감이 뭐야?', n + '야 내가 맡은 일 알려줘', n + '야 어제 회의 내용 요약해줘', n + '야 다음 주 화요일 3시에 중간발표 일정 잡아줘', n + '야 그 일정 4시로 바꿔줘', n + '야 오늘 대화 정리해서 회의록 만들어줘', n + '야 내 프로필에 맞는 커뮤니티 글 추려줘', n + '야 마감 임박한 공모전 알려줘', n + '야 main.py 가 무슨 파일인지 설명해줘', n + '야 (팀원 이름)님께 main.py 19번 줄 수정 부탁한다고 전해줘', n + '야 내 모든 프로젝트 이번 주 일정 정리해줘']);
   h('안전장치');
   ul(['일정 추가·수정·회의록 생성은 <b>바로 실행</b>하고, <b>되돌리기</b> 버튼이 나와요.', '<b>삭제</b>는 항상 확인 카드로 한 번 더 물어봐요. (부른 사람만 누를 수 있어요)', '이름을 붙이지 않은 평소 대화에는 AI가 아무것도 바꾸지 않아요.']);
   h('자동으로 해줘요');
-  ul(['대화에서 <b>"제가 금요일까지 할게요"</b>처럼 담당·기한이 나오면 일정 카드가 생겨요. 눌러서 캘린더에 추가!']);
+  ul(['대화에서 <b>"제가 금요일까지 할게요"</b>처럼 담당·기한이 나오면 일정 카드가 생겨요. 눌러서 캘린더에 추가!', '<b>"민수님 main.py 19번 줄 수정 부탁드려요"</b>처럼 팀원·파일·부탁이 함께 나오면 그 팀원에게 알림이 가요. 누르면 그 파일·줄이 열려요. (AI를 안 불러도 돼요)']);
   var p = document.createElement('p'); p.style.marginTop = '8px';
   p.innerHTML = 'AI 이름은 <button class="ai-guide-link" onclick="openProfileModal()">프로필 설정</button>에서 바꿀 수 있어요.';
   body.appendChild(p);
@@ -248,7 +248,7 @@ function renderAiText(el, text){
   });
 }
 /* AI 가 한 일: 되돌리기 / 삭제 확인 카드 (AI 를 부른 사람에게만 버튼이 보인다) */
-var AI_ACT_LABEL = {event_added:'일정 추가', event_updated:'일정 수정', note_added:'회의록 생성'};
+var AI_ACT_LABEL = {event_added:'일정 추가', event_updated:'일정 수정', note_added:'회의록 생성', request_sent:'요청 전달'};
 function appendAiActions(col, m){
   var meta = m.meta || {};
   var mine = !!(currentUser && meta.requester_id === currentUser.id);
@@ -265,6 +265,7 @@ function appendAiActions(col, m){
     }
     col.appendChild(row);
   });
+  appendAiRefs(col, meta);
   (meta.confirms || []).forEach(function(c, i){
     var card = document.createElement('div'); card.className = 'ai-confirm';
     var t = document.createElement('div'); t.className = 'ai-confirm-t'; t.textContent = '🗑️ 삭제 확인 · ' + c.label; card.appendChild(t);
@@ -285,6 +286,25 @@ function appendAiActions(col, m){
     }
     col.appendChild(card);
   });
+}
+/* AI 가 골라 준 커뮤니티 글·공모전, 요청에 붙은 파일 위치 — 눌러서 바로 열기 */
+function appendAiRefs(col, meta){
+  var refs = meta.refs || []; if(!refs.length) return;
+  var box = document.createElement('div'); box.className = 'ai-refs';
+  refs.forEach(function(r){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'ai-ref ' + r.kind;
+    var ic = r.kind === 'post' ? '📌' : (r.kind === 'event' ? '🏆' : '📄');
+    var t = document.createElement('span'); t.className = 'ai-ref-t'; t.textContent = ic + ' ' + (r.label || (r.path ? r.path + (r.line ? ':' + r.line : '') : '열기'));
+    b.appendChild(t);
+    if(r.reason){ var w = document.createElement('span'); w.className = 'ai-ref-why'; w.textContent = r.reason; b.appendChild(w); b.title = r.reason; }
+    b.onclick = function(){
+      if(r.kind === 'post' && typeof cmOpenPost === 'function'){ goView('community'); cmOpenPost(r.id); }
+      else if(r.kind === 'event'){ goView('events'); }
+      else if(r.kind === 'file' && typeof wsJumpTo === 'function'){ wsJumpTo(chatServerId(), r.path, r.line || 0); }
+    };
+    box.appendChild(b);
+  });
+  col.appendChild(box);
 }
 function aiActionCall(m, verb, index){
   var sid = chatServerId();
@@ -376,7 +396,7 @@ function renderAiEmpty(scroll){
   var n = aiMyName(), box = document.createElement('div'); box.className = 'chat-empty ai-empty';
   box.innerHTML = "<div class='ai-empty-ico'>🔒</div><b>나만 보는 AI 대화</b><br>여기서 묻는 것은 <b>나에게만</b> 보여요. 팀 채팅에는 올라가지 않아요.<br><span style='opacity:.8'>이름을 부르지 않아도 답해요.</span>";
   var row = document.createElement('div'); row.className = 'ai-chip-row'; row.style.justifyContent = 'center';
-  ['이번 주 마감이 뭐야?', '내가 맡은 일 알려줘', '어제 회의 내용 요약해줘', '다음 주 화요일 3시에 중간발표 일정 잡아줘'].forEach(function(t){
+  ['이번 주 마감이 뭐야?', '내가 맡은 일 알려줘', '내 프로필에 맞는 커뮤니티 글 추려줘', '마감 임박한 공모전 알려줘'].forEach(function(t){
     var b = document.createElement('button'); b.className = 'ai-chip'; b.textContent = t; b.onclick = function(){ fillChatInput(t); }; row.appendChild(b);
   });
   box.appendChild(row);
