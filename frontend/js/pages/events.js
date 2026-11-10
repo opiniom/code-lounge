@@ -3,7 +3,7 @@
 var evtState = { cat:'all', list:[], view:[], status:null, seq:0, searchTimer:null, lastRunSeen:null, added:{} };
 var EVT_BM_KEY = 'sync_evt_bookmarks';
 function evtBookmarks(){ try { return JSON.parse(localStorage.getItem(EVT_BM_KEY) || '{}'); } catch(e){ return {}; } }
-function evtSaveBookmarks(o){ try { localStorage.setItem(EVT_BM_KEY, JSON.stringify(o)); } catch(e){} }
+function evtSaveBookmarks(o){ try { localStorage.setItem(EVT_BM_KEY, JSON.stringify(o)); } catch(e){} if(typeof prefsPush === 'function') prefsPush('evtbm'); }
 function evtSafeUrl(u){ return /^https?:\/\//i.test(u || '') ? u : '#'; }
 function evtFmtDate(iso){
   if(!iso) return '';

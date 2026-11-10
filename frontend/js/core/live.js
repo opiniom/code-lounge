@@ -39,6 +39,7 @@ function liveDisconnect(){
 /* 연결(또는 재연결) 직후: 그 사이 놓친 변경을 한 번 맞춰 둔다 */
 function liveResync(){
   loadNotifications(true); pstLoadTeam();
+  if(typeof prefsPull === 'function') prefsPull(true);            // 다른 기기에서 바꾼 내 설정
   apiFetch('/api/meetings').then(function(rows){ liveSeenDocs = {}; rows.forEach(function(r){ liveSeenDocs[r.id] = 1; }); }).catch(function(){});
   if(chatServerId()) loadChat(false);
   if(typeof wsPresStart === 'function' && wsPresInWorkspace()) wsPresStart();      // 재연결되면 내 작업 위치를 다시 알린다
@@ -69,6 +70,7 @@ function liveHandle(m){
       renderDureOrbit(); chatRenderPresence(); tmRefresh(); if(typeof wgLiveTeam === 'function') wgLiveTeam();
       break;
     case 'notification': loadNotifications(true); break;
+    case 'prefs': if(typeof prefsPull === 'function') prefsPull(true); break;      // 다른 기기(웹/앱)에서 내 설정이 바뀜
     case 'chat':
       if(m.from) chatTypingClear(m.from);                       // 방금 메시지를 보낸 사람은 '입력 중'이 끝난 것
       if(chatServerId()) loadChat(false);

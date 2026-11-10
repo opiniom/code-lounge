@@ -3,6 +3,11 @@
 var call = { ws:null, sid:null, roomKey:null, selfId:null, peers:{}, pcs:{}, pendingIce:{}, stream:null, muted:false, joined:false, connecting:false,
              rooms:[], relay:false, ice:null, statsTimer:null, meterTimer:null, rtt:null, ctx:null, analysers:{}, max:6, maxRooms:8,
              reconnecting:false, tries:0, lastRx:0, pingSentAt:0, pingTimer:null, retryTimer:null };
+/* 이 기기(브라우저)의 고정 번호: 같은 계정으로 PC 와 폰에서 동시에 들어와도 서로 쫓아내지 않게 서버가 기기를 구분한다.
+   같은 기기에서 다시 들어오면(재연결·다른 탭) 이전 연결만 정리된다 */
+function callDeviceId(){
+  try { var d = localStorage.getItem('sync_call_dev'); if(!d){ d = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('sync_call_dev', d); } return d; } catch(e){ return ''; }
+}
 function callOpen(){ return document.getElementById('callPanel').classList.contains('open'); }
 function toggleCall(){
   var panel = document.getElementById('callPanel');
@@ -37,7 +42,7 @@ function callLivePeople(){
   var rows = [{id:'self', name:(myProfile.name || '나') + ' (나)', muted:call.muted, st:''}];
   Object.keys(call.peers).forEach(function(id){
     var p = call.peers[id];
-    rows.push({id:id, name:p.name, muted:p.muted, st: p.state === 'connected' ? '' : (p.state === 'failed' ? '연결 실패' : '연결 중…')});
+    rows.push({id:id, name:p.name + (p.uid && currentUser && p.uid === currentUser.id ? ' (내 다른 기기)' : ''), muted:p.muted, st: p.state === 'connected' ? '' : (p.state === 'failed' ? '연결 실패' : '연결 중…')});
   });
   return rows;
 }
@@ -119,6 +124,10 @@ function renderCall(){
     line('이 프로젝트 팀원에게만 들려요 · 방마다 최대 ' + call.max + '명 · 마이크 권한이 필요해요');
   }
   if(can && !call.relay) line('<span class="call-note">⚠️ 다른 장소(다른 네트워크)에서는 연결이 안 될 수 있어요. 서버에 중계(TURN) 설정이 필요해요.</span>');
+  // 폰: 통화창을 닫아도 통화 중임을 알 수 있게 작은 표시를 띄운다 (누르면 통화창)
+  var pill = document.getElementById('callPill'), cb = document.getElementById('chatCallBtn');
+  if(cb) cb.classList.toggle('in-call', !!call.joined);
+  if(pill){ var showPill = !!(call.joined || call.reconnecting) && !callOpen(); pill.classList.toggle('on', showPill); var pt = document.getElementById('callPillTx'); if(pt) pt.textContent = call.reconnecting ? '다시 연결 중…' : ('통화 중 · ' + callRoomName(call.roomKey) + (call.muted ? ' · 🔇' : '')); }
   // 탭 배지
   badge.hidden = !total; badge.textContent = total;
   if(tab) tab.classList.toggle('live', total > 0);
@@ -156,7 +165,7 @@ async function joinCall(roomKey){
 function openCallSocket(){
   var ws = new WebSocket(API_BASE.replace(/^http/, 'ws') + '/ws/call/' + call.sid + '/' + encodeURIComponent(call.roomKey));
   call.ws = ws; call.lastRx = Date.now();
-  ws.onopen = function(){ ws.send(JSON.stringify({type:'auth', token:authToken})); };
+  ws.onopen = function(){ ws.send(JSON.stringify({type:'auth', token:authToken, device:callDeviceId()})); };
   ws.onmessage = function(ev){ call.lastRx = Date.now(); try { handleCallMsg(JSON.parse(ev.data)); } catch(e){ console.error(e); } };
   ws.onclose = function(ev){ if(call.ws === ws) callSocketLost(ev && ev.code); };
   ws.onerror = function(){};
@@ -205,7 +214,7 @@ function handleCallMsg(m){
   if(m.type === 'welcome'){
     var again = call.reconnecting;
     call.selfId = m.id; call.max = m.max || 6; call.roomKey = m.room || call.roomKey; call.joined = true; call.connecting = false; call.reconnecting = false; call.tries = 0; call.peers = {};
-    (m.peers || []).forEach(function(p){ call.peers[p.id] = {name:p.name, muted:p.muted, state:'connecting'}; });
+    (m.peers || []).forEach(function(p){ call.peers[p.id] = {name:p.name, uid:p.user_id, muted:p.muted, state:'connecting'}; });
     // 새로 들어온 쪽이 기존 참가자 모두에게 연결을 건다
     (m.peers || []).forEach(function(p){ createPeer(p.id, true); });
     if(call.muted) callSend({type:'state', muted:true});
@@ -213,7 +222,7 @@ function handleCallMsg(m){
     if(again) pushToast('📞','다시 연결됐어요', callRoomName(call.roomKey), { duration:2200 });
     else { sfxPlay('join'); pushToast('📞','통화방에 들어왔어요', callRoomName(call.roomKey)); }
   } else if(m.type === 'peer-joined'){
-    call.peers[m.peer.id] = {name:m.peer.name, muted:m.peer.muted, state:'connecting'};
+    call.peers[m.peer.id] = {name:m.peer.name, uid:m.peer.user_id, muted:m.peer.muted, state:'connecting'};
     sfxPlay('peerjoin');
     renderCall();
   } else if(m.type === 'peer-left'){

@@ -396,3 +396,13 @@ class Follow(Base):
     follower_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     followee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class UserPref(Base):
+    """내 설정(웹·앱·다른 기기에서 같이 쓰는 것): 홈 위젯 · 캘린더 보기 · 저장한 공모전 · 테마 · 마지막으로 연 파일.
+    data 는 JSON {키: {"v": 값, "t": 바꾼 시각(ms)}} — 키마다 '나중에 바꾼 쪽'이 이긴다. (화면 크기·효과음처럼 기기마다 다른 설정은 넣지 않는다)"""
+    __tablename__ = "user_prefs"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    data = Column(Text, nullable=False, default="{}")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

@@ -7,7 +7,8 @@ function isDarkMode(){
   if(t === 'light') return false;
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
-function setTheme(mode){
+function setTheme(mode, opts){
+  opts = opts || {};
   /* 테마 바꾸기: 한 번만 눌러도 바로 반응해야 한다.
      화면 전환 효과(startViewTransition)는 변경을 한 박자 늦게 실행하는데, 선택 표시(syncThemeButtons)를 그보다 먼저 계산해서
      한 번 눌러서는 표시가 안 바뀌고 두 번째 눌러야 바뀌는 문제가 있었다. → 실제 변경이 끝난 '뒤'에 표시·아이콘을 맞추고,
@@ -37,6 +38,8 @@ function setTheme(mode){
   }
   try{ localStorage.setItem('root_theme', mode); }catch(e){}
   syncThemeButtons(mode);                           // 누른 즉시 선택 표시도 먼저 맞춘다
+  if(!opts.silent && typeof prefsPush === 'function') prefsPush('theme');      // 다른 기기(웹/앱)도 같은 테마로
+  if(opts.silent) return;                           // 다른 기기에서 바뀐 걸 따라갈 때는 알림을 띄우지 않는다
   pushToast(mode==='dark'?'🌙':mode==='light'?'☀️':'🖥️','테마 변경됨', mode==='system' ? '시스템 설정을 따라가요' : (mode==='dark'?'다크 모드로 바꿨어요':'라이트 모드로 바꿨어요'));
 }
 /* ---- 움직임 (켜기 / 줄이기) ---- */

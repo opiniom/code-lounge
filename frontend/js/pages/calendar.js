@@ -36,6 +36,7 @@ var calProjectMembers = {};
 })();
 function saveCalSettings(){
   try{ localStorage.setItem('sync_cal_settings', JSON.stringify({hidden:calHiddenProjects, colors:calProjectColors, selected:calSelected})); }catch(e){}
+  if(typeof prefsPush === 'function') prefsPush('cal');
 }
 function calProjectById(id){ for(var i=0;i<myProjects.length;i++){ if(myProjects[i].id===id) return myProjects[i]; } return null; }
 function calProjColor(p){

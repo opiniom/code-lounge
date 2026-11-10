@@ -5,6 +5,7 @@
   · notification  새 알림           · chat      프로젝트 채팅에 새 글/변경
   · calendar      일정 추가·수정·삭제 · notes     회의록 추가·수정·삭제
   · projects      프로젝트/팀원 변화   · presence  팀원의 온라인·자리비움·방해금지·오프라인
+  · prefs         내 설정이 다른 기기(웹/앱)에서 바뀜
 DB 에 커밋된 뒤에만 보내므로(SQLAlchemy 이벤트), 라우터 코드를 일일이 고치지 않아도 모든 저장 경로가 포함된다.
 연결이 끊기면 화면은 예전처럼 폴링으로 돌아간다.
 """
@@ -129,11 +130,13 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember
+    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, UserPref
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
             bag.add(("notification", obj.user_id, None, None))
+        elif isinstance(obj, UserPref):                    # 다른 기기에서 내 설정이 바뀜: 내 화면들에만 알린다
+            bag.add(("prefs", obj.user_id, None, None))
         elif isinstance(obj, ChatMessage):
             if obj.private_to is not None:                 # 나만 보는 AI 대화: 팀원에게는 '새 메시지' 신호조차 보내지 않는다
                 bag.add(("aichat", obj.private_to, obj.project_id, None))

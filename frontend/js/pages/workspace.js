@@ -741,6 +741,7 @@ function wsOpenKey(key){
   currentFileKey = key;
   renderWsEmpty(); renderFileTree(); renderTabs(); renderFileContent(key);
   try { localStorage.setItem('sync_ws_last_' + (wsProject || ''), files[key].path); } catch (e) {}
+  if (typeof prefsPush === 'function') prefsPush('wslast');
 }
 /* 빈 새 파일에 넣어 줄 기본 내용: 자바는 파일 이름과 같은 클래스, HTML 은 기본 뼈대 */
 function wsTemplateFor(path){

@@ -53,7 +53,13 @@
   .chat-head{padding:12px 12px;}
   .chat-input{padding:10px 12px calc(10px + env(safe-area-inset-bottom));}
   .app.chat-docked .view{margin-right:0 !important;}
-  .call-panel{left:8px; right:8px !important; width:auto; bottom:calc(var(--mnav-h) + 10px + env(safe-area-inset-bottom));}
+  /* 통화창: 전체 화면 채팅(z-index 95)보다 위로 올라오는 아래쪽 시트. (예전에는 채팅 뒤에 열려서 통화 버튼을 눌러도 아무 반응이 없는 것처럼 보였다) */
+  .call-panel{left:0; right:0 !important; top:auto; bottom:0; width:auto; max-height:min(80dvh, 640px); z-index:100; border-radius:22px 22px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); transform:translateY(28px); box-shadow:0 -18px 40px -16px rgba(0,0,0,.45);}
+  .call-panel.open{transform:none;}
+  .call-panel .icon-btn{min-width:38px; min-height:38px;}
+  .call-room-btn{padding:7px 14px; font-size:13px;} .call-room-del{padding:8px 10px;}
+  .call-ctrl .btn{min-height:44px;}
+  .call-pill.on{display:inline-flex;}
 
   /* ---- 화면 여백 · 제목 ---- */
   .page-pad{padding:18px 16px 28px;}

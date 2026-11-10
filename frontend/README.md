@@ -12,7 +12,7 @@ frontend/
 │   ├─ notifications.css · components.css · editor.css(코드 에디터 테마)
 │   └─ polish.css · widgets.css · presence.css · landing.css · splash.css · voice.css   (타이포·위젯 갤러리·내 상태·소개 첫 화면·앱 인사 화면·음성 입력)
 └─ js/
-    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사)
+    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사) · prefs(내 설정 웹↔앱 동기화)
     ├─ shell/    menus · presence(내 상태) · notifications(알림·토스트)
     └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · call · team · notes · calendar · community · admin
 ```
@@ -22,6 +22,16 @@ frontend/
 채팅 입력줄의 마이크 버튼을 누르고 "두레야 내일 3시에 회의 잡아줘"처럼 말하면, 글로 바뀌어 **직접 친 것과 똑같이** 채팅 → AI 로 처리됩니다 (AI 호출어로 시작하면 1.6초 뒤 자동 전송, 그 안에 [취소]·글 수정 가능. 호출어 없이 말하면 입력칸에만 채워 줘요. '나만 보는 AI' 탭에서는 호출어 없이도 보냄).
 - 브라우저 음성 인식(Web Speech)이 되면 그걸 쓰고, 안 되는 곳(아이폰 설치 앱 등)은 녹음 → `POST /api/ai/transcribe` (Gemini 받아쓰기, 서버에 `GEMINI_API_KEY` 필요, 사용자당 시간당 40회) 로 처리. 소리는 저장하지 않아요.
 - 호출어 오인식('두래야', '듀레야')은 AI 이름(기본 이름 + 내가 정한 이름)에 맞게 보정합니다.
+
+## 웹 ↔ 설치한 앱(PWA) 설정 동기화 (`js/core/prefs.js`, `api/routers/prefs.py`)
+
+웹과 앱은 브라우저 저장소가 서로 달라서, 거기에만 저장하던 설정은 공유되지 않았어요. 이제 같은 값을 서버(`/api/prefs`)에도 보관해요.
+
+- **동기화**: 홈 위젯(보이기·순서·크기) · 홈에서 고른 프로젝트 · 캘린더 보기(숨김·색·선택) · 저장한 공모전 · 테마 · 프로젝트별 마지막 파일 · 채팅 읽음 위치
+- **동기화 안 함** (기기마다 달라야 해서): 화면 크기 배율 · 움직임 · 효과음 · 내 PC 실행기 · 미리보기 크기
+- 저장하는 코드는 그대로 두고 저장한 직후 `prefsPush('키')` 한 줄만 불러요. 키마다 **나중에 바꾼 쪽**이 이기고, 한쪽에서 바꾸면 실시간 연결(`/ws/live` 의 `prefs`)로 다른 쪽이 바로 따라와요.
+- 처음 연결하는 기기: 서버에 값이 있으면 받아 오고, 없고 내 기기에 저장해 둔 값이 있으면 올려요. 다른 계정으로 로그인하면 이 기기에 남은 이전 계정 설정은 지워요.
+- 새 설정을 동기화하려면 `PREFS.defs` 에 `read/write/wipe` 를 추가하고, 서버 `routers/prefs.py` 의 `CHECKS` 에 값 검사를 넣으면 돼요.
 
 ## 두레(채팅 AI)가 쓸 수 있는 자료·일 (`api/services/chat_ai.py`)
 

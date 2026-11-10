@@ -32,6 +32,37 @@ services:
     networks:
       - duresync-net
 
+  # 팀 통화방 중계(TURN) 서버 — 선택 사항. 폰(LTE)↔PC(와이파이)처럼 서로 다른 네트워크에서 직접 연결이 안 될 때 음성을 대신 전달한다.
+  # 켜는 방법은 README '📞 팀 통화방' 참고:  docker compose -f docker-compose.prod.yml --profile turn up -d coturn
+  # (.env 에 TURN_SECRET · TURN_EXTERNAL_IP · TURN_URLS 필요. 서버 방화벽/보안그룹에서 3478(UDP·TCP)과 49160-49200(UDP)을 열어야 해요)
+  coturn:
+    image: coturn/coturn:latest
+    profiles: ["turn"]
+    container_name: duresync-turn
+    restart: always
+    network_mode: host
+    command:
+      - "-n"
+      - "--log-file=stdout"
+      - "--listening-port=3478"
+      - "--realm=duresync.cloud"
+      - "--use-auth-secret"
+      - "--static-auth-secret=${TURN_SECRET:-}"
+      - "--external-ip=${TURN_EXTERNAL_IP:-}"
+      - "--min-port=49160"
+      - "--max-port=49200"
+      - "--fingerprint"
+      - "--no-cli"
+      - "--no-multicast-peers"
+      # 중계 서버가 서버 내부(도커 네트워크·클라우드 메타데이터 등)를 건드리지 못하게 막는다
+      - "--denied-peer-ip=0.0.0.0-0.255.255.255"
+      - "--denied-peer-ip=10.0.0.0-10.255.255.255"
+      - "--denied-peer-ip=100.64.0.0-100.127.255.255"
+      - "--denied-peer-ip=127.0.0.0-127.255.255.255"
+      - "--denied-peer-ip=169.254.0.0-169.254.255.255"
+      - "--denied-peer-ip=172.16.0.0-172.31.255.255"
+      - "--denied-peer-ip=192.168.0.0-192.168.255.255"
+
 volumes:
   caddy_data:
   caddy_config:

@@ -15,7 +15,9 @@ function chatSeenKey(){ return 'sync_chat_seen_'+(currentUser ? currentUser.id :
 function chatSeenId(){ try{ return parseInt(localStorage.getItem(chatSeenKey()) || '0', 10); }catch(e){ return 0; } }
 function chatMarkSeen(){
   var max = chatMsgs.reduce(function(a, m){ return Math.max(a, m.id); }, 0);
+  var before = chatSeenId();
   try{ localStorage.setItem(chatSeenKey(), String(max)); }catch(e){}
+  if(max > before && typeof prefsPush === 'function') prefsPush('chatseen');      // 웹에서 읽은 메시지는 앱에서도 읽은 것으로
 }
 var CHAT_COLORS = ['#3B82F6','#8B5CF6','#EC4899','#06B6D4','#F59E0B','#10B981'];
 function chatColor(key){ var n = 0; String(key).split('').forEach(function(c){ n += c.charCodeAt(0); }); return CHAT_COLORS[n % CHAT_COLORS.length]; }

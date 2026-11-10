@@ -79,6 +79,7 @@ function saveWidgetPrefs(){
     var wide = {}; all.forEach(function(w){ wide[w.dataset.widget] = w.classList.contains('wide'); });                 // 넓게/보통 (사용자가 ↔ 로 바꾼 크기)
     localStorage.setItem('root_home_widget_wide', JSON.stringify(wide));
   }catch(e){}
+  if(typeof prefsPush === 'function') prefsPush('home');
 }
 function loadWidgetPrefs(){
   try{
@@ -238,6 +239,7 @@ function homeProject(){
 }
 function setHomeProject(id){
   try { localStorage.setItem('sync_home_project', id); } catch(e){}
+  if(typeof prefsPush === 'function') prefsPush('homeproj');
   if(id !== chatProject && typeof switchChatProject === 'function') switchChatProject(id);     // 채팅·통화도 같은 프로젝트로
   dureSig = ''; renderDureOrbit(); wgLiveTeam();
 }

@@ -7,6 +7,8 @@
   그 밖의 방은 팀원이 만들고(최대 8개) DB 에 저장된다.
 - 방에 누가 있는지는 서버 메모리에서만 관리한다 (서버를 재시작하면 비워진다).
 - 인증: 웹소켓을 연 뒤 첫 메시지로 로그인 토큰을 보낸다 (주소에 토큰을 싣지 않는다).
+- 같은 계정으로 PC 와 폰에서 동시에 들어올 수 있다 (기기 번호가 다르면 서로 다른 참가자). 같은 기기에서 다시 들어오거나(재연결)
+  다른 탭으로 들어오면 이전 연결만 정리해서, 끊어진 연결이 유령 참가자로 남지 않게 한다.
 """
 import asyncio
 import base64
@@ -38,16 +40,18 @@ MAX_ROOMS = 8                 # 프로젝트당 직접 만든 방 개수
 AUTH_TIMEOUT_SECONDS = 10
 MAX_MESSAGE_CHARS = 20000     # SDP 는 보통 수 KB
 MAIN = "main"
+FALLBACK_STUN = ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"]
 
 
 class Peer:
-    def __init__(self, peer_id: str, ws: WebSocket, user_id: int, name: str, project_id: int, room: str):
+    def __init__(self, peer_id: str, ws: WebSocket, user_id: int, name: str, project_id: int, room: str, device: str = ""):
         self.id = peer_id
         self.ws = ws
         self.user_id = user_id
         self.name = name
         self.project_id = project_id
         self.room = room
+        self.device = device       # 이 연결을 연 기기(브라우저)의 고정 번호. 같은 기기의 중복 연결만 정리하고, 내 다른 기기(폰·PC)는 함께 들어올 수 있다
         self.muted = False
 
     def info(self) -> dict:
@@ -79,6 +83,10 @@ async def _close_quietly(ws: WebSocket, code: int = 4000):
         pass
 
 
+def _clean_device(raw) -> str:
+    return re.sub(r"[^0-9A-Za-z_-]", "", str(raw or ""))[:40]
+
+
 def _clean_name(raw: str) -> str:
     name = re.sub(r"<[^>]*>", "", raw or "")          # HTML 조각(<b> 등)은 통째로 제거
     name = re.sub(r"[\x00-\x1f\x7f<>]", "", name)
@@ -88,6 +96,9 @@ def _clean_name(raw: str) -> str:
 def ice_config(user_id: int) -> Tuple[List[dict], bool]:
     """브라우저에 줄 ICE 서버 목록과, 중계(TURN) 서버가 설정돼 있는지 여부"""
     stun = [u.strip() for u in settings.STUN_URLS.split(",") if u.strip()]
+    for extra in FALLBACK_STUN:                       # 설정한 것 외에 공용 STUN 을 몇 개 더: 통신사·공유기에 따라 한 곳만 막혀 있는 경우가 있다
+        if extra not in stun:
+            stun.append(extra)
     servers: List[dict] = [{"urls": stun}] if stun else []
     turn_urls = [u.strip() for u in settings.TURN_URLS.split(",") if u.strip()]
     relay = False
@@ -272,10 +283,12 @@ async def call_socket(websocket: WebSocket, project_id: int, room_key: str):
                 return
             user_id, name = user.id, user.username
 
-        # 같은 사람은 한 번에 한 방에만 있는다: 이 프로젝트의 다른 방(또는 다른 탭)에 있으면 이전 연결을 내보낸다
+        # 같은 기기에서는 한 번에 한 방에만 있는다: 이 프로젝트의 다른 방(또는 같은 브라우저의 다른 탭)에 이 기기의 이전 연결이 있으면 내보낸다.
+        # 내 다른 기기(PC ↔ 폰)는 별개의 참가자로 함께 들어올 수 있다. 기기 번호를 안 보낸 옛 화면은 예전처럼 같은 기기로 본다.
+        device = _clean_device(first.get("device"))
         for other_key in [k for k in rooms if k[0] == project_id]:
-            for old in [p for p in rooms[other_key].values() if p.user_id == user_id]:
-                await _send(old, {"type": "kicked", "message": "다른 곳에서 통화방에 들어와서 이전 연결을 종료했어요."})
+            for old in [p for p in rooms[other_key].values() if p.user_id == user_id and (not device or not p.device or p.device == device)]:
+                await _send(old, {"type": "kicked", "message": "이 기기의 다른 화면에서 통화방에 들어와서 이전 연결을 종료했어요."})
                 rooms[other_key].pop(old.id, None)
                 await _broadcast(project_id, other_key[1], {"type": "peer-left", "id": old.id})
                 await _close_quietly(old.ws)
@@ -286,7 +299,7 @@ async def call_socket(websocket: WebSocket, project_id: int, room_key: str):
             return
 
         # 2) 입장
-        peer = Peer(secrets.token_hex(6), websocket, user_id, name, project_id, room_key)
+        peer = Peer(secrets.token_hex(6), websocket, user_id, name, project_id, room_key, device)
         existing = [p.info() for p in room.values()]
         room[peer.id] = peer
         await _send(peer, {"type": "welcome", "id": peer.id, "peers": existing, "max": MAX_PEERS, "room": room_key})

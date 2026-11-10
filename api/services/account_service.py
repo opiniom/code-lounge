@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import (CalendarEvent, CallRoom, ChatMessage, CommunityApplication, CommunityBookmark, CommunityComment, CommunityLike, CommunityPost,
                     CommunityReport, Follow, MeetingDoc, Notification, PortfolioEntry, Project, ProjectFile, ProjectInvitation, ProjectMember,
-                    Submission, User, UserProfile, WithdrawalLog)
+                    Submission, User, UserPref, UserProfile, WithdrawalLog)
 
 logger = logging.getLogger("account")
 KEEP_DAYS = 7
@@ -164,6 +164,7 @@ async def withdraw_user(db: AsyncSession, user: User, reason: Optional[str] = No
     await db.execute(delete(Notification).where(Notification.user_id == uid))
     await db.execute(delete(Follow).where(or_(Follow.follower_id == uid, Follow.followee_id == uid)))
     await db.execute(delete(UserProfile).where(UserProfile.user_id == uid))
+    await db.execute(delete(UserPref).where(UserPref.user_id == uid))      # 내 설정(위젯·테마 등)도 지운다
     await db.execute(delete(PortfolioEntry).where(PortfolioEntry.user_id == uid))
     await db.execute(delete(CalendarEvent).where(CalendarEvent.user_id == uid, CalendarEvent.kind == "private"))
     await db.execute(delete(MeetingDoc).where(MeetingDoc.user_id == uid, MeetingDoc.project_id.is_(None)))   # 개인 회의록
