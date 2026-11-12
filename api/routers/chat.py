@@ -12,6 +12,7 @@ from schemas import ChatMessageCreate, ChatMessageResponse, CalendarEventRespons
 from services.auth_service import get_current_user
 from services.access import get_member_project
 from services.schedule_ai import detect_chat
+from services import note_prep
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects/{project_id}/messages", tags=["Chat"])
@@ -85,27 +86,52 @@ async def analyze_message(project_id: int, message_id: int):
                 ).order_by(ChatMessage.id.desc()).limit(12)
             )).scalars().all()
             recent.reverse()
-            if not recent or recent[-1].id != message_id or not _HINT_RE.search(recent[-1].text):
+            if not recent or recent[-1].id != message_id or not (_HINT_RE.search(recent[-1].text) or note_prep.is_retraction(recent[-1].text)):
                 return
             names = await _author_names(db, recent)
             lines = [(names.get(m.user_id, "?"), m.text) for m in recent]
-            engine, _note, events = await detect_chat(lines, date.today())
-            if not events:
-                return
             existing = (await db.execute(
                 select(ChatMessage).where(ChatMessage.project_id == project_id, ChatMessage.kind == "ai_detect")
                 .order_by(ChatMessage.id.desc()).limit(50)
             )).scalars().all()
-            known = set()
+            cards = []                                         # (메시지, meta) — 최근 것부터
             for m in existing:
                 try:
-                    meta = json.loads(m.meta or "{}")
-                    known.add((meta.get("title"), meta.get("start_date")))
+                    cards.append((m, json.loads(m.meta or "{}")))
                 except ValueError:
                     pass
+
+            # 방금 한 말이 '취소·철회'면: 아직 캘린더에 안 넣은 일정 카드 중 그 일을 가리키는 것을 치운다 (예: "햄버거 땡땡 취소할게요")
+            last_text = recent[-1].text
+            if note_prep.is_retraction(last_text):
+                subj = note_prep._subject_tokens(last_text)
+                hit = False
+                for m, meta in cards:
+                    if meta.get("status") != "pending":
+                        continue
+                    if (subj and len(subj & note_prep.tokens(meta.get("title", ""))) / len(subj) >= 0.5) or (not subj and not hit):
+                        meta["status"] = "dismissed"
+                        m.meta = json.dumps(meta, ensure_ascii=False)
+                        hit = True
+                        if not subj:
+                            break
+                if hit:
+                    await db.commit()
+                return
+
+            engine, _note, events = await detect_chat(lines, date.today())
+            if not events:
+                return
+            known = {(meta.get("title"), meta.get("start_date")) for _m, meta in cards}
             for e in events:
                 if (e["title"], e["start_date"].isoformat()) in known:
                     continue
+                # 같은 일을 날짜만 바꿔 다시 말한 경우: 앞의 카드(아직 추가 전)는 치우고 새 날짜 카드로 바꾼다
+                for m, meta in cards:
+                    if (meta.get("status") == "pending" and note_prep.same_task(meta.get("title", ""), e["title"])
+                            and meta.get("start_date") != e["start_date"].isoformat()):
+                        meta["status"] = "dismissed"
+                        m.meta = json.dumps(meta, ensure_ascii=False)
                 meta = {
                     "title": e["title"], "assignee": e.get("assignee", ""),
                     "start_date": e["start_date"].isoformat(), "end_date": e["end_date"].isoformat(),

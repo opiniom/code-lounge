@@ -20,86 +20,6 @@ function buildDocFromLines(title, date, attendees, lines){
     status:'완료', raw: lines.join('\n')
   };
 }
-function formatNote(type){
-  var editor = document.getElementById('noteEditor');
-  editor.focus();
-  if(type==='h3'){ document.execCommand('formatBlock', false, 'H3'); }
-  else if(type==='ul'){ document.execCommand('insertUnorderedList'); }
-  else if(type==='check'){ document.execCommand('insertHTML', false, '☐ '); }
-  else if(type==='hr'){ document.execCommand('insertHorizontalRule'); }
-}
-document.getElementById('noteEditor').addEventListener('keyup', function(e){
-  if(e.key==='/'){ document.getElementById('slashMenu').classList.add('open'); }
-  else if(e.key!=='Shift'){ document.getElementById('slashMenu').classList.remove('open'); }
-});
-function slashInsert(type){
-  var sel = window.getSelection();
-  if(sel.rangeCount){
-    var range = sel.getRangeAt(0);
-    var node = range.startContainer;
-    if(node.nodeType===3 && node.textContent.slice(0, range.startOffset).endsWith('/')){
-      node.textContent = node.textContent.slice(0, range.startOffset-1) + node.textContent.slice(range.startOffset);
-      range.setStart(node, range.startOffset-1);
-      range.setEnd(node, range.startOffset-1);
-      sel.removeAllRanges(); sel.addRange(range);
-    }
-  }
-  document.getElementById('slashMenu').classList.remove('open');
-  formatNote(type);
-}
-function validateRequired(){
-  var title = document.getElementById('noteTitleInput').value.trim();
-  var dateVal = document.getElementById('noteDateInput').value;
-  var attendees = Array.from(document.querySelectorAll('#attendeePicker .member-chip.active')).map(function(c){ return c.dataset.name; });
-  if(!title || !dateVal || attendees.length===0){
-    pushToast('⚠️','필수 항목을 확인해주세요','회의 제목 · 날짜 · 참석자는 꼭 입력해야 해요');
-    return null;
-  }
-  var p = dateVal.split('-');
-  return {title:title, date:p[0]+'.'+p[1]+'.'+p[2], attendees:attendees, project:document.getElementById('noteProject').value || null};
-}
-function saveDraft(){
-  pushToast('💾','임시저장됨','작성 중인 내용이 임시로 저장됐어요');
-}
-var attendeeDefaultHtml = null;
-function buildAttendeePicker(projId){
-  var box = document.getElementById('attendeePicker');
-  if(attendeeDefaultHtml===null) attendeeDefaultHtml = box.innerHTML;
-  if(!calApiMode){ box.innerHTML = attendeeDefaultHtml; return; }
-  box.innerHTML = '';
-  var pr = calProjectById(projId || (document.getElementById('noteProject') || {}).value);
-  var names = (pr && pr.members && pr.members.length) ? pr.members.map(function(mm){ return mm.username; }) : [myProfile.name || '나'];
-  names.forEach(function(nm){
-    var chip = document.createElement('button');
-    chip.type = 'button'; chip.className = 'member-chip active'; chip.dataset.name = nm;
-    chip.onclick = function(){ chip.classList.toggle('active'); };
-    var dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = chatColor(nm);
-    chip.appendChild(dot); chip.append(nm);
-    box.appendChild(chip);
-  });
-}
-function openComposeModal(){
-  if(calApiMode && !myProjects.length){
-    ensureProjectId().then(function(){ openComposeModal(); }).catch(function(e){ pushToast('⚠️','프로젝트를 만들지 못했어요', e.message); });
-    return;
-  }
-  var psel = document.getElementById('noteProject');
-  psel.innerHTML = '';
-  var defProj = calDefaultProject() || (myProjects[0] && myProjects[0].id) || null;
-  myProjects.forEach(function(p){
-    var o = document.createElement('option'); o.value = p.id; o.textContent = p.title;
-    if(p.id===defProj) o.selected = true;
-    psel.appendChild(o);
-  });
-  if(!myProjects.length){ var none = document.createElement('option'); none.value = ''; none.textContent = '프로젝트 없음'; psel.appendChild(none); }
-  document.getElementById('noteTitleInput').value = '';
-  document.getElementById('noteDateInput').value = CAL_TODAY.y+'-'+pad2(CAL_TODAY.m)+'-'+pad2(CAL_TODAY.d);
-  buildAttendeePicker(defProj);
-  document.querySelectorAll('#attendeePicker .member-chip').forEach(function(c){ c.classList.add('active'); });
-  document.getElementById('noteEditor').innerHTML = '';
-  document.getElementById('composeModal').classList.add('open');
-}
-function closeComposeModal(){ var el = document.getElementById('composeModal'); if(el) el.classList.remove('open'); }
 /* 회의 메모를 AI 가 논의/결정/액션아이템으로 정리 (로그인 필요). 실패하면 null → 기본 분류로 대체 */
 function structureWithAi(lines, title){
   if(!calApiMode) return Promise.resolve(null);
@@ -112,31 +32,6 @@ function applyStructure(doc, res){
   doc.aiStructured = true;
   return doc;
 }
-function generateAiRecord(){
-  var meta = validateRequired();
-  if(!meta) return;
-  var editor = document.getElementById('noteEditor');
-  var lines = editor.innerText.trim().split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  if(!lines.length){ pushToast('📝','내용을 적어주세요','회의 내용을 적은 뒤 AI가 정리해요'); return; }
-  var btn = document.getElementById('aiRecordBtn');
-  var original = btn.innerHTML;
-  btn.disabled = true;
-  btn.textContent = '🤖 AI가 정리하는 중...';
-  structureWithAi(lines, meta.title).then(function(res){
-    var doc = buildDocFromLines(meta.title, meta.date, meta.attendees, lines);
-    applyStructure(doc, res);
-    doc.project = meta.project;
-    meetingDocs.unshift(doc);
-    if(meta.project && calSelected!=='all' && calSelected!==meta.project) calSelected = meta.project;   // 새 회의록이 보이는 프로젝트로 이동
-    syncCalProjects();
-    syncDocToCalendar(doc);
-    btn.disabled = false;
-    btn.innerHTML = original;
-    closeComposeModal();
-    pushToast('📄', res ? 'AI 회의록 정리 완료' : '회의록 저장됨', doc.title+' · 결정 '+doc.decisions.length+' · 액션 '+doc.actions.length);
-  });
-}
-
 /* ---- notes: document gallery + side drawer ---- */
 var meetingDocs = [];
 function renderMeetingDocs(){
@@ -279,41 +174,6 @@ function askDeleteDoc(){
   docDeleteAsk = id; btn.classList.add('ask'); btn.textContent = '정말 삭제?';
   setTimeout(function(){ if(docDeleteAsk === id){ docDeleteAsk = null; btn.classList.remove('ask'); btn.textContent = '🗑 삭제'; } }, 3500);
 }
-function buildDocHtml(doc){
-  var attendeesHtml = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
-  var discussionHtml = doc.others.length ? doc.others.map(function(o){ return "<li>"+escHtml(o)+"</li>"; }).join('') : "<li class='mdoc-empty' style='list-style:none; margin-left:-20px;'>일반 논의 내용이 없어요.</li>";
-  var decisionsHtml = doc.decisions.length ? doc.decisions.map(function(d){ return "<li>"+escHtml(d)+"</li>"; }).join('') : "<li class='mdoc-empty' style='list-style:none; margin-left:-20px;'>확정된 결정사항이 없어요.</li>";
-  var actionsHtml = doc.actions.length ? doc.actions.map(function(a){ return "<li>"+escHtml(a)+"</li>"; }).join('') : "<li class='mdoc-empty'>등록된 액션 아이템이 없어요.</li>";
-  var c = getStatusColor(doc.status);
-  return (
-    "<h2 class='mdoc-title-lg'>"+escHtml(doc.title)+"</h2>"+
-    "<div class='mdoc-props'>"+
-      "<div class='mdoc-prop'><span class='mp-label'>📅 날짜</span><span class='mp-val'>"+escHtml(doc.date)+"</span></div>"+
-      "<div class='mdoc-prop'><span class='mp-label'>✅ 상태</span><span class='mp-val'><button type='button' class='mdr-status-btn' style='background:"+c+"22; color:"+c+";' onclick='openStatusEditor(event,\""+doc.id+"\")'>● "+escHtml(doc.status)+"</button></span></div>"+
-      "<div class='mdoc-prop'><span class='mp-label'>📁 프로젝트</span><span class='mp-val'>"+escHtml((calProjectById(doc.project)||{title:'미분류'}).title)+"</span></div>"+
-      "<div class='mdoc-prop'><span class='mp-label'>👥 참석자</span><span class='mp-val'>"+attendeesHtml+"</span></div>"+
-    "</div>"+
-    "<hr class='mdoc-divider'>"+
-    "<div class='mdoc-block'><h4>💬 논의 내용</h4><ul>"+discussionHtml+"</ul></div>"+
-    "<div class='mdoc-block'><h4>✅ 결정 사항 <span class='count'>("+doc.decisions.length+")</span></h4><ol>"+decisionsHtml+"</ol></div>"+
-    "<div class='mdoc-block'><h4>🔧 액션 아이템 <span class='count'>("+doc.actions.length+")</span></h4><ul class='mdoc-checklist'>"+actionsHtml+"</ul></div>"+
-    "<hr class='mdoc-divider'>"+
-    "<div class='mdoc-block'><h4>📅 캘린더</h4><p style='font-size:12px; color:var(--text-faint); line-height:1.6; margin-bottom:10px;'>회의록에 적힌 날짜·기간(예: 9월 20일부터 22일까지)을 AI가 분석해서 캘린더에 시작~종료 그대로 넣어줘요.</p>"+
-    "<button type='button' class='btn primary' onclick='applyDocToCalendar(\""+doc.id+"\")'>📅 이 회의록 일정을 캘린더에 반영</button></div>"
-  );
-}
-function openMdocDrawer(id){
-  var doc = meetingDocs.find(function(d){ return d.id===id; });
-  if(!doc) return;
-  var drawer = document.getElementById('mdocDrawer');
-  drawer.dataset.docId = id;
-  docDeleteAsk = null;
-  var delBtn = document.getElementById('mdocDeleteBtn'); if(delBtn){ delBtn.classList.remove('ask'); delBtn.textContent = '🗑 삭제'; }
-  drawer.classList.remove('editing');
-  document.getElementById('mdocCrumb').textContent = '회의록';
-  document.getElementById('mdocDrawerBody').innerHTML = buildDocHtml(doc);
-  drawer.classList.add('open');
-}
 function closeMdocDrawer(){ var el = document.getElementById('mdocDrawer'); if(el) el.classList.remove('open'); }
 
 /* ---- notes: editable status tags ---- */
@@ -374,68 +234,6 @@ function setDocStatus(docId, name){
 }
 
 /* ---- notes: edit AI-generated record ---- */
-function growTextarea(el){
-  el.style.height = 'auto';
-  el.style.height = Math.max(60, el.scrollHeight)+'px';
-  var cnt = document.querySelector('.sec-count[data-for="'+el.id+'"]');
-  if(cnt){ var n = el.value.split('\n').filter(function(l){ return l.trim(); }).length; cnt.textContent = n+'줄'; }
-}
-function buildEditSection(cls, icon, title, id, lines, placeholder){
-  return "<div class='mdoc-edit-sec "+cls+"'>"+
-    "<div class='sec-head'><span class='sec-title'>"+icon+" "+title+"</span><span class='sec-hint'>한 줄에 하나씩</span><span class='sec-count' data-for='"+id+"'>0줄</span></div>"+
-    "<textarea id='"+id+"' rows='3' placeholder=\""+escAttr(placeholder)+"\" oninput='growTextarea(this)'>"+escHtml(lines.join('\n'))+"</textarea></div>";
-}
-function buildDocEditHtml(doc){
-  var projOptions = myProjects.map(function(p){ return "<option value='"+escAttr(p.id)+"'"+(p.id===doc.project?" selected":"")+">"+escHtml(p.title)+"</option>"; }).join('');
-  var attendeesHtml = doc.attendees.map(function(a){ return "<span class='chip'>"+escHtml(a)+"</span>"; }).join('');
-  return (
-    "<div class='mdoc-edit'>"+
-    "<input type='text' class='mdoc-edit-title' id='editTitle' placeholder='회의 제목' value=\""+escAttr(doc.title)+"\">"+
-    "<div class='mdoc-props'>"+
-      "<div class='mdoc-prop'><span class='mp-label'>📁 프로젝트</span><span class='mp-val'><select id='editProject' class='mdoc-select'>"+(projOptions || "<option value=''>프로젝트 없음</option>")+"</select></span></div>"+
-      "<div class='mdoc-prop'><span class='mp-label'>📅 날짜</span><span class='mp-val'>"+escHtml(doc.date)+"</span></div>"+
-      "<div class='mdoc-prop'><span class='mp-label'>👥 참석자</span><span class='mp-val'>"+attendeesHtml+"</span></div>"+
-    "</div>"+
-    "<hr class='mdoc-divider'>"+
-    "<div class='mdoc-edit-note'><span>🤖</span><span><b>저장하면 AI가 회의록을 다시 분석해요.</b> 날짜나 기간(예: 9월 20일부터 22일까지)을 적으면 캘린더 일정이 새 내용으로 다시 만들어져요.</span></div>"+
-    buildEditSection('sec-other', '💬', '논의 내용', 'editOthers', doc.others, '논의한 내용을 적어 주세요')+
-    buildEditSection('sec-decision', '✅', '결정 사항', 'editDecisions', doc.decisions, '결정된 내용을 적어 주세요')+
-    buildEditSection('sec-action', '🔧', '액션 아이템', 'editActions', doc.actions, '담당자와 할 일을 적어 주세요')+
-    "<div class='mdoc-edit-footer'><button type='button' class='btn ghost' onclick='cancelEditDoc()'>취소</button><button type='button' class='btn primary' onclick='saveEditDoc()'>저장하고 캘린더 다시 분석</button></div>"+
-    "</div>"
-  );
-}
-function toggleEditDoc(){
-  var drawer = document.getElementById('mdocDrawer');
-  var id = drawer.dataset.docId;
-  var doc = meetingDocs.find(function(d){ return d.id===id; });
-  if(!doc) return;
-  drawer.classList.add('editing');
-  document.getElementById('mdocCrumb').textContent = '회의록 › 수정';
-  document.getElementById('mdocDrawerBody').innerHTML = buildDocEditHtml(doc);
-  document.getElementById('mdocDrawerBody').scrollTop = 0;
-  document.querySelectorAll('#mdocDrawerBody .mdoc-edit-sec textarea').forEach(growTextarea);
-  var t = document.getElementById('editTitle'); if(t) t.focus();
-}
-function cancelEditDoc(){ openMdocDrawer(document.getElementById('mdocDrawer').dataset.docId); }
-function saveEditDoc(){
-  var id = document.getElementById('mdocDrawer').dataset.docId;
-  var doc = meetingDocs.find(function(d){ return d.id===id; });
-  if(!doc) return;
-  var titleVal = document.getElementById('editTitle').value.trim();
-  if(titleVal) doc.title = titleVal;
-  var projSel = document.getElementById('editProject');
-  if(projSel && projSel.value) doc.project = projSel.value;
-  doc.others = document.getElementById('editOthers').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  doc.decisions = document.getElementById('editDecisions').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  doc.actions = document.getElementById('editActions').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  doc.raw = doc.others.concat(doc.decisions, doc.actions).join('\n');
-  renderMeetingDocs();
-  openMdocDrawer(id);
-  syncDocToCalendar(doc);
-  pushToast('✅','수정 완료', doc.title+' 회의록이 수정됐어요');
-}
-
 /* ---- notes → calendar integration ---- */
 var guestNoticeShown = false;
 /* 회의록을 서버에 저장(생성/수정). 같은 문서의 요청은 순서대로 처리 */
@@ -460,6 +258,10 @@ function persistDoc(doc){
 function docFromServer(row){
   var lines = (row.raw || '').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
   var d = buildDocFromLines(row.title, row.doc_date.replace(/-/g, '.'), row.attendees, lines);
+  /* 서버에서 목록을 다시 받아도 같은 회의록은 같은 번호를 유지한다. (번호가 바뀌면 방금 분석한 일정 후보가 회의록과 연결이 끊겨,
+     나중에 회의록을 고치거나 지워도 그 일정이 지워지지 않고 남았다) */
+  var prev = meetingDocs.filter(function(x){ return x.serverId === row.id; })[0];
+  if(prev) d.id = prev.id;
   if(row.structure){ d.others = row.structure.others || []; d.decisions = row.structure.decisions || []; d.actions = row.structure.actions || []; }
   d.serverId = row.id; d.status = row.status; d.raw = row.raw;
   d.project = row.project_id ? 'p'+row.project_id : null;
@@ -473,11 +275,33 @@ function syncDocToCalendar(doc){
     if(!guestNoticeShown){ guestNoticeShown = true; pushToast('🔒','AI 일정 분석은 로그인 후 사용할 수 있어요','구글/네이버/이메일로 로그인하면 회의록이 저장되고 캘린더에 반영돼요'); }
     return;
   }
-  // 이미 분석했던 회의록의 내용이 바뀌었다면(수정): 예전 내용에서 만들어진 일정/후보를 지우고 새 내용으로 다시 만든다
+  // 이미 분석했던 회의록의 내용이 바뀌었다면(수정): 새 내용과 맞춰서, 더는 적혀 있지 않은 일정만 지우고 새로 생긴 일정만 추가한다
+  // (예전에는 이 회의록의 일정을 전부 지우고 다시 만들어서, 그때마다 팀원에게 '새 일정' 알림이 또 갔다)
   var edited = detectCache[doc.id]!==undefined && detectCache[doc.id]!==doc.raw;
-  persistDoc(doc)
-    .then(function(){ return edited ? resetDocDerived(doc) : null; })
-    .then(function(){ refreshDetections(true, true); });
+  persistDoc(doc).then(function(){
+    /* 저장 직후 서버가 보내는 '회의록이 바뀜' 신호가 이 글을 '이미 분석한 글'로 표시해 버리면 재분석이 건너뛰어졌다 → 방금 저장한 글은 항상 새로 분석한다 */
+    delete detectCache[doc.id];
+    return edited ? reconcileDocEvents(doc) : refreshDetections(true, true);
+  });
+}
+function reconcileDocEvents(doc){
+  return analyzeDoc(doc).then(function(fresh){
+    var keep = {};
+    calDetect.filter(function(c){ return c.docId===doc.id; }).forEach(function(c){ keep[c.title+'|'+c.start] = true; });
+    var stale = !doc.serverId ? [] : calendarEvents.filter(function(e){ return e.cls==='ai' && e.docServerId===doc.serverId && !keep[e.title+'|'+e.start]; });
+    return Promise.all(stale.map(function(e){
+      return apiFetch('/api/calendar/events/'+e.serverId, {method:'DELETE'}).then(function(){ return e; }).catch(function(){ return null; });   // 내가 만든 일정이 아니면 못 지운다 → 그대로 둔다
+    })).then(function(gone){
+      var removed = gone.filter(Boolean);
+      if(removed.length){
+        var ids = {}; removed.forEach(function(e){ ids[e.id] = true; });
+        calendarEvents = calendarEvents.filter(function(e){ return !ids[e.id]; });
+        syncCandidateStatus(); renderCalendarEvents(); renderCalSelector(); renderDetectCard();
+        pushToast('🔄','회의록 내용에 맞춰 일정을 정리했어요','더는 적혀 있지 않은 일정 '+removed.length+'개를 지웠어요');
+      }
+      if(fresh.length) return addCandidates(fresh, {auto:true});
+    });
+  });
 }
 function resetDocDerived(doc){
   // 무시한 항목은 그대로 두고, 나머지 후보와 이 회의록이 만든 AI 일정은 지운다

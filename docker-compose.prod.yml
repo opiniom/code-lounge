@@ -34,7 +34,7 @@ services:
 
   # 팀 통화방 중계(TURN) 서버 — 선택 사항. 폰(LTE)↔PC(와이파이)처럼 서로 다른 네트워크에서 직접 연결이 안 될 때 음성을 대신 전달한다.
   # 켜는 방법은 README '📞 팀 통화방' 참고:  docker compose -f docker-compose.prod.yml --profile turn up -d coturn
-  # (.env 에 TURN_SECRET · TURN_EXTERNAL_IP · TURN_URLS 필요. 서버 방화벽/보안그룹에서 3478(UDP·TCP)과 49160-49200(UDP)을 열어야 해요)
+  # (.env 에 TURN_SECRET · TURN_EXTERNAL_IP(공인 IP) · TURN_PRIVATE_IP(서버 안쪽 IP) · TURN_URLS 필요. 서버 방화벽/보안그룹에서 3478(UDP·TCP)과 49160-49200(UDP)을 열어야 해요)
   coturn:
     image: coturn/coturn:latest
     profiles: ["turn"]
@@ -48,7 +48,10 @@ services:
       - "--realm=duresync.cloud"
       - "--use-auth-secret"
       - "--static-auth-secret=${TURN_SECRET:-}"
-      - "--external-ip=${TURN_EXTERNAL_IP:-}"
+      # 서버의 '실제 주소' 하나만 쓴다 (도커 내부 주소로 중계 통로가 만들어져 연결이 간헐적으로 실패하는 것을 막는다)
+      - "--listening-ip=${TURN_PRIVATE_IP:-0.0.0.0}"
+      - "--relay-ip=${TURN_PRIVATE_IP:-0.0.0.0}"
+      - "--external-ip=${TURN_EXTERNAL_IP:-}/${TURN_PRIVATE_IP:-}"
       - "--min-port=49160"
       - "--max-port=49200"
       - "--fingerprint"

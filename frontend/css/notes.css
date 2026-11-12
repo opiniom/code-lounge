@@ -158,3 +158,164 @@
 
 
 .mdr-by{margin-left:8px; font-size:11px; font-weight:600; color:var(--accent-ink); background:var(--accent-soft); padding:2px 8px; border-radius:6px; vertical-align:2px;}
+
+/* ================= 회의록 시트: 작성 · 보기 · 수정이 같은 모양 (js/pages/notes-sheet.js) ================= */
+.compose-modal.ns-modal{
+  max-width:none; width:min(1100px, calc(100vw - 40px)); max-height:calc(92vh / var(--ui-zoom)); padding:0; gap:0; overflow:hidden;
+  border-radius:22px; border:1px solid var(--border);
+}
+.ns-modal-head{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 18px 13px 22px; border-bottom:1px solid var(--border); flex:0 0 auto; background:var(--surface);}
+.ns-crumb{display:flex; align-items:center; gap:10px; min-width:0;}
+.ns-crumb b{font-size:14.5px; font-family:var(--font-display); font-weight:600; letter-spacing:-.01em;}
+.ns-crumb-ic{width:30px; height:30px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; font-size:15px; background:var(--accent-soft);}
+.ns-draft{font-size:11.5px; color:var(--text-faint); white-space:nowrap;}
+.ns-modal-body{flex:1 1 auto; min-height:0; overflow-y:auto; padding:22px 26px 14px; background:var(--bg-elevated);}
+.ns-modal-foot{display:flex; align-items:center; gap:8px; padding:12px 18px 12px 22px; border-top:1px solid var(--border); flex:0 0 auto; background:var(--surface);}
+.ns-foot-sp{flex:1;}
+.ns-banner{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--accent-2-soft); color:var(--accent-2-ink); border-radius:12px; padding:9px 13px; font-size:12.5px; margin-bottom:14px;}
+.ns-banner button{border:none; background:none; color:inherit; font:inherit; font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline; padding:2px 4px; white-space:nowrap;}
+
+/* 제목 · 속성 줄 */
+.ns-title{
+  width:100%; border:none; background:transparent; outline:none; font-family:var(--font-display); font-size:28px; font-weight:600; letter-spacing:-.02em;
+  line-height:1.3; color:var(--text); padding:2px 0 10px; border-bottom:1.5px solid transparent; transition:border-color .15s;
+}
+.ns-title::placeholder{color:var(--text-faint); font-weight:500;}
+.ns-title:hover{border-bottom-color:var(--border);} .ns-title:focus{border-bottom-color:var(--accent);}
+.ns-props{display:flex; flex-wrap:wrap; gap:8px 22px; padding:12px 0 16px; align-items:center;}
+.ns-prop{display:flex; align-items:center; gap:9px; font-size:12.5px; min-width:0;}
+.ns-prop.wide{flex:1 1 100%;}
+.ns-pl{color:var(--text-faint); white-space:nowrap; flex:0 0 auto;}
+.ns-pv{display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0;}
+.ns-pv .pdot-s{width:9px; height:9px; border-radius:3px; display:inline-block;}
+.ns-date, .ns-dateval{border:1px solid var(--border); background:var(--surface-2); color:var(--text); border-radius:999px; padding:5px 12px; font-size:12.5px; font-family:var(--font-body); font-weight:500; outline:none;}
+.ns-date:focus{border-color:var(--accent);}
+.ns .attendee-picker{gap:6px;}
+.ns .member-chip{padding:5px 11px;}
+
+/* 도구 막대 · 편집기 · AI 패널 */
+.ns-main{display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:18px; align-items:start;}
+.ns.compact .ns-main{grid-template-columns:minmax(0,1fr);}
+.ns-write{min-width:0;}
+.ns-bar{
+  display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding:5px; margin-bottom:10px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:12px; position:sticky; top:-1px; z-index:5;
+}
+.ns-bar button{border:none; background:none; padding:7px 10px; border-radius:8px; font-size:12px; color:var(--text-muted); cursor:pointer; white-space:nowrap; font-family:var(--font-body);}
+.ns-bar button:hover{background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm);}
+.ns-bar button b{font-family:var(--font-display);}
+.ns-bar-sep{width:1px; height:18px; background:var(--border-strong); margin:0 4px;}
+.ns-editor{
+  min-height:340px; border:1px solid var(--border); border-radius:14px; background:var(--surface); padding:18px 22px; font-size:14.5px; line-height:1.8; letter-spacing:-.005em;
+  transition:border-color .15s, box-shadow .15s;
+}
+.ns.compact .ns-editor{min-height:260px; padding:14px 16px;}
+.ns-editor:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+.ns-editor:empty:before{white-space:pre-line; line-height:1.8;}
+.ns-editor h3{font-family:var(--font-display); font-size:15.5px; font-weight:600; margin:18px 0 6px; padding-left:10px; border-left:3px solid var(--accent); line-height:1.4;}
+.ns-editor h3:first-child{margin-top:2px;}
+.ns-editor ul{margin:4px 0 6px 22px; padding:0;} .ns-editor li{margin:2px 0;}
+.ns-editor s, .ns-editor strike, .ns-editor del{opacity:.5; text-decoration-thickness:1.5px;}
+.ns-hint{display:flex; justify-content:space-between; gap:10px; margin-top:8px; font-size:11.5px; color:var(--text-faint); line-height:1.5;}
+.ns-hint s{opacity:.8;} .ns-count{font-family:var(--font-mono); white-space:nowrap;}
+
+.ns-ai{
+  position:sticky; top:0; border:1px solid var(--border); border-radius:14px; background:var(--surface); padding:14px; display:flex; flex-direction:column; gap:10px; font-size:12.5px;
+  background-image:linear-gradient(180deg, var(--accent-2-soft), transparent 70px);
+}
+.ns-ai-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.ns-ai-head b{font-size:13px;}
+.ns-live{font-size:10px; font-family:var(--font-mono); color:var(--accent-2-ink); background:var(--accent-2-soft); padding:2px 8px 2px 16px; border-radius:999px; position:relative;}
+.ns-live::before{content:''; position:absolute; left:6px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:var(--accent-2); animation:callPulse 1.8s ease-in-out infinite;}
+.ns-ai-sub{font-size:11.5px; font-weight:600; color:var(--text-muted);} .ns-ai-sub.dim{color:var(--text-faint); font-weight:500;}
+.ns-ai-empty{color:var(--text-faint); line-height:1.6; margin:0;}
+.ns-ai-foot{font-size:10.8px; color:var(--text-faint); margin:2px 0 0; line-height:1.5;}
+.ns-evs{display:flex; flex-direction:column; gap:6px;}
+.ns-ev{display:flex; flex-direction:column; gap:2px; padding:9px 10px; background:var(--surface-2); border-radius:10px; border-left:3px solid var(--accent-2);}
+.ns-ev .when{font-size:11.2px; font-weight:700; color:var(--accent-2-ink);} .ns-ev b{font-size:12.8px; font-weight:600; word-break:break-word;}
+.ns-drop{display:flex; flex-direction:column; gap:3px; font-size:11.5px; color:var(--text-faint);} .ns-drop s{opacity:.8; word-break:break-word;}
+.ns-tips{border-top:1px dashed var(--border-strong); padding-top:10px; color:var(--text-muted); line-height:1.6;}
+.ns-tips b{font-size:12px; color:var(--text);} .ns-tips ul{margin:6px 0 6px 16px; padding:0;} .ns-tips li{margin:2px 0;}
+.ns-tips code{font-family:var(--font-mono); font-size:11px; background:var(--surface-2); padding:1px 6px; border-radius:6px; color:var(--text);}
+.ns-tips p{margin:4px 0 0; font-size:11.5px; color:var(--text-faint);}
+
+/* 보기: 수정 화면과 같은 칸 색·모양 */
+.ns-view .ns-vtitle{font-family:var(--font-display); font-size:23px; font-weight:600; line-height:1.35; letter-spacing:-.015em; margin:0 0 6px; text-wrap:balance;}
+.ns-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:4px 0 16px;}
+.ns-stat{background:var(--surface-2); border-radius:12px; padding:9px 10px; display:flex; flex-direction:column; gap:1px;}
+.ns-stat b{font-family:var(--font-mono); font-size:18px; font-variant-numeric:tabular-nums;} .ns-stat span{font-size:10.5px; color:var(--text-faint);}
+.ns-card{--sec:var(--text-faint); background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--sec); border-radius:14px; padding:13px 15px 14px; margin-bottom:12px;}
+.ns-card.sec-other{--sec:#06B6D4;} .ns-card.sec-decision{--sec:var(--accent-2);} .ns-card.sec-action{--sec:var(--accent);} .ns-card.sec-cal{--sec:#10B981;}
+.ns-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:13px; font-weight:600;}
+.ns-card-head i{font-style:normal; font-family:var(--font-mono); font-size:10.5px; color:var(--sec); background:color-mix(in srgb, var(--sec) 12%, transparent); padding:2px 9px; border-radius:999px;}
+.ns-card ul{margin:0; padding-left:19px; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.6;}
+.ns-card ul.mdoc-checklist{list-style:none; padding-left:0;}
+.ns-cal-note{font-size:11.5px; color:var(--text-faint); line-height:1.6; margin:10px 0;}
+.ns-linked{display:flex; flex-direction:column; gap:6px;}
+.ns-lev{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px; background:var(--surface-2); border-radius:10px; font-size:12.5px;}
+.ns-lev .t{font-weight:600; flex:1 1 120px; min-width:0; word-break:break-word;} .ns-lev .w{font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono);}
+.mdoc-drawer{width:min(520px, 100vw);}
+.mdoc-drawer.editing .mdoc-drawer-body{padding:20px 22px 0;}
+.mdoc-edit-footer{margin:10px -22px 0; padding:12px 22px 14px;}
+.ns.compact .ns-title{font-size:22px;}
+
+@media (max-width:980px){
+  .ns-main{grid-template-columns:minmax(0,1fr);}
+  .ns-ai{position:static;}
+}
+@media (max-width:820px){
+  .compose-modal.ns-modal{min-height:min(88dvh, 100%);}
+  .ns-modal-body{overflow:visible; padding:16px 16px 10px;}
+  .ns-modal-head{position:sticky; top:0; z-index:6;} .ns-modal-foot{position:sticky; bottom:0; z-index:6; padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+  .ns-title{font-size:23px;}
+  .ns-editor{min-height:240px; padding:14px 15px; font-size:15px;}
+  .ns-bar{top:46px; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none;} .ns-bar::-webkit-scrollbar{display:none;}
+  .ns-bar button{padding:9px 11px;}
+  .ns-props{gap:8px 14px;}
+  .ns-modal-foot .btn{min-height:42px;}
+  .ns-stats{grid-template-columns:repeat(2,1fr);}
+  .mdoc-drawer.editing .mdoc-drawer-body{padding:16px 14px 0;} .mdoc-edit-footer{margin:10px -14px 0; padding:12px 14px calc(14px + env(safe-area-inset-bottom));}
+}
+
+/* 아이콘: 이모티콘 대신 서비스 공통 선 아이콘(js/core/icons.js) */
+.ui-i{flex:0 0 auto; vertical-align:-.2em;}
+.ns-pl, .ns-card-head > span, .ns-ai-head b, .ns-banner span, .ns-hint > span:first-child{display:inline-flex; align-items:center; gap:6px;}
+.ns-pl .ui-i, .ns-hint .ui-i{color:var(--text-faint);}
+.ns-hint > span:first-child{align-items:flex-start;} .ns-hint .ui-i{margin-top:2px;}
+.ns-card-head > span .ui-i{color:var(--sec);}
+.ns-ai-head b .ui-i{color:var(--accent-2);}
+.ns-bar button{display:inline-flex; align-items:center; gap:5px;}
+.ns-bar button .ui-i{color:var(--text-faint);} .ns-bar button:hover .ui-i{color:var(--accent);}
+.slash-menu button{display:flex; align-items:center; gap:8px;} .slash-menu button .ui-i{color:var(--text-faint);}
+.ns-crumb-ic{color:var(--accent-ink);}
+/* 편집기 안의 칸 제목: 칸마다 색 (보기 화면의 카드와 같은 색) */
+.ns-editor h3[data-sec="others"]{border-left-color:#06B6D4;} .ns-editor h3[data-sec="decisions"]{border-left-color:var(--accent-2);} .ns-editor h3[data-sec="actions"]{border-left-color:var(--accent);}
+.ns-lev .ev-badge{margin-right:2px;}
+
+/* 긴 프로젝트·참석자 이름이 있어도 창 밖으로 나가지 않게 + 폰에서 눌리는 크기 */
+.ns-prop{min-width:0; max-width:100%;}
+.ns-prop .mdoc-select{flex:0 1 auto; min-width:0; max-width:100%; text-overflow:ellipsis;}
+.ns-date, .ns-dateval{min-width:0; max-width:100%;}
+.ns .attendee-picker, .ns-pv{min-width:0; max-width:100%;}
+.ns .member-chip{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ns-lev .t, .ns-ev b, .ns-vtitle, .ns-title{overflow-wrap:anywhere;}
+@media (max-width:820px){
+  .ns-prop:not(.wide){flex:1 1 100%;}
+  .ns-banner button{min-height:36px; padding:7px 10px;}
+  .ns .mdr-status-btn{min-height:34px; padding:6px 14px;}
+  .ns .member-chip{min-height:34px;}
+  .ns .mdoc-select, .ns .ns-date, .ns .ns-dateval{min-height:36px;}
+}
+
+/* 높이가 낮은 화면(폰을 가로로 눕힌 경우 등): 제목·속성 줄을 줄여서 편집기가 바로 보이게 */
+@media (max-height:520px){
+  .ns-modal-head{padding-top:8px; padding-bottom:8px;} .ns-modal-foot{padding-top:8px; padding-bottom:8px;}
+  .ns-modal-body{padding:8px 16px 8px;}
+  .ns-title{font-size:19px; padding:0 0 4px;}
+  .ns-props{padding:4px 0 8px; gap:4px 16px;}
+  .ns-bar{margin-bottom:6px; padding:3px;} .ns-bar button{padding:6px 9px;}
+  .ns-editor{min-height:120px; padding:10px 14px;}
+  .ns-hint{display:none;}
+  .ns-ai{display:none;}
+  .ns-banner{margin-bottom:6px; padding:5px 10px;}
+}

@@ -117,3 +117,64 @@
 .detect-item.added{opacity:.5;}
 .detect-item.added button{background:var(--text-faint);}
 
+
+/* ================= 일정 구분: 종류(마감·발표·회의·행사) 색 + 출처(AI·팀·개인) 표시 ================= */
+.cal-evt[class*="cat-"]{
+  --c:#8C8578; background:color-mix(in srgb, var(--c) 15%, var(--surface)); color:color-mix(in srgb, var(--c) 58%, var(--text));
+  border:1px solid color-mix(in srgb, var(--c) 26%, transparent); font-weight:600;
+}
+.cal-evt.private[class*="cat-"]{background:transparent; border:1px dashed color-mix(in srgb, var(--c) 60%, var(--border-strong));}
+.cal-evt.ai[class*="cat-"]{box-shadow:none;}
+.cal-evt .ev-ic{display:inline-flex; align-items:center; line-height:1; flex:0 0 auto;} .cal-evt .ev-ic .ui-i, .cal-evt .ev-k .ui-i{vertical-align:0;}
+.cal-evt .ev-tx{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.cal-evt .ev-k{margin-left:auto; display:inline-flex; align-items:center; flex:0 0 auto; opacity:.85;}
+.cal-type-legend{margin-top:-4px; gap:6px;}
+.type-chip{
+  --c:#8C8578; display:inline-flex; align-items:center; gap:4px; border:1px solid color-mix(in srgb, var(--c) 35%, var(--border)); background:color-mix(in srgb, var(--c) 10%, var(--surface));
+  color:color-mix(in srgb, var(--c) 60%, var(--text)); padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:var(--font-body);
+}
+.type-chip:hover{background:color-mix(in srgb, var(--c) 18%, var(--surface));}
+.type-chip.off{opacity:.4; background:var(--surface); text-decoration:line-through;}
+.type-chip .ui-i{vertical-align:0;} .type-chip i{font-style:normal; font-family:var(--font-mono); font-size:10.5px; opacity:.8; margin-left:2px;}
+.cal-kind-guide{display:inline-flex; align-items:center; gap:10px; margin-left:auto; font-size:10.8px; color:var(--text-faint); flex-wrap:wrap;}
+.cal-kind-guide .kg{display:inline-flex; align-items:center; justify-content:center; font-style:normal; width:18px; height:14px; border-radius:4px; vertical-align:-3px; margin-right:3px; color:var(--text-muted);}
+.cal-kind-guide .kg .ui-i{vertical-align:0;}
+.cal-kind-guide .kg.ai{background:var(--accent-2-soft);} .cal-kind-guide .kg.team{background:var(--surface-3); border:1px solid var(--border-strong);} .cal-kind-guide .kg.priv{border:1px dashed var(--border-strong);}
+
+/* 하루 일정 상세 */
+.day-detail-item.ddi2{flex-direction:column; align-items:stretch; gap:7px; border-left:3px solid var(--c, var(--border-strong)); padding:10px 12px;}
+.ddi2 .ddi-main{display:flex; align-items:center; gap:8px; min-width:0;}
+.ddi2 .ddi-title{flex:1; min-width:0; font-weight:600; word-break:break-word; font-size:13px;}
+.ev-badge{--c:#8C8578; display:inline-flex; align-items:center; gap:4px; font-size:10.8px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; flex:0 0 auto;
+  background:color-mix(in srgb, var(--c) 14%, var(--surface)); color:color-mix(in srgb, var(--c) 62%, var(--text));}
+.ddi-meta{display:flex; flex-wrap:wrap; gap:5px 8px; align-items:center; font-size:11px; color:var(--text-muted);}
+.ddi-meta .ddi-when{font-family:var(--font-mono); font-size:10.8px;}
+.ddi-meta .ddi-pj{display:inline-flex; align-items:center; gap:5px; color:var(--text-muted);}
+.ddi-meta .ddi-pj::before{content:''; width:7px; height:7px; border-radius:2px; background:var(--pc, var(--text-faint));}
+.kind-badge{display:inline-flex; align-items:center; gap:4px; font-size:10.8px; font-weight:600; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); font-family:var(--font-body);}
+.kind-badge.ai{background:var(--accent-2-soft); color:var(--accent-2-ink); border-color:transparent;}
+.kind-badge.private{border-style:dashed;}
+.kind-badge.link{cursor:pointer;} .kind-badge.link:hover{text-decoration:underline;}
+
+@media (max-width:820px){
+  .cal-type-legend{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px;} .cal-type-legend::-webkit-scrollbar{display:none;}
+  .type-chip{flex:0 0 auto; padding:7px 12px;} .cal-kind-guide{display:none;}
+  .ddi2 .ddi-del{min-width:38px; min-height:38px; display:inline-flex; align-items:center; justify-content:center;}
+}
+/* 아주 좁은 칸(폰의 달력 7칸): 글자는 두 글자도 안 보이므로 색+아이콘으로만 구분하고, 이름은 눌러서 보는 상세에서 */
+@media (max-width:520px){
+  .cal-evt[class*="cat-"]{justify-content:center; padding:3px 2px; gap:0; min-height:18px;}
+  .cal-evt .ev-tx, .cal-evt .ev-k, .cal-evt .mdot{display:none;}
+  .cal-evt .ev-ic{font-size:11px;}
+  .cal-evt.cont .ev-ic::after{content:'›'; font-size:9px; margin-left:1px;}
+}
+
+.ev-badge .ui-i, .kind-badge .ui-i, .ddi-when .ui-i, .ddi-by .ui-i{vertical-align:0;}
+.ddi-meta .ddi-when, .ddi-meta .ddi-by{display:inline-flex; align-items:center; gap:4px;}
+.ddi-meta .ddi-when .ui-i, .ddi-meta .ddi-by .ui-i{color:var(--text-faint);}
+@media (max-width:520px){ .cal-evt .ev-ic .ui-i{width:12px; height:12px;} }
+.cal-evt .ev-ic .ui-i{width:11px; height:11px;} .cal-evt .ev-k .ui-i{width:10px; height:10px;}
+
+/* 좁은 화면: 가로로 스크롤되는 '구분' 범례가 카드의 최소 폭을 키워 달력이 화면 밖으로 밀려나지 않게 */
+.cal-layout > *{min-width:0;}
+.cal-type-legend, .cal-legend{max-width:100%; min-width:0;}

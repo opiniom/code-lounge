@@ -173,8 +173,23 @@ function voiceLev(a, b){
   return m[a.length][b.length];
 }
 /* 음성 인식이 호출어를 비슷하게 적어도("두래야·두례야·듀레야·두레 야") 정확한 호출어로 고친다 */
+/* 음성 인식(특히 안드로이드)이 같은 문장을 두 번 이어서 내놓는 경우가 있어 한 번으로 줄인다:
+   바로 이어서 똑같이 반복된 3낱말 이상(또는 8글자 이상)만 줄이고, '아니 아니' 같은 짧은 반복은 그대로 둔다 (서버도 같은 규칙으로 한 번 더 정리한다) */
+function voiceCollapse(text){
+  var w = String(text || '').split(/\s+/).filter(Boolean), again = true;
+  while(again && w.length >= 2){
+    again = false;
+    for(var size = Math.floor(w.length / 2); size >= 1 && !again; size--){
+      for(var i = 0; i + 2 * size <= w.length; i++){
+        var a = w.slice(i, i + size).join(' ').toLowerCase(), b = w.slice(i + size, i + 2 * size).join(' ').toLowerCase();
+        if(a === b && (size >= 3 || a.length >= 8)){ w.splice(i + size, size); again = true; break; }
+      }
+    }
+  }
+  return w.join(' ');
+}
 function voiceNormalize(raw){
-  var t = String(raw || '').replace(/\s+/g, ' ').trim();
+  var t = voiceCollapse(String(raw || '').replace(/\s+/g, ' ').trim());
   if(!t) return '';
   var name = (typeof aiMyName === 'function') ? aiMyName() : '두레';
   var custom = name && name !== '두레';

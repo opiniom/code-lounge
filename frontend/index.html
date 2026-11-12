@@ -789,46 +789,18 @@ window.dureGreetIcon = function(n){
     </div>
 
     <div class="modal-backdrop" id="composeModal" onclick="if(event.target===this)closeComposeModal()">
-      <div class="share-modal compose-modal">
-        <div class="mh"><h3>새 회의록 작성</h3><button class="icon-btn" onclick="closeComposeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <div class="form-row"><label>프로젝트 *</label><select id="noteProject" onchange="buildAttendeePicker(this.value)"></select></div>
-        <div class="form-grid2">
-          <div class="form-row"><label>회의 제목 *</label><input type="text" id="noteTitleInput" placeholder="회의 제목"></div>
-          <div class="form-row"><label>날짜 *</label><input type="date" id="noteDateInput"></div>
+      <div class="share-modal compose-modal ns-modal" role="dialog" aria-label="새 회의록 작성">
+        <div class="ns-modal-head">
+          <div class="ns-crumb"><span class="ns-crumb-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg></span><b>새 회의록</b><span class="ns-draft" id="noteDraftState"></span></div>
+          <button class="icon-btn" onclick="closeComposeModal()" aria-label="닫기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </div>
-        <div class="form-row">
-          <label>참석자 *</label>
-          <div class="attendee-picker" id="attendeePicker">
-
-
-            <button type="button" class="member-chip active" data-name="나" onclick="this.classList.toggle('active')"><span class="dot" style="background:#06B6D4;"></span>나</button>
-          </div>
-        </div>
-
-        <div class="form-row" style="margin-top:4px;">
-          <label>내용</label>
-          <div class="note-toolbar">
-            <button type="button" onclick="formatNote('h3')">제목</button>
-            <button type="button" onclick="formatNote('ul')">글머리기호</button>
-            <button type="button" onclick="formatNote('check')">체크리스트</button>
-            <button type="button" onclick="formatNote('hr')">구분선</button>
-            <span class="note-toolbar-hint">'/'를 입력해도 서식을 바로 넣을 수 있어요</span>
-          </div>
-          <div class="note-editor-wrap">
-            <div class="slash-menu" id="slashMenu">
-              <button type="button" onclick="slashInsert('h3')">🔠 제목</button>
-              <button type="button" onclick="slashInsert('ul')">• 글머리 기호</button>
-              <button type="button" onclick="slashInsert('check')">☑ 체크리스트</button>
-              <button type="button" onclick="slashInsert('hr')">— 구분선</button>
-            </div>
-            <div class="note-editor" id="noteEditor" contenteditable="true" data-placeholder="회의 내용을 자유롭게 적어보세요."></div>
-          </div>
-        </div>
-
-        <div class="note-footer">
+        <div class="ns-modal-body" id="composeSheet"></div>
+        <div class="ns-modal-foot">
           <button class="btn ghost" onclick="saveDraft()">임시저장</button>
+          <span class="ns-foot-sp"></span>
+          <button class="btn ghost" onclick="closeComposeModal()">닫기</button>
           <button class="btn primary" id="aiRecordBtn" onclick="generateAiRecord()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.5 6.5 9 9M15 15l2.5 2.5M6.5 17.5 9 15M15 9l2.5-2.5"/></svg>AI록 생성
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.5 6.5 9 9M15 15l2.5 2.5M6.5 17.5 9 15M15 9l2.5-2.5"/></svg>AI로 정리하고 저장
           </button>
         </div>
       </div>
@@ -885,6 +857,7 @@ window.dureGreetIcon = function(n){
           </div>
           <div class="cal-legend" id="calMemberLegend">
           </div>
+          <div class="cal-legend cal-type-legend" id="calTypeLegend"></div>
           <div class="cal-grid">
             <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div><div class="cal-dow">수</div><div class="cal-dow">목</div><div class="cal-dow">금</div><div class="cal-dow">토</div>
           </div>

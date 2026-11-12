@@ -8,7 +8,10 @@ from models import User, MeetingDoc, Project, CalendarEvent
 from schemas import MeetingDocCreate, MeetingDocUpdate, MeetingDocResponse, StructureRequest, StructureResponse
 from services.auth_service import get_current_user
 from services.access import get_member_project, member_project_ids
-from services.schedule_ai import structure_meeting
+from services.schedule_ai import structure_meeting, detect_rules
+from services import note_prep
+from datetime import date as _date
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/meetings", tags=["Meetings"])
 
@@ -67,6 +70,23 @@ async def structure(data: StructureRequest, current_user: User = Depends(get_cur
     clean = lambda xs: [str(x).strip() for x in xs if str(x).strip()]
     return StructureResponse(engine=r["engine"], title=(r.get("title") or None),
                              discussion=clean(r["discussion"]), decisions=clean(r["decisions"]), actions=clean(r["actions"]))
+
+class PreviewRequest(BaseModel):
+    text: str = Field("", max_length=12000)
+    doc_date: Optional[_date] = None
+
+
+@router.post("/preview")
+async def preview(data: PreviewRequest, current_user: User = Depends(get_current_user)):
+    """작성 중인 회의록을 'AI 가 어떻게 읽을지' 미리 보여 준다 (규칙 기반이라 AI 호출·한도를 쓰지 않는다).
+    돌려주는 것: 찾은 일정 · 취소돼서 빠진 줄 · 결정/액션으로 보이는 줄 수"""
+    lines, dropped = note_prep.clean_with_dropped(data.text.splitlines())
+    ref = data.doc_date or _date.today()
+    events = note_prep.finalize_events(detect_rules("\n".join(lines), ref))
+    out = [{"title": e["title"], "start_date": e["start_date"].isoformat(), "end_date": e["end_date"].isoformat(),
+            "start_time": e["start_time"], "end_time": e["end_time"], "source": e["source"]} for e in events[:30]]
+    return {"events": out, "dropped": dropped[:20], "lines": len(lines)}
+
 
 @router.get("", response_model=List[MeetingDocResponse])
 async def list_meetings(

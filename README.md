@@ -70,7 +70,7 @@ cd code-lounge
 - **같은 계정으로 PC 와 폰에서 동시에 들어올 수 있어요.** 서버가 기기(브라우저)마다 번호를 구분해서, 폰으로 들어갔다고 PC 가 쫓겨나지 않아요. 상대 목록에는 `이름 (내 다른 기기)` 로 보여요. 같은 기기에서 다시 들어오거나(재연결) 같은 브라우저의 다른 탭으로 들어올 때만 이전 연결을 정리해요. (같은 방에서 두 기기를 가까이 두면 울릴 수 있으니 이어폰을 쓰세요)
 - **폰(모바일·설치한 앱)**: 통화창이 전체 화면 채팅 위로 올라오는 아래쪽 시트로 열려요. 통화창을 닫아도 화면 아래에 `📞 통화 중` 표시가 남고, 누르면 다시 열려요. 채팅 머리말의 전화 버튼은 통화 중에 초록색이 돼요.
 - **중계 서버(TURN) 켜기** — PC(와이파이)와 폰(LTE)처럼 네트워크가 다르면 직접 연결이 안 되는 경우가 많아서 필요해요 (통화창 아래에 ⚠️ 안내가 보이면 아직 안 켠 거예요):
-  1. `.env` 에 추가: `TURN_SECRET=<무작위 긴 문자열>` · `TURN_EXTERNAL_IP=<서버 공인 IP>` · `TURN_URLS=turn:duresync.cloud:3478?transport=udp,turn:duresync.cloud:3478?transport=tcp`
+  1. `.env` 에 추가: `TURN_SECRET=<무작위 긴 문자열>` · `TURN_EXTERNAL_IP=<서버 공인 IP>` · `TURN_PRIVATE_IP=<서버 안쪽 IP (hostname -I 의 첫 값)>` · `TURN_URLS=turn:duresync.cloud:3478?transport=udp,turn:duresync.cloud:3478?transport=tcp`
   2. 서버 방화벽/클라우드 보안그룹에서 **3478 (UDP·TCP)** 과 **49160–49200 (UDP)** 을 열어요.
   3. `docker compose -f docker-compose.prod.yml --profile turn up -d coturn` 후 `docker compose -f docker-compose.prod.yml up -d --build` (앱이 새 설정을 읽도록)
   coturn 은 서버 내부망(도커·클라우드 메타데이터 등)으로는 중계하지 않게 막아 두었어요.

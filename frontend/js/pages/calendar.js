@@ -25,6 +25,7 @@ var calSelected = 'all';
 var calHiddenProjects = {};
 var calProjectColors = {};
 var calHiddenMembers = {};
+var calHiddenCats = {};      // 구분(회의·마감·발표·행사…)별로 숨긴 것 (이 화면에서만 — 저장하지 않는다)
 var CAL_PALETTE = ['#3B82F6','#8B5CF6','#06B6D4','#EC4899','#F59E0B','#10B981'];
 var calMemberNames = {me:'나'};
 var calProjectMembers = {};
@@ -60,7 +61,7 @@ function calDefaultProject(){
 }
 function isMemberVisible(member){ return !member || !calHiddenMembers[member]; }
 function isEventVisible(ev){
-  return calVisibleProjectIds().indexOf(ev.project)>=0 && isMemberVisible(ev.member);
+  return calVisibleProjectIds().indexOf(ev.project)>=0 && isMemberVisible(ev.member) && !calHiddenCats[evCategory(ev).key];
 }
 function buildCalGrid(){
   var grid = document.querySelector('.cal-grid');
@@ -199,6 +200,31 @@ function renderCalMemberLegend(){
     b.appendChild(d); b.append(calMemberNames[m] || m);
     wrap.appendChild(b);
   });
+  renderCalTypeLegend();
+}
+/* 구분 범례: 종류별로 걸러 보고(누르면 켜고 끔), 출처 표시(🤖 AI 자동 · 🔒 나만 보기 · 그 외는 팀 공유)를 한 줄로 알려 준다 */
+function renderCalTypeLegend(){
+  var wrap = document.getElementById('calTypeLegend');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  var lab = document.createElement('span'); lab.className = 'cal-legend-label'; lab.textContent = '구분';
+  wrap.appendChild(lab);
+  var counts = {};
+  calendarEvents.filter(function(ev){ return calVisibleProjectIds().indexOf(ev.project)>=0 && isMemberVisible(ev.member) && evInMonth(ev); })
+    .forEach(function(ev){ var k = evCategory(ev).key; counts[k] = (counts[k] || 0) + 1; });
+  EV_CATS.forEach(function(c){
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'type-chip' + (calHiddenCats[c.key] ? ' off' : '');
+    b.style.setProperty('--c', c.c);
+    b.setAttribute('aria-pressed', calHiddenCats[c.key] ? 'false' : 'true');
+    b.title = c.label + ' 일정 ' + (calHiddenCats[c.key] ? '보기' : '숨기기');
+    b.innerHTML = uiIc(c.ic, 13) + '<span>' + c.label + (counts[c.key] ? ' <i>' + counts[c.key] + '</i>' : '') + '</span>';
+    b.onclick = function(){ if(calHiddenCats[c.key]) delete calHiddenCats[c.key]; else calHiddenCats[c.key] = true; renderCalendarEvents(); if(document.getElementById('dayDetailModal').classList.contains('open')) renderDayDetailList(); };
+    wrap.appendChild(b);
+  });
+  var guide = document.createElement('span'); guide.className = 'cal-kind-guide';
+  guide.innerHTML = '<span><i class="kg ai">' + uiIc('sparkle', 10) + '</i> AI 자동</span><span><i class="kg team"></i> 팀 공유</span><span><i class="kg priv">' + uiIc('lock', 10) + '</i> 나만 보기</span>';
+  wrap.appendChild(guide);
 }
 function updateCalTexts(){
   var sub = document.getElementById('calSub');
@@ -394,6 +420,36 @@ function evTitle(ev){
   if(ev.cls==='private' && t.indexOf('🔒')<0) t += ' 🔒';
   return t;
 }
+/* ---- 일정 구분: 제목에서 종류(회의·마감·발표·행사)를 읽어 색과 아이콘으로 구분한다 (저장 형식은 그대로) ---- */
+var EV_CATS = [
+  {key:'deadline', label:'마감', ic:'clock', c:'#EF4444', re:/마감|제출|납기|업로드|배포|릴리[즈스]|출시|까지|deadline|\bdue\b/i},
+  {key:'present',  label:'발표', ic:'screen', c:'#8B5CF6', re:/발표|데모|시연|피칭|pitch|중간평가|최종평가|심사/i},
+  {key:'meeting',  label:'회의', ic:'team', c:'#3B82F6', re:/회의|미팅|면담|킥오프|kick-?off|스크럼|스프린트|회고|논의|상담|인터뷰|리뷰|싱크|sync/i},
+  {key:'event',    label:'행사', ic:'trophy', c:'#F59E0B', re:/행사|해커톤|공모전|대회|세미나|워크[숍샵]|컨퍼런스|콘퍼런스|오리엔테이션|특강|강의|스터디|모임|회식|식사|MT\b|OT\b/i},
+  {key:'other',    label:'일정', ic:'pin', c:'#8C8578', re:null}
+];
+var evCatCache = {};
+function evCategory(ev){
+  /* 제목과 원문(AI 가 읽은 회의록 문장)을 함께 본다: 제목에서는 '까지'가 빠지지만 원문에는 남아 있어 '마감'으로 알아볼 수 있다 */
+  var t = String((ev && ev.title) || '') + ' ' + String((ev && ev.source) || '');
+  if(evCatCache[t]) return evCatCache[t];
+  var hit = EV_CATS[EV_CATS.length - 1];
+  for(var i = 0; i < EV_CATS.length - 1; i++){ if(EV_CATS[i].re.test(t)){ hit = EV_CATS[i]; break; } }
+  var out = {key:hit.key, label:hit.label, ic:hit.ic, c:hit.c, cls:'cat-'+hit.key};
+  if(Object.keys(evCatCache).length > 500) evCatCache = {};
+  return (evCatCache[t] = out);
+}
+/* 출처 구분: AI 가 회의록에서 만든 것 / 팀에 공유한 것 / 나만 보는 것 */
+function evKind(ev){
+  if(ev.cls === 'ai') return {key:'ai', ic:'sparkle', label:'AI 자동', long:'회의록에서 AI가 만든 일정'};
+  if(ev.cls === 'private') return {key:'private', ic:'lock', label:'나만 보기', long:'나에게만 보이는 개인 일정'};
+  return {key:'team', ic:'team', label:'팀 공유', long:'팀원 모두에게 보이는 일정'};
+}
+function evAuthor(ev){
+  if(!ev.member || ev.member === 'me') return '나';
+  if(currentUser && ev.member === 'u'+currentUser.id) return '나';
+  return calMemberNames[ev.member] || '';
+}
 function evInMonth(ev){
   var first = calYm()+'-01', last = calYm()+'-31';
   return ev.start<=last && ev.end>=first;
@@ -405,20 +461,25 @@ function serverEventToLocal(e){
 function buildEvtChip(ev, ds){
   var span = document.createElement('span');
   var isCont = ds!==ev.start;
-  span.className = 'cal-evt ' + ev.cls + (isCont ? ' cont' : '');
+  var cat = evCategory(ev);
+  span.className = 'cal-evt ' + ev.cls + ' ' + cat.cls + (isCont ? ' cont' : '');
+  span.style.setProperty('--c', cat.c);
   span.onclick = function(e){ e.stopPropagation(); openDayDetail(ds); };
   var proj = calProjectById(ev.project);
   if(calSelected==='all' && proj){
     span.style.boxShadow = 'inset 3px 0 0 '+calProjColor(proj);
   }
-  span.title = (proj ? proj.title+' · ' : '')+evTitle(ev)+' · '+fmtRange(ev);
+  span.title = cat.label+' · '+(proj ? proj.title+' · ' : '')+evTitle(ev)+' · '+fmtRange(ev)+' · '+evKind(ev).label+(evAuthor(ev) ? ' · '+evAuthor(ev) : '');
   if(ev.member){
     var dot = document.createElement('span');
     dot.className = 'mdot';
     dot.style.background = memberColor(ev.member);
     span.appendChild(dot);
   }
-  span.append((isCont ? '↳ ' : (ev.startTime ? ev.startTime+' ' : ''))+evTitle(ev));
+  var ic = document.createElement('span'); ic.className = 'ev-ic'; ic.innerHTML = uiIc(cat.ic, 11); span.appendChild(ic);
+  var tx = document.createElement('span'); tx.className = 'ev-tx'; tx.textContent = (isCont ? '↳ ' : (ev.startTime ? ev.startTime+' ' : ''))+ev.title; span.appendChild(tx);
+  var kd = evKind(ev);
+  if(kd.key !== 'team'){ var kk = document.createElement('span'); kk.className = 'ev-k'; kk.innerHTML = uiIc(kd.ic, 10); span.appendChild(kk); }   // 🤖 AI 자동 · 🔒 나만 보기
   return span;
 }
 function renderCalendarEvents(){
@@ -442,6 +503,7 @@ function renderCalendarEvents(){
       cell.appendChild(more);
     }
   });
+  renderCalTypeLegend();            // 구분별 개수는 보고 있는 달·프로젝트에 맞춰 같이 갱신
 }
 /* 일정 추가: 실제 로그인이면 서버에 저장하고, 데모 모드면 메모리에만 둔다. Promise<event> 반환 */
 function addCalendarEvent(opts){
@@ -500,36 +562,44 @@ function renderDayDetailList(){
     wrap.innerHTML = "<p style='color:var(--text-faint); font-size:12.5px;'>표시할 일정이 없어요.</p>";
     return;
   }
+  /* 종류(마감 → 발표 → 회의 → 행사 → 일정) 순으로 묶고, 같은 종류 안에서는 시간 순 */
+  var order = {}; EV_CATS.forEach(function(c, i){ order[c.key] = i; });
+  list.sort(function(a, b){
+    var ca = order[evCategory(a).key], cb = order[evCategory(b).key];
+    if(ca !== cb) return ca - cb;
+    var ta = a.startTime || '99:99', tb = b.startTime || '99:99';
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
   list.forEach(function(ev){
+    var cat = evCategory(ev), kd = evKind(ev), pj = calProjectById(ev.project);
     var row = document.createElement('div');
-    row.className = 'day-detail-item';
-    if(ev.member){
-      var dot = document.createElement('span');
-      dot.className = 'ddi-dot';
-      dot.style.background = memberColor(ev.member);
-      row.appendChild(dot);
-    }
-    var t = document.createElement('span');
-    t.className = 'ddi-title';
-    t.textContent = evTitle(ev);
-    row.appendChild(t);
-    var when = document.createElement('span');
-    when.className = 'ddi-proj';
-    when.style.maxWidth = '160px';
-    when.textContent = (ev.start!==ev.end || ev.startTime) ? fmtRange(ev) : '';
-    if(when.textContent) row.appendChild(when);
-    var pj = calProjectById(ev.project);
-    if(pj && calSelected==='all'){
-      var tag = document.createElement('span');
-      tag.className = 'ddi-proj';
-      tag.textContent = pj.title;
-      row.appendChild(tag);
-    }
+    row.className = 'day-detail-item ddi2 ' + cat.cls;
+    row.style.setProperty('--c', cat.c);
+    var main = document.createElement('div'); main.className = 'ddi-main';
+    var badge = document.createElement('span'); badge.className = 'ev-badge ' + cat.cls; badge.style.setProperty('--c', cat.c); badge.innerHTML = uiIc(cat.ic, 12) + '<span>' + cat.label + '</span>'; main.appendChild(badge);
+    var t = document.createElement('span'); t.className = 'ddi-title'; t.textContent = ev.title; main.appendChild(t);
     var del = document.createElement('button');
-    del.className = 'ddi-del';
+    del.className = 'ddi-del'; del.setAttribute('aria-label', '일정 삭제'); del.title = '삭제';
     del.innerHTML = "<svg viewBox='0 0 24 24' width='14' height='14' fill='none' stroke='currentColor' stroke-width='2'><path d='M6 6l12 12M18 6 6 18'/></svg>";
     del.onclick = function(){ removeCalendarEvent(ev.id); };
-    row.appendChild(del);
+    main.appendChild(del);
+    row.appendChild(main);
+    var meta = document.createElement('div'); meta.className = 'ddi-meta';
+    var addMeta = function(cls, text, onclick, icon){
+      var m = document.createElement(onclick ? 'button' : 'span'); m.className = cls;
+      if(icon) m.innerHTML = uiIc(icon, 12);
+      m.appendChild(document.createTextNode(text));                    // 글은 항상 텍스트로 (회의록 제목 등 사용자가 쓴 글이 섞여도 안전)
+      if(onclick){ m.type = 'button'; m.onclick = onclick; }
+      meta.appendChild(m); return m;
+    };
+    var when = fmtRange(ev); if(ev.start === ev.end && !ev.startTime) when = '종일';
+    addMeta('ddi-when', when, null, 'clock');
+    var src = ev.docServerId ? meetingDocs.filter(function(d){ return d.serverId === ev.docServerId; })[0] : null;
+    if(kd.key === 'ai' && src) addMeta('kind-badge ai link', '회의록 “' + src.title + '”에서', function(){ closeDayDetail(); goView('notes'); setTimeout(function(){ openMdocDrawer(src.id); }, 250); }, kd.ic);
+    else addMeta('kind-badge ' + kd.key, kd.label, null, kd.ic);
+    var au = evAuthor(ev); if(au) addMeta('ddi-by', au, null, 'user');
+    if(pj) { var pm = addMeta('ddi-pj', pj.title); pm.style.setProperty('--pc', calProjColor(pj)); }
+    row.appendChild(meta);
     wrap.appendChild(row);
   });
 }
@@ -616,7 +686,7 @@ function restoreDetections(){
   calDetect = [];
   meetingDocs.forEach(function(doc){
     (doc.detections || []).forEach(function(e){
-      calDetect.push({key:candKey(doc.id, e), docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
+      calDetect.push({key:candKey(doc.id, e), docId:doc.id, docSid:doc.serverId || null, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
         startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: e.dismissed ? 'dismissed' : 'new'});
     });
   });
@@ -633,7 +703,7 @@ function analyzeDoc(doc){
       calDetect = calDetect.filter(function(c){ return c.docId!==doc.id; });
       res.events.forEach(function(e){
         var key = candKey(doc.id, e);
-        calDetect.push({key:key, docId:doc.id, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
+        calDetect.push({key:key, docId:doc.id, docSid:doc.serverId || null, docTitle:doc.title, title:e.title, start:e.start_date, end:e.end_date,
           startTime:e.start_time, endTime:e.end_time, source:e.source, project:doc.project || null, status: dismissed[key] ? 'dismissed' : 'new'});
       });
       syncCandidateStatus();
@@ -672,7 +742,7 @@ function addCandidates(list, opts){
       return chain.then(function(){
         var srcDoc = meetingDocs.filter(function(d){ return d.id===c.docId; })[0];
         return addCalendarEvent({title:c.title, start:c.start, end:c.end, startTime:c.startTime, endTime:c.endTime,
-          kind:'ai', project:c.project || pid, source:c.source, member:c.member||'me', meetingDocId:srcDoc ? srcDoc.serverId : null
+          kind:'ai', project:c.project || pid, source:c.source, member:c.member||'me', meetingDocId:(srcDoc && srcDoc.serverId) || c.docSid || null
         }).then(function(){ c.status = 'added'; done.push(c); });
       }).catch(function(e){ pushToast('⚠️','일정을 추가하지 못했어요', e.message); });
     }, Promise.resolve()).then(function(){

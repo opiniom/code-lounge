@@ -25,6 +25,7 @@ from models import (MeetingDoc, CalendarEvent, Project, ChatMessage, User, Notif
                     CommunityPost, CrawledEvent, UserProfile, ProjectMember, CommunityBookmark)
 from services.access import project_users
 from services.schedule_ai import _gemini_json, _claude_tool, TIME_RE
+from services import note_prep
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,8 @@ def _system(ai_name: Optional[str]) -> str:
         "request_members 에 담으세요. member_id=[팀원] 목록의 #번호(이름이 비슷한 사람이 여럿이거나 없으면 담지 말고 reply 로 되물으세요), "
         "file=[프로젝트 파일]에 있는 경로(모르면 빈 문자열), line=줄 번호(모르면 0), message=부탁 내용 한 문장. "
         "AI 가 직접 파일을 고치지는 않습니다. 팀원 자신에게는 전달하지 않습니다.\n"
+        "11. 대화 순서: 아래로 갈수록 최근입니다. 앞에서 취소·삭제·철회한 일은 다시 만들지 말고, 같은 일을 다시 말했으면 한 번만 처리하세요. "
+        "이미 있는 일정의 날짜·시간을 바꿔 말하면 새로 추가하지 말고 update_events 로 고치세요. 같은 말을 되풀이해서 들어와도(음성 인식 포함) 한 번만 처리합니다.\n"
         "10. 파일·코드 질문은 [프로젝트 파일]의 내용만 근거로 답하고, 줄 번호는 자료에 표시된 번호를 그대로 쓰세요."
     )
 
@@ -426,6 +429,7 @@ async def _build_context(db: AsyncSession, project: Project, user_id: int, today
     rows = (await db.execute(q.order_by(ChatMessage.id.desc()).limit(160 if deep else 40))).scalars().all()
     msgs = [m for m in rows if not call_re.match(m.text or "") and not any(r.match(m.text or "") for r in custom_res)][:(70 if deep else 15)]
     msgs.reverse()
+    msgs = [msgs[i] for i in note_prep.kept_indexes([m.text or "" for m in msgs])]        # 취소·철회한 말은 AI 가 다시 일으키지 않게 뺀다
     author = {u.id: u.username for u in members}
 
     out = [f"오늘: {today.isoformat()} ({_WD[today.weekday()]}요일)",
@@ -564,6 +568,18 @@ async def _do_add_event(db, project, user, a, source) -> Tuple[str, Optional[dic
     )).first()
     if dup:
         return f"ℹ️ 같은 일정이 이미 있어요: **{title}** · {_fmt_range(sd, ed, st, et)}", None
+    # 표현만 조금 다른 같은 일정(예: '햄버거땡땡'/'햄버거 땡땡')이 이미 있으면 새로 만들지 않고, 날짜가 다르면 그 일정의 날짜를 바꾼다 (되돌리기 가능)
+    near = (await db.execute(
+        select(CalendarEvent).where(CalendarEvent.project_id == project.id, CalendarEvent.end_date >= date.today() - timedelta(days=7),
+                                    or_(CalendarEvent.kind != "private", CalendarEvent.user_id == user.id))
+        .order_by(CalendarEvent.id.desc()).limit(60)
+    )).scalars().all()
+    same = next((e for e in near if note_prep.same_task(e.title, title)), None)
+    if same is not None:
+        if same.start_date == sd:
+            return f"ℹ️ 같은 일정이 이미 있어요: **{same.title}** · {_fmt_range(same.start_date, same.end_date, same.start_time, same.end_time)}", None
+        return await _do_update_event(db, project, user, {"event_id": same.id, "date": sd.isoformat(), "end_date": ed.isoformat(),
+                                                           "start_time": st or "", "end_time": et or ""})
     event = CalendarEvent(
         user_id=user.id, project_id=project.id, title=title, start_date=sd, end_date=ed,
         start_time=st, end_time=et, all_day=st is None, kind="ai", source=(source or "")[:300],
@@ -722,7 +738,7 @@ async def run_agent(db: AsyncSession, project_id: int, user: User, text: str,
     meta: Dict[str, Any] = {"requester_id": user.id}
     if ai_name:
         meta["ai_name"] = ai_name
-    body = strip_call(text, ai_name)
+    body = note_prep.collapse_repeats(strip_call(text, ai_name))        # 같은 문장이 되풀이돼 들어와도(음성 인식 등) 한 번으로
     n = (ai_name or "").strip() or "두레"
     if not body:
         return (f"네, 불러주셨네요! 이렇게 말해보세요.\n- `{n}야 이번 주 마감이 뭐야?`\n"

@@ -25,7 +25,7 @@ function toggleAvatarMenu(e){
 }
 document.addEventListener('click', function(e){
   if(!e.target.closest('.notif-wrap') && !e.target.closest('.avatar-wrap') && !e.target.closest('.widget-picker-wrap') && !e.target.closest('.pst-wrap')) closeMenus();
-  if(!e.target.closest('.note-editor-wrap')){ var sm = document.getElementById('slashMenu'); if(sm) sm.classList.remove('open'); }
+  if(!e.target.closest('.note-editor-wrap')){ document.querySelectorAll('.slash-menu.open').forEach(function(sm){ sm.classList.remove('open'); }); }
   if(!e.target.closest('.status-popover') && !e.target.closest('.mdr-status-btn')) closeStatusEditor();
 });
 document.addEventListener('keydown', function(e){

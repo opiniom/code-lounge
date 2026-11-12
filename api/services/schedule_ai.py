@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 
 from config import settings
+from services import note_prep
 
 logger = logging.getLogger("schedule_ai")
 
@@ -73,7 +74,16 @@ _SYSTEM_PROMPT = (
     "- 'N월 첫째 주'는 그 달 1일이 속한 주의 월~금, '월말'은 그 달 말일, '이번 달 말'도 말일로 계산합니다. 연도가 없으면 기준일에서 가장 가까운 미래로 봅니다.\n"
     "- 시간이 있으면 24시간제 HH:MM 으로, 없으면 null 로 둡니다.\n"
     "- title 은 20자 안팎의 짧은 명사구로, source 에는 근거가 된 원문 문장을 그대로 적습니다.\n"
-    "- 일정이 없으면 빈 배열을 반환합니다."
+    "- 일정이 없으면 빈 배열을 반환합니다.\n"
+    "[짧고 간단한 메모도 읽으세요]\n"
+    "- 회의록은 대개 '햄버거 땡땡 금요일', 'UI 마무리 ~다음주 월', '발표 11/20 2시', '민수 API 이번주 안에' 처럼 짧게 적힙니다. 문장이 완전하지 않아도 날짜·요일·기한 표현이 있으면 일정으로 봅니다.\n"
+    "- '금', '~금', '금까지'는 회의 날짜 이후 가장 가까운 금요일, '이번 주 안/내/중'은 그 주 금요일, '주말까지'는 일요일, '월말'은 그 달 말일입니다.\n"
+    "- '이름 - 할 일 날짜' 형식이면 이름은 담당자이고, title 은 할 일만 적습니다.\n"
+    "[취소·정정·중복]\n"
+    "- 글은 위에서 아래 순서로 읽고, 뒤에 나온 말이 앞의 말을 고칩니다. 같은 일을 다시 적으면 마지막 내용만 일정으로 만드세요.\n"
+    "- '취소', '철회', '없던 걸로', '~~취소선~~', '지우고'처럼 취소된 일은 일정으로 만들지 마세요. (취소 뒤에 다시 적은 일은 새 일정입니다)\n"
+    "- '다음 주 월요일로 변경', '연기', '정정'은 앞 일정의 날짜를 바꾸는 말이니 일정을 두 개 만들지 말고 바뀐 날짜 하나만 만드세요.\n"
+    "- 같은 일을 같은 날짜로 여러 번 적었으면 한 번만 반환합니다. (표현이 조금 달라도 같은 일이면 하나)"
 )
 
 _TOOL = {
@@ -274,7 +284,9 @@ _STRUCT_SYSTEM = (
     "당신은 회의 메모를 회의록으로 정리하는 도우미입니다. 입력은 한 줄에 하나씩 적힌 메모입니다.\n"
     "- discussion: 일반 논의·공유 내용, decisions: 확정된 결정사항, actions: 누가/무엇을/언제까지 해야 하는 액션아이템.\n"
     "- 메모에 없는 내용을 지어내지 말고, 문장은 원문을 최대한 살려 간결하게 다듬습니다. 하나의 메모는 한 곳에만 넣습니다.\n"
-    "- title 은 회의 내용을 대표하는 20자 안팎의 제목입니다."
+    "- title 은 회의 내용을 대표하는 20자 안팎의 제목입니다.\n"
+    "- 메모가 짧아도(예: '햄버거 땡땡 금요일') 날짜·기한이 있는 할 일이면 actions 에 넣고, 같은 내용이 여러 번 적혀 있으면 한 번만 넣습니다.\n"
+    "- 뒤에 나온 말이 앞의 말을 고칩니다(예: '월요일로 변경'). 취소된 항목은 넣지 않습니다."
 )
 _STRUCT_SCHEMA = {
     "type": "OBJECT",
@@ -290,6 +302,7 @@ _STRUCT_SCHEMA = {
 
 async def structure_meeting(lines: List[str], title: Optional[str] = None) -> Dict:
     """회의 메모를 AI 로 구조화. AI 를 쓸 수 없으면 RuntimeError."""
+    lines = note_prep.clean_lines(lines)                       # 취소선·취소된 줄은 회의록에 넣지 않는다
     memo = "\n".join(f"- {l.strip()}" for l in lines if l.strip())[:6000]
     user_msg = f"회의 제목(사용자 입력): {title or '(없음)'}\n\n메모:\n{memo}"
     if settings.GEMINI_API_KEY:
@@ -328,6 +341,8 @@ _CHAT_SYSTEM = (
     "- '오늘 밤', '내일', '다음주 화요일', '금요일까지' 같은 표현은 사용자 메시지의 기준일로 계산해 YYYY-MM-DD 로 바꿉니다. (주는 월요일에 시작)\n"
     "- '금요일까지'처럼 마감만 있으면 그 날짜 하루짜리 일정으로, 시간이 있으면 24시간제 HH:MM, 없으면 null 로 둡니다.\n"
     "- 단순 잡담, 의견, 날짜가 전혀 없는 약속, 이미 지난 일, 방금 메시지와 무관한 예전 대화 속 약속은 제외합니다.\n"
+    "- 대화는 위에서 아래 순서이고 뒤의 말이 앞의 말을 고칩니다. 앞에서 맡겠다고 했더라도 이후에 취소·철회했거나 날짜를 바꿨다면 바뀐 마지막 내용만 반영하세요(취소됐으면 제외).\n"
+    "- 같은 일을 여러 번 말했으면 한 번만 반환합니다.\n"
     "- source 에는 근거가 된 메시지 원문을 적습니다. 해당하는 내용이 없으면 events 를 빈 배열로 반환합니다."
 )
 _CHAT_PROPS = {
@@ -391,6 +406,15 @@ def detect_chat_rules(lines: List[Tuple[str, str]], reference: date) -> List[Dic
 
 async def detect_chat(lines: List[Tuple[str, str]], reference: date) -> Tuple[str, Optional[str], List[Dict]]:
     """lines: [(작성자, 내용)] 오래된 순. (engine, note, events) 반환."""
+    keep = note_prep.kept_indexes([t for _a, t in lines])        # 취소·철회한 약속은 대화에서 뺀다
+    if not lines or (len(lines) - 1) not in keep:                # 방금 메시지가 '취소하는 말'이면 새 일정은 없다
+        return "rules", None, []
+    lines = [lines[i] for i in keep]
+    engine, note, events = await _detect_chat_raw(lines, reference)
+    return engine, note, note_prep.finalize_events(events)
+
+
+async def _detect_chat_raw(lines: List[Tuple[str, str]], reference: date) -> Tuple[str, Optional[str], List[Dict]]:
     transcript = "\n".join(f"{a}: {t}" for a, t in lines)[-3500:]
     user_msg = f"기준일(오늘): {reference.isoformat()} ({WEEKDAY_NAMES[reference.weekday()]}요일)\n\n대화:\n{transcript}"
     note = None
@@ -420,11 +444,15 @@ _DATE_PATTERNS = [
     ("md_kor", re.compile(r"(?P<m>\d{1,2})\s*월\s*(?P<d>\d{1,2})\s*일")),
     ("md_slash", re.compile(r"(?<![\d/.:])(?P<m>\d{1,2})/(?P<d>\d{1,2})(?![\d/:])")),
     ("rel_month_day", re.compile(r"(?P<rel>이번|다음|담)\s*달\s*(?P<d>\d{1,2})\s*일")),
-    ("rel_week_wd", re.compile(r"(?P<rel>이번|다다음|다음|담)\s*주\s*(?P<wd>[월화수목금토일])요일")),
+    ("rel_week_in", re.compile(r"(?P<rel>이번|다음|담)\s*주\s*(?:안|내|중)(?:에|으로|까지)?")),
+    ("rel_week_wd", re.compile(r"(?P<rel>이번|다다음|다음|담)\s*주\s*(?P<wd>[월화수목금토일])(?:요일|(?=\s*(?:까지|마감|제출|에|부터|~|-|\)|$)))")),
+    ("month_end", re.compile(r"(?:(?P<rel>이번|다음|담)\s*달\s*(?:말일|말)|(?P<m>\d{1,2})\s*월\s*(?:말일|말)|(?<![가-힣])월말)")),
+    ("md_dot", re.compile(r"(?<![\d.])(?P<m>1[0-2]|0?[1-9])\.(?P<d>[12]\d|3[01]|0?[1-9])(?![\d.])(?=\s*(?:\([월화수목금토일]\)|까지|부터|에|마감|제출|발표|회의|미팅|~|-|$|(?:오전|오후)?\s*\d{1,2}\s*(?:시|:)))")),
     ("rel_weekend", re.compile(r"(?P<rel>이번|다음|담)\s*주말")),
     ("rel_day", re.compile(r"(?P<w>오늘|내일|모레|글피)")),
     ("after_n", re.compile(r"(?P<n>\d{1,2})\s*(?P<u>일|주)\s*(?:뒤|후)")),
     ("bare_wd", re.compile(r"(?<![가-힣])(?P<wd>[월화수목금토일])요일")),
+    ("wd_short", re.compile(r"(?:(?<![0-9가-힣])(?P<wd>[월화수목금토일])\s*(?=까지|마감|제출)|~\s*(?P<wd2>[월화수목금토일])(?![가-힣]))")),
     ("bare_day", re.compile(r"(?<![\d월/.])(?P<d>\d{1,2})\s*일")),
 ]
 
@@ -435,7 +463,7 @@ _TIME_RE = re.compile(
 _RANGE_GAP = re.compile(r"^\s*(?:~|∼|–|—|-|부터|에서)\s*$")
 _AFTER_SPAN = re.compile(r"\s*(?:까지|부터|에서|에는|에|쯤|경|께|즈음)?")
 _TAIL = re.compile(
-    r"(?:하기로\s*결정|하기로\s*했음|하기로\s*함|하기로|진행\s*예정|예정입니다|예정이다|예정|진행합니다|진행함|진행|"
+    r"(?:(?:으?로)?\s*(?:변경|조정|연기|정정|미룸|미루기로|앞당김|앞당기기로)(?:함|합니다|했음|하기로|할게요?|됨)?|하기로\s*결정|하기로\s*했음|하기로\s*함|하기로|진행\s*예정|예정입니다|예정이다|예정|진행합니다|진행함|진행|"
     r"해야\s*합니다|해야\s*함|합니다|한다|함|입니다|이다|까지)$"
 )
 _PARTICLE = re.compile(r"(?<=[가-힣A-Za-z0-9])(?:은|는|을|를|에서|으로|에)$")
@@ -469,7 +497,22 @@ def _resolve(name: str, m: "re.Match", ref: date, base: Optional[date]) -> Optio
     if name == "ymd":
         d = _safe_date(int(g["y"]), int(g["m"]), int(g["d"]))
         return (d, None) if d else None
-    if name in ("md_kor", "md_slash"):
+    if name == "rel_week_in":
+        off = {"이번": 0, "다음": 1, "담": 1}[g["rel"]]
+        return _week_start(ref) + timedelta(days=7 * off + 4), None          # 그 주 금요일
+    if name == "month_end":
+        if g.get("m"):
+            mon, yr = int(g["m"]), anchor.year
+            d = _safe_date(yr + (1 if mon == 12 else 0), 1 if mon == 12 else mon + 1, 1)
+            d = d - timedelta(days=1) if d else None
+            if d and not base and (d - ref).days < -180:
+                d = _safe_date(yr + 1 + (1 if mon == 12 else 0), 1 if mon == 12 else mon + 1, 1)
+                d = d - timedelta(days=1) if d else None
+            return (d, None) if d else None
+        nxt = _add_months(ref, 1 if g.get("rel") in ("다음", "담") else 0, 1)
+        first_next = _add_months(nxt, 1, 1) if nxt else None
+        return (first_next - timedelta(days=1), None) if first_next else None
+    if name in ("md_kor", "md_slash", "md_dot"):
         year = anchor.year
         d = _safe_date(year, int(g["m"]), int(g["d"]))
         if d and not base and (d - ref).days < -180:
@@ -491,6 +534,8 @@ def _resolve(name: str, m: "re.Match", ref: date, base: Optional[date]) -> Optio
         return ref + timedelta(days=n), None
     if name == "bare_wd":
         return _next_weekday(anchor, WD[g["wd"]]), None
+    if name == "wd_short":
+        return _next_weekday(anchor, WD[g.get("wd") or g["wd2"]]), None
     if name == "bare_day":
         day = int(g["d"])
         d = _safe_date(anchor.year, anchor.month, day)
@@ -529,8 +574,9 @@ def _clean_title(line: str, spans: List[Tuple[int, int]]) -> str:
     # 날짜/시간 표현과 그 뒤에 붙은 조사(까지, 부터 ...)를 제거
     pieces, last = [], 0
     for s, e in sorted(spans):
-        if s < last:
+        if e <= last:
             continue
+        s = max(s, last)             # 앞 날짜 표현 뒤의 공백까지 지운 자리에 시간 표현이 걸쳐 있어도 시간 부분은 지운다
         pieces.append(line[last:s])
         tail = _AFTER_SPAN.match(line, e)
         last = tail.end() if tail else e
@@ -622,7 +668,16 @@ def detect_rules(text: str, reference: date, title: Optional[str] = None) -> Lis
 # 진입점
 # ======================================================================
 async def detect_events(text: str, reference: date, title: Optional[str] = None) -> Tuple[str, Optional[str], List[Dict]]:
-    """(engine, note, events) 반환. engine 은 'gemini' | 'claude' | 'rules'."""
+    """(engine, note, events) 반환. engine 은 'gemini' | 'claude' | 'rules'.
+    AI 에 넘기기 전에 취소선·취소된 줄을 지우고, 돌려받은 뒤에는 중복·정정을 정리한다 (note_prep)."""
+    text = note_prep.clean_text(text)
+    if not text.strip():
+        return "rules", None, []
+    engine, note, events = await _detect_events_raw(text, reference, title)
+    return engine, note, note_prep.finalize_events(note_prep.order_by_source(events, text))
+
+
+async def _detect_events_raw(text: str, reference: date, title: Optional[str] = None) -> Tuple[str, Optional[str], List[Dict]]:
     engines = []
     if settings.GEMINI_API_KEY:
         engines.append(("gemini", _detect_gemini))

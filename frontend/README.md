@@ -12,9 +12,9 @@ frontend/
 │   ├─ notifications.css · components.css · editor.css(코드 에디터 테마)
 │   └─ polish.css · widgets.css · presence.css · landing.css · splash.css · voice.css   (타이포·위젯 갤러리·내 상태·소개 첫 화면·앱 인사 화면·음성 입력)
 └─ js/
-    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사) · prefs(내 설정 웹↔앱 동기화)
+    ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사) · prefs(내 설정 웹↔앱 동기화) · icons(공용 선 아이콘)
     ├─ shell/    menus · presence(내 상태) · notifications(알림·토스트)
-    └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · call · team · notes · calendar · community · admin
+    └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · notes-sheet(회의록 작성·보기·수정 시트) · call · team · notes · calendar · community · admin
 ```
 
 ## 음성으로 AI 부르기 (`js/pages/voice.js`)
@@ -22,6 +22,14 @@ frontend/
 채팅 입력줄의 마이크 버튼을 누르고 "두레야 내일 3시에 회의 잡아줘"처럼 말하면, 글로 바뀌어 **직접 친 것과 똑같이** 채팅 → AI 로 처리됩니다 (AI 호출어로 시작하면 1.6초 뒤 자동 전송, 그 안에 [취소]·글 수정 가능. 호출어 없이 말하면 입력칸에만 채워 줘요. '나만 보는 AI' 탭에서는 호출어 없이도 보냄).
 - 브라우저 음성 인식(Web Speech)이 되면 그걸 쓰고, 안 되는 곳(아이폰 설치 앱 등)은 녹음 → `POST /api/ai/transcribe` (Gemini 받아쓰기, 서버에 `GEMINI_API_KEY` 필요, 사용자당 시간당 40회) 로 처리. 소리는 저장하지 않아요.
 - 호출어 오인식('두래야', '듀레야')은 AI 이름(기본 이름 + 내가 정한 이름)에 맞게 보정합니다.
+
+## 회의록 시트 · AI 인식 보정 · 캘린더 구분
+
+- **회의록 작성 · 보기 · 수정이 같은 모양** (`js/pages/notes-sheet.js`): 제목 → 속성 줄(프로젝트·날짜·참석자) → 도구 막대 → 편집기. 작성 창과 보기/수정 서랍이 같은 부품을 쓰고, 칸(논의·결정·액션)의 색도 같아요. 쓰는 동안 오른쪽에서 **AI 가 지금 이렇게 읽고 있어요**(찾은 일정 · 취소로 본 줄)를 보여 줘요 (`POST /api/meetings/preview`, 규칙 기반이라 AI 한도를 쓰지 않아요). 임시저장은 이 기기에 실제로 저장돼요.
+- **취소·정정·중복** (`api/services/note_prep.py`): `~~취소선~~` 이나 "○○ 취소"로 지운 일은 일정이 안 되고, 같은 일을 다시 적으면 한 번만, "다음 주 화요일로 변경"처럼 정정하면 마지막 날짜만 남아요. 회의록 · 채팅 일정 카드 · 두레 AI(채팅·음성) 모두 같은 규칙을 써요. 짧은 메모(`금까지`, `~다음주 월`, `11.20 2시`, `이번주 안에`, `월말`)도 읽어요.
+- **수정하면 일정이 현재 글을 따라가요**: 더는 적혀 있지 않은 일정만 지우고 새로 생긴 일정만 추가해요 (팀원에게 가는 '새 일정' 알림이 중복으로 가지 않아요).
+- **캘린더 구분**: 제목·원문에서 종류(마감·발표·회의·행사·일정)를 읽어 색과 아이콘으로 구분하고, 출처(AI 자동 · 팀 공유 · 나만 보기)와 작성자를 상세에 보여 줘요. 위쪽 '구분' 버튼으로 종류별로 걸러 볼 수 있어요. (저장 형식은 그대로)
+- **아이콘 규칙**: 새 화면에서는 이모티콘 대신 서비스 공통 선 아이콘을 써요 → `uiIc('이름', 크기)` (`js/core/icons.js`, 커뮤니티의 `CM_ICON` 도 함께 사용). 새 아이콘은 `UI_ICON` 에만 추가하면 돼요. 움직임은 새로 만들지 않고 기존 것(`callPulse`, 서랍 슬라이드)만 써요.
 
 ## 웹 ↔ 설치한 앱(PWA) 설정 동기화 (`js/core/prefs.js`, `api/routers/prefs.py`)
 
