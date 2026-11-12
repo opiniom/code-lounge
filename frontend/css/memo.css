@@ -88,3 +88,35 @@
 @media (pointer:coarse){ .ws-keys-btn{display:none !important;} }
 @media (max-width:340px){ .ws-memo-btn{display:none !important;} }      /* 아주 좁은 폰(320): 도구막대에 실행·터미널이 다 들어가도록 숨기고, 아래 '메모' 탭의 '현재 줄에 메모' 버튼을 쓴다 */
 .ws-mf-add{display:inline-flex; align-items:center; gap:4px; border-color:rgba(139,92,246,.55) !important; color:#C4B5FD !important;} .ws-mf-add:hover{background:rgba(139,92,246,.2) !important; color:#fff !important;}
+
+/* ---- 설정 ▸ 워크스페이스 단축키 (js/pages/workspace-keys.js) ---- */
+.wk-row .wk-keys em{font-style:normal; color:var(--text-faint);}
+.keys-modal{max-width:480px; display:flex; flex-direction:column; max-height:min(86dvh, 640px); overflow:hidden;}
+.keys-modal .kb-note{font-size:12px; line-height:1.55; color:var(--text-dim, var(--text-faint)); margin:0 0 10px;}
+.keys-modal .kb-note.sub{font-size:11px; color:var(--text-faint); margin:10px 0 0;}
+.kb-rows{display:flex; flex-direction:column; gap:10px; overflow-y:auto; min-height:0; flex:1 1 auto; padding-right:2px;}
+.kb-row{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:start; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface);}
+.kb-name{font-weight:600; font-size:13px; grid-column:1 / -1;}
+.kb-keys{display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0;}
+.kb-chip{display:inline-flex; align-items:center; gap:2px; padding:2px 2px 2px 8px; border:1px solid var(--border-strong); border-radius:8px; background:var(--surface-2);}
+.kb-chip kbd{font-family:var(--font-mono); font-size:12px; background:none; border:none; padding:0; color:var(--text);}
+.kb-x{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:none; background:none; color:var(--text-faint); border-radius:6px; cursor:pointer;}
+.kb-x:hover{background:var(--surface-3, var(--border)); color:var(--text);}
+.kb-none{font-size:12px; color:var(--text-faint);}
+.kb-add{min-height:30px; padding:0 10px; border:1px dashed var(--border-strong); background:none; color:var(--text-dim, var(--text)); border-radius:8px; font:inherit; font-size:12px; cursor:pointer;}
+.kb-add:hover{border-color:var(--accent, var(--border-strong)); color:var(--text);}
+.kb-add.on{border-style:solid; border-color:var(--accent, #7c5cff); color:var(--accent, #7c5cff); background:color-mix(in srgb, var(--accent, #7c5cff) 10%, transparent); animation:kbPulse 1.4s ease-in-out infinite;}
+@keyframes kbPulse{50%{opacity:.65}}
+.kb-reset{align-self:start; min-height:30px; padding:0 8px; border:none; background:none; color:var(--text-faint); font:inherit; font-size:11.5px; text-decoration:underline; cursor:pointer;}
+.kb-reset:hover{color:var(--text);}
+.kb-err{grid-column:1 / -1; font-size:11.5px; line-height:1.45; color:#e5484d;}
+.kb-err[hidden]{display:none;}
+.kb-foot{display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border);}
+.kb-foot .kb-sp{flex:1;}
+.kb-foot .btn{min-height:40px;}
+@media (max-width:820px){ .keys-modal{max-height:min(88dvh, 640px);} }
+@media (prefers-reduced-motion:reduce){ .kb-add.on{animation:none;} }
+
+.wk-head .wk-sp{flex:1;}
+.wk-chg{display:inline-flex; align-items:center; gap:5px; min-height:30px; padding:0 10px; margin-right:4px; border:1px solid var(--border-strong); background:var(--surface-2); color:var(--text); border-radius:8px; font:inherit; font-size:12px; font-weight:600; cursor:pointer;}
+.wk-chg:hover{border-color:var(--accent, var(--border-strong));}

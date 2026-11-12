@@ -80,9 +80,9 @@ async def _payload(db: AsyncSession, viewer: User, target: User) -> dict:
     i_follow, follows_me = (False, False) if is_self else await _relation(db, viewer.id, target.id)
 
     # 이 사람이 참여한 프로젝트
-    t_owned = (await db.execute(select(Project).where(Project.owner_id == target.id))).scalars().all()
+    t_owned = (await db.execute(select(Project).where(Project.owner_id == target.id, Project.deleted_at.is_(None)))).scalars().all()
     t_member_rows = (await db.execute(select(ProjectMember).where(ProjectMember.user_id == target.id))).scalars().all()
-    member_proj = {p.id: p for p in (await db.execute(select(Project).where(Project.id.in_([m.project_id for m in t_member_rows] or [-1])))).scalars().all()}
+    member_proj = {p.id: p for p in (await db.execute(select(Project).where(Project.id.in_([m.project_id for m in t_member_rows] or [-1]), Project.deleted_at.is_(None)))).scalars().all()}
     viewer_ids = set(await member_project_ids(db, viewer))
     items = []
     hidden = 0

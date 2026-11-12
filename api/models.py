@@ -53,6 +53,10 @@ class Project(Base):
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # 관리자가 삭제하면 '휴지통'으로 가서 팀원 화면에서는 사라지고, 관리자 페이지에서 복구하거나 영구 삭제할 수 있다
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    deleted_by = Column(Integer, nullable=True)
+    delete_reason = Column(String(200), nullable=True)
 
 class CalendarEvent(Base):
     __tablename__ = "calendar_events"
@@ -316,6 +320,7 @@ class AuditLog(Base):
     target_type = Column(String(20), nullable=True)
     target_id = Column(Integer, nullable=True)
     detail = Column(String(500), nullable=True)
+    ip = Column(String(64), nullable=True, index=True)      # 이 조치를 한 접속 주소 (프록시 뒤에서는 실제 접속자 주소)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 

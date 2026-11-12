@@ -26,7 +26,9 @@ from services import admin_gate as gate
 from services.admin_gate import require_admin, require_super
 from services.auth_service import is_admin_user, is_super_admin, require_admin_role, require_super_role
 
-router = APIRouter(prefix="/api/admin", tags=["Admin"])
+from services.client_ip import CLIENT_IP, bind_client_ip
+
+router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(bind_client_ip)])
 STARTED_AT = time.time()
 
 
@@ -98,7 +100,8 @@ async def _n(db: AsyncSession, stmt) -> int:
 
 
 def _audit(db: AsyncSession, admin: User, action: str, target_type: Optional[str] = None, target_id: Optional[int] = None, detail: Optional[str] = None) -> None:
-    db.add(AuditLog(admin_id=admin.id, admin_name=admin.username or admin.email, action=action, target_type=target_type, target_id=target_id, detail=(detail or "")[:500] or None))
+    db.add(AuditLog(admin_id=admin.id, admin_name=admin.username or admin.email, action=action, target_type=target_type, target_id=target_id, detail=(detail or "")[:500] or None,
+                    ip=CLIENT_IP.get()))
 
 
 def _page(page: int, size: int):
@@ -148,7 +151,7 @@ async def overview(admin: User = Depends(require_admin), db: AsyncSession = Depe
                   "new_7d": await _n(db, select(func.count()).select_from(User).where(User.created_at >= now - timedelta(days=7), User.withdrawn_at.is_(None))),
                   "online": len(live.hub.conns),
                   "withdrawn_7d": await _n(db, select(func.count()).select_from(WithdrawalLog))},
-        "content": {"projects": await _n(db, select(func.count()).select_from(Project)),
+        "content": {"projects": await _n(db, select(func.count()).select_from(Project).where(Project.deleted_at.is_(None))),
                     "posts": await _n(db, select(func.count()).select_from(CommunityPost).where(CommunityPost.is_deleted == False)),  # noqa: E712
                     "comments": await _n(db, select(func.count()).select_from(CommunityComment).where(CommunityComment.is_deleted == False)),  # noqa: E712
                     "chat": await _n(db, select(func.count()).select_from(ChatMessage)),
@@ -420,24 +423,94 @@ async def post_action(post_id: int, data: PostAction, admin: User = Depends(requ
     return {"ok": True}
 
 
-# ---------------------------------------------------------------- 프로젝트 (보기만)
+# ---------------------------------------------------------------- 프로젝트 (삭제 · 복구)
+class ProjectDeleteIn(BaseModel):
+    reason: Optional[str] = Field(None, max_length=150)
+
+
 @router.get("/projects")
-async def list_projects(q: str = "", page: int = 1, size: int = 20, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+async def list_projects(q: str = "", state: str = "active", page: int = 1, size: int = 20, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """state: active(운영 중) | deleted(휴지통) | all. 삭제된 프로젝트는 팀원 화면에서는 사라지고 여기서만 보인다."""
     page, size, off = _page(page, size)
     conds = []
     q = (q or "").strip()
     if q:
         conds.append(func.lower(Project.title).like(f"%{q.lower()}%"))
+    if state == "deleted":
+        conds.append(Project.deleted_at.is_not(None))
+    elif state != "all":
+        conds.append(Project.deleted_at.is_(None))
     total = await _n(db, select(func.count()).select_from(Project).where(*conds))
-    rows = (await db.execute(select(Project, User.username, User.email).outerjoin(User, User.id == Project.owner_id).where(*conds).order_by(Project.id.desc()).limit(size).offset(off))).all()
+    counts = {"active": await _n(db, select(func.count()).select_from(Project).where(Project.deleted_at.is_(None))),
+              "deleted": await _n(db, select(func.count()).select_from(Project).where(Project.deleted_at.is_not(None)))}
+    order = Project.deleted_at.desc() if state == "deleted" else Project.id.desc()
+    rows = (await db.execute(select(Project, User.username, User.email).outerjoin(User, User.id == Project.owner_id).where(*conds).order_by(order).limit(size).offset(off))).all()
     ids = [p.id for p, _, _ in rows]
     mem = dict((await db.execute(select(ProjectMember.project_id, func.count()).where(ProjectMember.project_id.in_(ids)).group_by(ProjectMember.project_id))).all()) if ids else {}
     files = dict((await db.execute(select(ProjectFile.project_id, func.count()).where(ProjectFile.project_id.in_(ids)).group_by(ProjectFile.project_id))).all()) if ids else {}
     chat_rows = (await db.execute(select(ChatMessage.project_id, func.count(), func.max(ChatMessage.created_at)).where(ChatMessage.project_id.in_(ids)).group_by(ChatMessage.project_id))).all() if ids else []
     chat = {pid: (c, last) for pid, c, last in chat_rows}
-    return {"total": total, "page": page, "size": size, "items": [
+    by_ids = {p.deleted_by for p, _, _ in rows if p.deleted_by}
+    by = {u.id: (u.username or u.email) for u in (await db.execute(select(User).where(User.id.in_(by_ids)))).scalars().all()} if by_ids else {}
+    return {"total": total, "page": page, "size": size, "counts": counts, "items": [
         {"id": p.id, "title": p.title, "owner": name, "owner_email": email, "members": 1 + mem.get(p.id, 0), "files": files.get(p.id, 0),
-         "chat": chat.get(p.id, (0, None))[0], "last_chat_at": _iso(chat.get(p.id, (0, None))[1]), "created_at": _iso(p.created_at)} for p, name, email in rows]}
+         "chat": chat.get(p.id, (0, None))[0], "last_chat_at": _iso(chat.get(p.id, (0, None))[1]), "created_at": _iso(p.created_at),
+         "deleted": p.deleted_at is not None, "deleted_at": _iso(p.deleted_at), "deleted_by": by.get(p.deleted_by), "delete_reason": p.delete_reason} for p, name, email in rows]}
+
+
+async def _project_or_404(db: AsyncSession, project_id: int) -> Project:
+    p = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+    if p is None:
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없어요.")
+    return p
+
+
+@router.post("/projects/{project_id}/delete")
+async def delete_project_soft(project_id: int, data: ProjectDeleteIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """프로젝트를 휴지통으로 보낸다: 팀원 화면(목록·채팅·캘린더·워크스페이스·통화)에서는 바로 사라지고, 내용은 그대로 보관돼 복구할 수 있다."""
+    p = await _project_or_404(db, project_id)
+    if p.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="이미 삭제된 프로젝트예요.")
+    reason = (data.reason or "").strip()
+    p.deleted_at = datetime.utcnow(); p.deleted_by = admin.id; p.delete_reason = reason[:200] or None
+    owner = (await db.execute(select(User).where(User.id == p.owner_id))).scalar_one_or_none()
+    _audit(db, admin, "project.delete", "project", p.id, f"{p.title} · 팀장 {owner.username if owner else '—'} · {reason or '사유 없음'}")
+    if owner is not None:
+        db.add(Notification(user_id=owner.id, project_id=None, category="project", title=f"프로젝트 '{p.title[:40]}'가 삭제됐어요",
+                            message="관리자가 이 프로젝트를 삭제했어요." + (f" 사유: {reason}" if reason else "") + " 복구가 필요하면 관리자에게 문의해 주세요."))
+    await db.commit()
+    try:
+        from routers.call import close_project_rooms
+        await close_project_rooms(p.id)                  # 통화 중이던 사람은 통화방에서 나온다
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@router.post("/projects/{project_id}/restore")
+async def restore_project(project_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    p = await _project_or_404(db, project_id)
+    if p.deleted_at is None:
+        raise HTTPException(status_code=400, detail="삭제된 프로젝트가 아니에요.")
+    p.deleted_at = None; p.deleted_by = None; p.delete_reason = None
+    _audit(db, admin, "project.restore", "project", p.id, p.title)
+    db.add(Notification(user_id=p.owner_id, project_id=p.id, category="project", title=f"프로젝트 '{p.title[:40]}'가 복구됐어요",
+                        message="관리자가 이 프로젝트를 복구했어요. 파일·채팅·일정이 그대로 돌아왔어요.", link=f"project:{p.id}"))
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/projects/{project_id}/purge")
+async def purge_project(project_id: int, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
+    """휴지통의 프로젝트를 영구 삭제 (되돌릴 수 없다). 휴지통에 있는 것만, 최고관리자만."""
+    p = await _project_or_404(db, project_id)
+    if p.deleted_at is None:
+        raise HTTPException(status_code=400, detail="먼저 삭제(휴지통)한 프로젝트만 영구 삭제할 수 있어요.")
+    title = p.title
+    n_files = await acct._delete_project(db, p.id)
+    _audit(db, admin, "project.purge", "project", project_id, f"{title} · 파일 {n_files}개 포함 영구 삭제")
+    await db.commit()
+    return {"ok": True, "files": n_files}
 
 
 # ---------------------------------------------------------------- 이벤트 크롤러
@@ -522,7 +595,7 @@ async def send_announcement(data: AnnounceIn, admin: User = Depends(require_admi
 
 # ---------------------------------------------------------------- 감사 로그 · 시스템
 def _audit_row(a: AuditLog) -> Dict[str, Any]:
-    return {"id": a.id, "admin": a.admin_name, "admin_id": a.admin_id, "action": a.action, "target_type": a.target_type, "target_id": a.target_id, "detail": a.detail, "created_at": _iso(a.created_at)}
+    return {"id": a.id, "admin": a.admin_name, "admin_id": a.admin_id, "action": a.action, "target_type": a.target_type, "target_id": a.target_id, "detail": a.detail, "ip": a.ip, "created_at": _iso(a.created_at)}
 
 
 @router.get("/audit")
@@ -532,7 +605,8 @@ async def audit_list(q: str = "", page: int = 1, size: int = 30, admin: User = D
     q = (q or "").strip()
     if q:
         like = f"%{q.lower()}%"
-        conds.append(or_(func.lower(AuditLog.action).like(like), func.lower(func.coalesce(AuditLog.detail, "")).like(like), func.lower(AuditLog.admin_name).like(like)))
+        conds.append(or_(func.lower(AuditLog.action).like(like), func.lower(func.coalesce(AuditLog.detail, "")).like(like), func.lower(AuditLog.admin_name).like(like),
+                         func.coalesce(AuditLog.ip, "").like(f"%{q}%")))            # 접속 주소로도 찾을 수 있다
     total = await _n(db, select(func.count()).select_from(AuditLog).where(*conds))
     rows = (await db.execute(select(AuditLog).where(*conds).order_by(AuditLog.id.desc()).limit(size).offset(off))).scalars().all()
     return {"total": total, "page": page, "size": size, "items": [_audit_row(a) for a in rows]}

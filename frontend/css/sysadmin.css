@@ -155,3 +155,9 @@ html[data-motion="reduce"] .sa-code.shake{animation:none;}
 .sa-list li > .sa-rowact{flex:0 0 auto !important; flex-direction:row !important; align-items:center; gap:8px;}
 .sa-list li > .sa-rowact .sa-chip{white-space:nowrap;}
 @media (max-width:640px){ .sa-list li{flex-wrap:wrap;} .sa-list li > .sa-rowact{margin-left:auto;} }
+
+/* 프로젝트 휴지통 · 감사 로그 IP */
+.sa-table tr.sa-row-deleted{background:color-mix(in srgb, #EF4444 5%, transparent);} .sa-table tr.sa-row-deleted .sa-who b{color:var(--text-muted);}
+.sa-ip{font-family:var(--font-mono); font-size:12px; border:none; background:var(--surface-2); color:var(--text); padding:3px 9px; border-radius:7px; cursor:pointer; white-space:nowrap;}
+.sa-ip:hover{background:var(--accent-soft); color:var(--accent-ink);}
+.sa-stat-cell .sa-faint{max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}

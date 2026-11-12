@@ -5,6 +5,7 @@
 - 키마다 '바꾼 시각(t)'이 더 늦은 쪽이 이긴다. 정해진 키만, 크기 제한 안에서만 받는다.
 """
 import json
+import re
 import time
 from typing import Any, Dict
 
@@ -24,6 +25,25 @@ MAX_TOTAL_BYTES = 80_000
 FUTURE_SLACK_MS = 5 * 60 * 1000        # 기기 시계가 많이 앞서 있어도 '미래 시각'으로 영원히 이기지 못하게
 
 
+_KEY_ACTIONS = {"run", "debug", "stop", "memo"}
+_KEY_RE = re.compile(r"^((Ctrl|Alt|Shift)\+)*(F([1-9]|1[0-2])|[A-Z0-9]|Enter|Space|Tab|↑|↓|←|→|[,./;'\[\]\\\-=`])$")
+
+
+def _keys_ok(v: Any) -> bool:
+    """워크스페이스 단축키: 바꾼 동작만 {동작: [키, …]} (동작당 최대 3개, 같은 키를 두 동작에 쓰지 않는다)"""
+    if not isinstance(v, dict) or not set(v) <= _KEY_ACTIONS:
+        return False
+    seen = set()
+    for lst in v.values():
+        if not isinstance(lst, list) or len(lst) > 3:
+            return False
+        for k in lst:
+            if not isinstance(k, str) or len(k) > 24 or not _KEY_RE.match(k) or k in seen:
+                return False
+            seen.add(k)
+    return True
+
+
 def _is_str_dict(v: Any, limit: int) -> bool:
     return isinstance(v, dict) and len(v) <= limit and all(isinstance(k, str) and len(k) <= 600 for k in v)
 
@@ -40,6 +60,7 @@ CHECKS = {
     "theme": lambda v: v in ("light", "dark", "system"),
     "chatseen": lambda v: _is_str_dict(v, 200) and all(isinstance(x, int) and not isinstance(x, bool) and 0 <= x < 10 ** 12 for x in v.values()),
     "wslast": lambda v: _is_str_dict(v, 200) and all(isinstance(x, str) and len(x) <= 300 for x in v.values()),
+    "keys": lambda v: _keys_ok(v),
 }
 
 

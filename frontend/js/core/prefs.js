@@ -110,6 +110,11 @@ function prefsFlush(keep){
     clearTimeout(PREFS.timer); PREFS.timer = setTimeout(prefsFlush, 15000);
   });
 }
+PREFS.defs.keys = {                           // 워크스페이스 단축키 (기본값에서 바꾼 동작만)
+  read: function(){ try { var r = localStorage.getItem('sync_ws_keys'); return r ? JSON.parse(r) : null; } catch(e){ return null; } },
+  write: function(v){ try { localStorage.setItem('sync_ws_keys', JSON.stringify(v)); } catch(e){} if(typeof wsKeysReload === 'function'){ wsKeysReload(); wsKeysRefresh(); if(typeof wsKeysRenderSettings === 'function') wsKeysRenderSettings(); } },
+  wipe: function(){ try { localStorage.removeItem('sync_ws_keys'); } catch(e){} if(typeof wsKeysReload === 'function'){ wsKeysReload(); wsKeysRefresh(); } }
+};
 /* 서버에서 받은 설정을 이 기기에 적용 (서버 쪽이 더 늦게 바뀐 키만) */
 function prefsApply(remote){
   if(!remote || typeof remote !== 'object') return;

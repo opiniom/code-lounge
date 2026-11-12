@@ -1,6 +1,6 @@
 /* ---- 워크스페이스 코드 줄 메모 ----
    "이 파일 19번째 줄은 민수님이 고쳐야 해요" 같은 짧은 메모를 코드 줄에 남기고, 팀이 함께 본다.
-   · 직접 달기: 줄 번호 옆 '메모' 버튼 · 에디터에서 우클릭 · Ctrl+Alt+M (맥: ⌘⌥M).  두레에게 말로 시켜도 돼요: "두레야 민수님이 이 줄 수정해야 하니까 메모 남겨줘"
+   · 직접 달기: 줄 번호 옆 '메모' 버튼 · 에디터에서 우클릭 · Ctrl+Alt+M (맥: ⌘⌥M, 설정에서 바꿀 수 있어요).  두레에게 말로 시켜도 돼요: "두레야 민수님이 이 줄 수정해야 하니까 메모 남겨줘"
    · 보기: 메모가 있는 줄은 번호 옆에 색 막대 + 줄 끝에 한 줄 미리보기. 막대를 누르면 메모 창, 마우스를 올리면 내용이 떠요.
    · 목록: 아래쪽 '메모' 탭(전체 · 파일별 · 해결 여부). 누르면 그 줄로 이동해요.
    · 코드가 고쳐져 줄이 밀려도 메모는 같은 줄에 붙어 다녀요 (에디터가 따라가고, 저장되면 새 위치도 팀에 반영). 다른 사람이 고쳐서 줄이 달라졌다면 메모에 적어 둔 그 줄의 글자로 다시 찾아요.
@@ -150,7 +150,7 @@ function wsMemoRenderList(){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'ws-mf' + (WSMEMO.filter === f[0] ? ' on' : ''); b.textContent = f[1];
       b.onclick = function(){ WSMEMO.filter = f[0]; wsMemoRenderList(); }; head.appendChild(b);
     });
-    var add = document.createElement('button'); add.type = 'button'; add.className = 'ws-mf ws-mf-add'; add.title = '커서가 있는 줄에 메모 남기기 (' + wsKeyLabel('Ctrl+Alt+M') + ')';
+    var add = document.createElement('button'); add.type = 'button'; add.className = 'ws-mf ws-mf-add'; add.title = '커서가 있는 줄에 메모 남기기' + (wsKeyShow('memo') ? ' (' + wsKeyShow('memo') + ')' : '');
     add.innerHTML = uiIc('note', 13) + '<span> 현재 줄에 메모</span>'; add.onclick = wsMemoAddAtCursor; head.appendChild(add);
     var lab = document.createElement('label'); lab.className = 'ws-mf-only';
     var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = WSMEMO.onlyFile; cb.onchange = function(){ WSMEMO.onlyFile = cb.checked; wsMemoRenderList(); };
@@ -161,7 +161,7 @@ function wsMemoRenderList(){
   if(!wsMemoOn()){ box.innerHTML = '<div class="ws-memo-empty">로그인한 프로젝트에서 메모를 쓸 수 있어요.</div>'; return; }
   if(!list.length){
     var e = document.createElement('div'); e.className = 'ws-memo-empty';
-    e.innerHTML = (all.length ? '이 조건에 맞는 메모가 없어요.' : '아직 메모가 없어요.<br>코드 줄에 커서를 두고 <b>메모</b> 버튼(' + wsKeyLabel('Ctrl+Alt+M') + ')을 누르거나, 두레에게 “민수님이 이 줄 수정해야 하니까 메모 남겨줘”라고 말해 보세요.');
+    e.innerHTML = (all.length ? '이 조건에 맞는 메모가 없어요.' : '아직 메모가 없어요.<br>코드 줄에 커서를 두고 <b>메모</b> 버튼' + (wsKeyShow('memo') ? '(' + wsKeyShow('memo') + ')' : '') + '을 누르거나, 두레에게 “민수님이 이 줄 수정해야 하니까 메모 남겨줘”라고 말해 보세요.');
     box.appendChild(e); return;
   }
   var cur = null;
@@ -345,7 +345,7 @@ function wsMemoInit(){
     if(WSMEMO.pop && !WSMEMO.pop.hidden) wsMemoClosePop();
   });
   monacoEditor.onDidScrollChange(function(){ if(WSMEMO.pop && !WSMEMO.pop.hidden && WSMEMO.popLine) wsMemoPlacePop(WSMEMO.popLine); });
-  monacoEditor.addAction({ id: 'ws-memo-add', label: '이 줄에 메모 남기기', keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyM],
+  monacoEditor.addAction({ id: 'ws-memo-add', label: '이 줄에 메모 남기기',
     contextMenuGroupId: 'navigation', contextMenuOrder: 1.6, run: function(){ wsMemoAddAtCursor(); } });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && WSMEMO.pop && !WSMEMO.pop.hidden) wsMemoClosePop(); });
   wsMemoRender();

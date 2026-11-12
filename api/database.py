@@ -74,6 +74,16 @@ def _add_missing_columns(sync_conn):
     for name, ddl in (("is_admin", "BOOLEAN NOT NULL DEFAULT 0"), ("ban_reason", "VARCHAR(200)"), ("banned_at", "DATETIME"), ("withdrawn_at", "DATETIME")):
         if user_cols and name not in user_cols:
             sync_conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
+    pj_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(projects)"))}
+    for name, ddl in (("deleted_at", "DATETIME"), ("deleted_by", "INTEGER"), ("delete_reason", "VARCHAR(200)")):      # 관리자 휴지통
+        if pj_cols and name not in pj_cols:
+            sync_conn.execute(text(f"ALTER TABLE projects ADD COLUMN {name} {ddl}"))
+    if pj_cols and "deleted_at" not in pj_cols:
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_deleted_at ON projects (deleted_at)"))
+    au_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(audit_logs)"))}
+    if au_cols and "ip" not in au_cols:                  # 감사 로그의 접속 주소
+        sync_conn.execute(text("ALTER TABLE audit_logs ADD COLUMN ip VARCHAR(64)"))
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_logs_ip ON audit_logs (ip)"))
     cm_cols = {row[1] for row in sync_conn.execute(text("PRAGMA table_info(chat_messages)"))}
     if cm_cols and "private_to" not in cm_cols:          # 나만 보는 AI 대화
         sync_conn.execute(text("ALTER TABLE chat_messages ADD COLUMN private_to INTEGER"))

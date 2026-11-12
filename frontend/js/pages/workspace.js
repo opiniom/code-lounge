@@ -461,10 +461,7 @@ function initMonacoEditor() {
     monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
       if (currentFileKey) wsSave(currentFileKey, false, true);
     });
-    // 단축키: Ctrl+Enter 또는 Cmd+Enter로 실행
-    monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
-      runCode();
-    });
+    // 실행·중지·메모 단축키는 사용자가 설정에서 바꿀 수 있어서 workspace-keys.js 가 한꺼번에 처리한다
 
     updateEditorStatusBar();
   });

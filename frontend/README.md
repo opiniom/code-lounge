@@ -14,7 +14,7 @@ frontend/
 └─ js/
     ├─ core/     theme · router(화면 주소) · home-landing · auth · settings · api(서버 연동·웹소켓) · session(로그인 전/후 전환) · splash(설치한 앱 인사 화면) · greeting(시간대별 인사) · prefs(내 설정 웹↔앱 동기화) · icons(공용 선 아이콘)
     ├─ shell/    menus · presence(내 상태) · notifications(알림·토스트)
-    └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · notes-sheet(회의록 작성·보기·수정 시트) · workspace-memo(코드 줄 메모) · workspace-keys(실행 단축키) · call · team · notes · calendar · community · admin
+    └─ pages/    home-widgets · events · workspace · chat · voice(음성으로 AI 부르기) · notes-sheet(회의록 작성·보기·수정 시트) · workspace-memo(코드 줄 메모) · workspace-keys(실행 단축키·설정에서 바꾸기) · call · team · notes · calendar · community · admin
 ```
 
 ## 음성으로 AI 부르기 (`js/pages/voice.js`)
@@ -43,6 +43,7 @@ frontend/
 | 디버그 중 멈춘 상태 | `F5`/`F8` 계속 · `F10` 한 줄 · `F11` 안으로 · `Shift+F11` 밖으로 · `F9` 중단점 |
 
   파일 목록·터미널에 포커스가 있어도 워크스페이스 화면이면 동작하고(에디터 안에서는 에디터 명령이 한 번만 실행), 글자를 입력하는 칸에서는 가로채지 않아요. 브라우저의 F5(새로고침)는 워크스페이스에서 파일을 열어 둔 동안만 실행으로 바뀌어요. 도구막대의 키보드 버튼(폰에서는 숨김)에서 전체 단축키를 볼 수 있고, 실행·디버그·중지 버튼에도 단축키가 표시돼요.
+- **단축키 바꾸기** — 설정 ▸ ‘워크스페이스 단축키’에서 실행·디버그로 실행·중지·메모 동작마다 원하는 키로 바꿀 수 있어요(동작당 최대 3개). ‘＋ 키 추가’를 누르고 쓸 키를 한 번 누르면 되고, 저장·복사 같은 예약 키·다른 동작과 겹치는 키·글자 하나만 누르는 키는 이유를 알려 주며 거부해요. 기본값에서 바꾼 것만 저장되고(`sync_ws_keys`) `/api/prefs`의 `keys`로 웹·앱이 같이 써요. ‘Ctrl’로 저장한 키는 맥에서 ⌘로 동작해요. 디버그 중 F8/F10/F11·F9는 고정이에요. 에디터의 실행·메모 키는 Monaco에 고정으로 박지 않고 `workspace-keys.js`가 한꺼번에 처리해요.
 
 ## 회의록 시트 · AI 인식 보정 · 캘린더 구분
 

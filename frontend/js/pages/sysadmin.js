@@ -1,7 +1,7 @@
 /* ---- 관리자 페이지 (/app/admin) ----
    서버가 권한을 직접 확인한다(/api/admin/*). 여기서 메뉴를 숨기는 건 편의일 뿐이다.
    화면: 대시보드 · 사용자 · 신고/콘텐츠 · 프로젝트 · 크롤러 · 공지 · 감사 로그 · 시스템 */
-var SA = { tab:'dash', inited:false, timers:{}, state:{ users:{ q:'', state:'all', page:1 }, posts:{ q:'', state:'all', page:1 }, projects:{ q:'', page:1 }, events:{ q:'', page:1 }, audit:{ q:'', page:1 }, reports:{ status:'open' } }, todo:0 };
+var SA = { tab:'dash', inited:false, timers:{}, state:{ users:{ q:'', state:'all', page:1 }, posts:{ q:'', state:'all', page:1 }, projects:{ q:'', state:'active', page:1 }, events:{ q:'', page:1 }, audit:{ q:'', page:1 }, reports:{ status:'open' } }, todo:0 };
 var SA_TABS = [
   { k:'dash', t:'대시보드', i:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>' },
   { k:'users', t:'사용자', i:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/>' },
@@ -16,7 +16,7 @@ var SA_TABS = [
   { k:'system', t:'시스템', i:'<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>' }
 ];
 var SA_ACTIONS = { 'user.suspend':'사용자 정지', 'user.unsuspend':'정지 해제', 'user.admin_on':'운영자 지정', 'user.admin_off':'운영자 해제', 'user.delete':'계정 삭제(탈퇴 처리)', 'report.hide':'신고 글 숨김', 'report.delete':'신고 글 삭제', 'report.dismiss':'신고 기각', 'report.restore':'신고 글 복구',
-  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'lang.enable':'언어 공개', 'lang.disable':'언어 비공개', 'lang.install':'언어 설치', 'lang.default':'언어 기본 버전 지정', 'lang.remove':'언어 버전 삭제', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
+  'post.pin':'글 고정', 'post.unpin':'글 고정 해제', 'post.hide':'글 숨김', 'post.unhide':'글 숨김 해제', 'post.delete':'글 삭제', 'post.restore':'글 복구', 'project.delete':'프로젝트 삭제(휴지통)', 'project.restore':'프로젝트 복구', 'project.purge':'프로젝트 영구 삭제', 'lang.enable':'언어 공개', 'lang.disable':'언어 비공개', 'lang.install':'언어 설치', 'lang.default':'언어 기본 버전 지정', 'lang.remove':'언어 버전 삭제', 'crawler.run':'크롤러 수동 실행', 'event.delete':'행사 삭제', 'announce.send':'공지 발송', 'gate.login':'관리자 페이지 접속', 'gate.lock':'코드 연속 오입력 잠금', 'gate.setup':'관리자 코드 최초 설정', 'gate.change':'관리자 코드 변경' };
 var SA_CATS = { question:'질문·과제 도움', recruit:'팀원 구하기', study:'스터디 모집', showcase:'결과물·피드백', share:'정보·후기', free:'자유', comment:'댓글' };
 
 /* ----- 작은 도구들 ----- */
@@ -402,19 +402,38 @@ function saPostsLoad(){
   }).catch(function(e){ box.innerHTML = ''; box.appendChild(saEmpty(e.message)); });
 }
 
-/* ----- 프로젝트 (보기 전용) ----- */
+/* ----- 프로젝트 (삭제 · 복구) -----
+   삭제하면 '휴지통'으로 가서 팀원 화면에서는 사라지지만 내용(파일·채팅·일정)은 그대로 보관돼요. 휴지통에서 복구하거나 영구 삭제(최고관리자만)할 수 있어요. */
 function saProjects(main){
   var st = SA.state.projects; main.innerHTML = '';
   var list = saH('div', { id:'saProjList' });
-  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '프로젝트 이름 검색', function(v){ st.q = v; st.page = 1; saProjectsLoad(); }), saH('span', { class:'sa-faint', text:'개인정보 보호를 위해 프로젝트 안의 파일·채팅 내용은 볼 수 없어요.' })]));
+  var seg = saH('div', { id:'saProjSeg' });
+  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '프로젝트 이름 검색', function(v){ st.q = v; st.page = 1; saProjectsLoad(); }), seg, saH('span', { class:'sa-faint', text:'개인정보 보호를 위해 프로젝트 안의 파일·채팅 내용은 볼 수 없어요.' })]));
   main.appendChild(list); saProjectsLoad();
+}
+function saProjSeg(counts){
+  var st = SA.state.projects, box = document.getElementById('saProjSeg'); if(!box) return;
+  box.innerHTML = '';
+  box.appendChild(saSeg([['active', '운영 중 ' + saN(counts.active)], ['deleted', '휴지통 ' + saN(counts.deleted)], ['all', '전체']], st.state, function(v){ st.state = v; st.page = 1; saProjectsLoad(); }));
 }
 function saProjectsLoad(){
   var st = SA.state.projects, box = document.getElementById('saProjList'); if(!box) return;
-  saApi('/projects?q=' + encodeURIComponent(st.q) + '&page=' + st.page).then(function(r){
+  saApi('/projects?q=' + encodeURIComponent(st.q) + '&state=' + st.state + '&page=' + st.page).then(function(r){
     box.innerHTML = '';
-    var rows = r.items.map(function(p){ return { cells:{ t:saH('div', { class:'sa-who' }, [saH('div', {}, [saH('b', { text:p.title }), saH('span', { text:'팀장 ' + p.owner + ' · ' + p.owner_email })])]), m:p.members + '명', f:p.files + '개', c:saN(p.chat) + '건', last:p.last_chat_at ? saAgo(p.last_chat_at) : '—', at:saWhen(p.created_at) } }; });
-    box.appendChild(saTable([{ k:'t', t:'프로젝트' }, { k:'m', t:'팀원', cls:'num' }, { k:'f', t:'파일', cls:'num' }, { k:'c', t:'채팅', cls:'num' }, { k:'last', t:'마지막 채팅' }, { k:'at', t:'생성' }], rows, '프로젝트가 없어요.'));
+    saProjSeg(r.counts || { active:0, deleted:0 });
+    var rows = r.items.map(function(p){
+      var acts = saH('div', { class:'sa-rowact' });
+      if(!p.deleted){
+        acts.appendChild(saH('button', { class:'btn sa-danger', type:'button', text:'삭제', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 삭제할까요?', msg:'팀원 화면에서 바로 사라지고(목록·채팅·파일·캘린더·통화), 통화 중인 사람은 통화방에서 나가요. 내용은 휴지통에 그대로 보관돼서 언제든 복구할 수 있어요. 팀장에게 알림이 가요.', input:{ placeholder:'삭제 사유 (선택, 팀장에게 보여요)', max:150 }, ok:'휴지통으로 보내기', danger:true }, function(reason){ saPost('/projects/' + p.id + '/delete', { reason:reason || null }).then(function(){ pushToast('🗑️', '프로젝트를 삭제했어요', '"' + p.title + '" — 휴지통에서 복구할 수 있어요.'); saProjectsLoad(); }).catch(saErr); }); } }));
+      } else {
+        acts.appendChild(saH('button', { class:'btn primary', type:'button', text:'복구', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 복구할까요?', msg:'팀원 화면에 파일·채팅·일정이 그대로 다시 나타나요. 팀장에게 알림이 가요.', ok:'복구하기' }, function(){ saPost('/projects/' + p.id + '/restore').then(function(){ pushToast('♻️', '프로젝트를 복구했어요', '"' + p.title + '"'); saProjectsLoad(); }).catch(saErr); }); } }));
+        if(saIsSuper()) acts.appendChild(saH('button', { class:'btn sa-danger', type:'button', text:'영구 삭제', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 영구 삭제할까요?', msg:'파일 ' + saN(p.files) + '개·채팅 ' + saN(p.chat) + '건을 포함한 모든 내용이 지워지고 복구할 수 없어요. 이 조치는 감사 로그에 남아요.', ok:'영구 삭제', danger:true }, function(){ saPost('/projects/' + p.id + '/purge').then(function(){ pushToast('🗑️', '영구 삭제했어요', '"' + p.title + '"'); saProjectsLoad(); }).catch(saErr); }); } }));
+      }
+      var title = saH('div', { class:'sa-who' }, [saH('div', {}, [saH('b', { text:p.title }), saH('span', { text:'팀장 ' + p.owner + ' · ' + p.owner_email })])]);
+      var stat = p.deleted ? saH('div', { class:'sa-stat-cell' }, [saChip('휴지통', 'bad'), saH('span', { class:'sa-faint', text:(p.deleted_by || '관리자') + ' · ' + saAgo(p.deleted_at) + (p.delete_reason ? ' · ' + p.delete_reason : '') })]) : saChip('운영 중', 'ok');
+      return { cls:p.deleted ? 'sa-row-deleted' : '', cells:{ t:title, s:stat, m:p.members + '명', f:p.files + '개', c:saN(p.chat) + '건', last:p.last_chat_at ? saAgo(p.last_chat_at) : '—', at:saWhen(p.created_at), act:acts } };
+    });
+    box.appendChild(saTable([{ k:'t', t:'프로젝트' }, { k:'s', t:'상태' }, { k:'m', t:'팀원', cls:'num' }, { k:'f', t:'파일', cls:'num' }, { k:'c', t:'채팅', cls:'num' }, { k:'last', t:'마지막 채팅' }, { k:'at', t:'생성' }, { k:'act', t:'' }], rows, st.state === 'deleted' ? '휴지통이 비어 있어요.' : '프로젝트가 없어요.'));
     box.appendChild(saPager(r.total, r.page, r.size, function(p){ st.page = p; saProjectsLoad(); }));
   }).catch(function(e){ box.innerHTML = ''; box.appendChild(saEmpty(e.message)); });
 }
@@ -488,15 +507,18 @@ function saAnnounce(main){
 function saAudit(main){
   var st = SA.state.audit; main.innerHTML = '';
   var list = saH('div', { id:'saAuditList' });
-  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '작업·관리자·내용 검색', function(v){ st.q = v; st.page = 1; saAuditLoad(); }), saH('span', { class:'sa-faint', text:'관리자가 한 모든 조치가 기록돼요. 이 기록은 고치거나 지울 수 없어요.' })]));
+  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '작업·관리자·내용·IP 검색', function(v){ st.q = v; st.page = 1; saAuditLoad(); }), saH('span', { class:'sa-faint', text:'관리자가 한 모든 조치가 접속 IP와 함께 기록돼요. IP를 누르면 그 IP의 조치만 모아 봐요. 이 기록은 고치거나 지울 수 없어요.' })]));
   main.appendChild(list); saAuditLoad();
 }
 function saAuditLoad(){
   var st = SA.state.audit, box = document.getElementById('saAuditList'); if(!box) return;
   saApi('/audit?q=' + encodeURIComponent(st.q) + '&page=' + st.page).then(function(r){
     box.innerHTML = '';
-    var rows = r.items.map(function(a){ return { cells:{ at:saWhen(a.created_at), who:saH('div', { class:'sa-who' }, [saAvatar(a.admin, 24), saH('b', { text:a.admin })]), act:saChip(SA_ACTIONS[a.action] || a.action, ''), d:a.detail || (a.target_type ? a.target_type + ' #' + a.target_id : '') } }; });
-    box.appendChild(saTable([{ k:'at', t:'시간' }, { k:'who', t:'관리자' }, { k:'act', t:'작업' }, { k:'d', t:'내용' }], rows, '기록이 없어요.'));
+    var rows = r.items.map(function(a){
+      var ip = a.ip ? saH('button', { class:'sa-ip', type:'button', title:'이 IP의 조치만 보기', text:a.ip, onclick:function(){ st.q = a.ip; st.page = 1; saAudit(document.getElementById('saMain') || document.querySelector('.sa-main')); } }) : saH('span', { class:'sa-faint', text:'—' });
+      return { cells:{ at:saWhen(a.created_at), who:saH('div', { class:'sa-who' }, [saAvatar(a.admin, 24), saH('b', { text:a.admin })]), act:saChip(SA_ACTIONS[a.action] || a.action, ''), d:a.detail || (a.target_type ? a.target_type + ' #' + a.target_id : ''), ip:ip } };
+    });
+    box.appendChild(saTable([{ k:'at', t:'시간' }, { k:'who', t:'관리자' }, { k:'ip', t:'접속 IP' }, { k:'act', t:'작업' }, { k:'d', t:'내용' }], rows, '기록이 없어요.'));
     box.appendChild(saPager(r.total, r.page, r.size, function(p){ st.page = p; saAuditLoad(); }));
   }).catch(function(e){ box.innerHTML = ''; box.appendChild(saEmpty(e.message)); });
 }

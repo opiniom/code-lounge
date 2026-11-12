@@ -328,7 +328,7 @@ async def _community_context(db: AsyncSession, user: User, today: date) -> List[
     prof = (await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one_or_none()
     pids = [r[0] for r in (await db.execute(select(ProjectMember.project_id).where(ProjectMember.user_id == user.id))).all()]
     pids += [r[0] for r in (await db.execute(select(Project.id).where(Project.owner_id == user.id))).all()]
-    titles = [r[0] for r in (await db.execute(select(Project.title).where(Project.id.in_(set(pids))))).all()] if pids else []
+    titles = [r[0] for r in (await db.execute(select(Project.title).where(Project.id.in_(set(pids)), Project.deleted_at.is_(None)))).all()] if pids else []
     out = ["\n[호출한 사람의 프로필 — 추천 기준]",
            "- 한 줄 소개: " + ((prof.headline or "").strip() if prof and (prof.headline or "").strip() else "(없음)"),
            f"- 기술 스택: {', '.join(_loads_list(prof.skills)) if prof and prof.skills else '(없음)'}",
@@ -374,10 +374,11 @@ async def _events_context(db: AsyncSession, today: date) -> List[str]:
 async def _my_schedule_context(db: AsyncSession, user: User, today: date) -> List[str]:
     """내가 속한 모든 프로젝트의 앞으로 2주 일정 (다른 사람의 '나만 보기' 일정은 제외)"""
     pids = {r[0] for r in (await db.execute(select(ProjectMember.project_id).where(ProjectMember.user_id == user.id))).all()}
-    pids |= {r[0] for r in (await db.execute(select(Project.id).where(Project.owner_id == user.id))).all()}
+    pids |= {r[0] for r in (await db.execute(select(Project.id).where(Project.owner_id == user.id, Project.deleted_at.is_(None)))).all()}
     if not pids:
         return ["\n[내 모든 프로젝트 일정]", "- (참여 중인 프로젝트 없음)"]
-    titles = {r[0]: r[1] for r in (await db.execute(select(Project.id, Project.title).where(Project.id.in_(pids)))).all()}
+    titles = {r[0]: r[1] for r in (await db.execute(select(Project.id, Project.title).where(Project.id.in_(pids), Project.deleted_at.is_(None)))).all()}
+    pids = set(titles)
     evs = (await db.execute(
         select(CalendarEvent).where(
             CalendarEvent.project_id.in_(pids), CalendarEvent.end_date >= today, CalendarEvent.start_date <= today + timedelta(days=14),

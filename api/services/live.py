@@ -100,9 +100,9 @@ async def teammate_ids(db, user_id: int) -> Set[int]:
     from models import Follow, Project, ProjectMember
     mine = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
     owned = select(Project.id).where(Project.owner_id == user_id)
-    pids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))).scalar_subquery()
-    members = (await db.execute(select(ProjectMember.user_id).where(ProjectMember.project_id.in_(select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))))))).scalars().all()
-    owners = (await db.execute(select(Project.owner_id).where(or_(Project.id.in_(mine), Project.id.in_(owned))))).scalars().all()
+    pids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned)), Project.deleted_at.is_(None)).scalar_subquery()
+    members = (await db.execute(select(ProjectMember.user_id).where(ProjectMember.project_id.in_(select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned)), Project.deleted_at.is_(None)))))).scalars().all()
+    owners = (await db.execute(select(Project.owner_id).where(or_(Project.id.in_(mine), Project.id.in_(owned)), Project.deleted_at.is_(None)))).scalars().all()
     base = set(members) | set(owners) | {user_id}
     # 서로 팔로우한 사람(친구)에게도 접속 상태가 보인다
     out = set((await db.execute(select(Follow.followee_id).where(Follow.follower_id == user_id))).scalars().all())

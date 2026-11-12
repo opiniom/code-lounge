@@ -69,7 +69,7 @@ async def team_presence(current_user: User = Depends(get_current_user), db: Asyn
     """같은 프로젝트에 있는 팀원들의 상태 { 사용자id: online|away|dnd|offline }"""
     mine = select(ProjectMember.project_id).where(ProjectMember.user_id == current_user.id)
     owned = select(Project.id).where(Project.owner_id == current_user.id)
-    project_ids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned))).subquery()
+    project_ids = select(Project.id).where(or_(Project.id.in_(mine), Project.id.in_(owned)), Project.deleted_at.is_(None)).subquery()
     member_ids = select(ProjectMember.user_id).where(ProjectMember.project_id.in_(select(project_ids.c.id)))
     owner_ids = select(Project.owner_id).where(Project.id.in_(select(project_ids.c.id)))
     rows = (await db.execute(select(User).where(or_(User.id.in_(member_ids), User.id.in_(owner_ids))))).scalars().all()

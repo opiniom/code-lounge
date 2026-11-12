@@ -8,15 +8,15 @@ from models import User, Project, ProjectMember
 
 async def member_project_ids(db: AsyncSession, user: User) -> List[int]:
     q = union(
-        select(Project.id).where(Project.owner_id == user.id),
-        select(ProjectMember.project_id).where(ProjectMember.user_id == user.id),
+        select(Project.id).where(Project.owner_id == user.id, Project.deleted_at.is_(None)),
+        select(ProjectMember.project_id).join(Project, Project.id == ProjectMember.project_id).where(ProjectMember.user_id == user.id, Project.deleted_at.is_(None)),
     )
     return [row[0] for row in (await db.execute(q)).all()]
 
 
 async def get_member_project(db: AsyncSession, project_id: int, user: User) -> Project:
-    project = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
-    if project is None:
+    project = (await db.execute(select(Project).where(Project.id == project_id, Project.deleted_at.is_(None)))).scalar_one_or_none()
+    if project is None:                                  # 관리자가 휴지통으로 보낸 프로젝트도 팀원에게는 없는 것과 같다
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
     if project.owner_id != user.id:
         is_member = (await db.execute(

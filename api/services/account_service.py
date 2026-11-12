@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import (CalendarEvent, CallRoom, ChatMessage, CommunityApplication, CommunityBookmark, CommunityComment, CommunityLike, CommunityPost,
                     CommunityReport, Follow, MeetingDoc, Notification, PortfolioEntry, Project, ProjectFile, ProjectInvitation, ProjectMember,
-                    Submission, User, UserPref, UserProfile, WithdrawalLog)
+                    Submission, User, UserPref, UserProfile, WithdrawalLog, CodeMemo)
 
 logger = logging.getLogger("account")
 KEEP_DAYS = 7
@@ -90,7 +90,7 @@ async def withdraw_preview(db: AsyncSession, user: User, blocked: Optional[str] 
 # ---------------------------------------------------------------- 프로젝트 통째로 삭제
 async def _delete_project(db: AsyncSession, pid: int) -> int:
     files = await _count(db, select(func.count()).select_from(ProjectFile).where(ProjectFile.project_id == pid))
-    for model in (ProjectFile, ChatMessage, CalendarEvent, MeetingDoc, CallRoom, ProjectInvitation, ProjectMember, Notification, PortfolioEntry):
+    for model in (ProjectFile, ChatMessage, CalendarEvent, MeetingDoc, CallRoom, ProjectInvitation, ProjectMember, Notification, PortfolioEntry, CodeMemo):
         await db.execute(delete(model).where(model.project_id == pid))
     await db.execute(update(CommunityPost).where(CommunityPost.project_id == pid).values(project_id=None))
     await db.execute(delete(Project).where(Project.id == pid))

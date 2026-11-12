@@ -1346,6 +1346,14 @@ window.dureGreetIcon = function(n){
         <p id="scaleHint" style="font-size:11px; color:var(--text-faint); margin-top:6px; line-height:1.5;"></p>
       </div>
       <div class="form-row" style="margin-top:14px;">
+        <label>워크스페이스 단축키</label>
+        <button type="button" class="btn ghost" style="width:100%; text-align:left; justify-content:space-between; display:flex; align-items:center;" onclick="wsKeysOpenSettings()">
+          <span>실행 · 중지 · 메모 단축키 바꾸기</span>
+          <span>→</span>
+        </button>
+        <p style="font-size:11px; color:var(--text-faint); margin-top:6px; line-height:1.5;">기본은 실행 Ctrl+Enter · F5 · Shift+F10 (맥은 ⌘)이에요. 원하는 키로 바꾸면 웹과 앱에 같이 적용돼요.</p>
+      </div>
+      <div class="form-row" style="margin-top:14px;">
         <label>오픈소스 라이선스</label>
         <button type="button" class="btn ghost" style="width:100%; text-align:left; justify-content:space-between; display:flex;" onclick="openLicensesModal()">
           <span>📜 오픈소스 라이선스 및 정보</span>
@@ -1401,7 +1409,7 @@ window.dureGreetIcon = function(n){
           <button type="button" class="avatar-swatch" style="background:linear-gradient(150deg,#8B5CF6,#22D3EE);" onclick="pickAvatarSwatch(3)"></button>
         </div>
       </div>
-      <button class="btn primary" onclick="saveProfile()">저장</button>
+      <div class="pf-foot"><button class="btn primary" onclick="saveProfile()">저장</button></div>
     </div>
   </div>
 

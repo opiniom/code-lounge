@@ -96,7 +96,9 @@ async def list_meetings(
 ):
     # 내가 쓴 회의록 + 내가 속한 프로젝트의 팀원들이 쓴 회의록
     mine_ids = await member_project_ids(db, current_user)
-    query = select(MeetingDoc).where(or_(MeetingDoc.user_id == current_user.id, MeetingDoc.project_id.in_(mine_ids or [-1])))
+    gone = select(Project.id).where(Project.deleted_at.is_not(None))        # 관리자가 휴지통으로 보낸 프로젝트의 회의록은 목록에서 뺀다
+    query = select(MeetingDoc).where(or_(MeetingDoc.user_id == current_user.id, MeetingDoc.project_id.in_(mine_ids or [-1])),
+                                     or_(MeetingDoc.project_id.is_(None), MeetingDoc.project_id.not_in(gone)))
     if project_id is not None:
         query = query.where(MeetingDoc.project_id == project_id)
     rows = (await db.execute(
