@@ -227,6 +227,8 @@ class MeetingDocResponse(BaseModel):
 class ChatMessageCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
     private: bool = Field(default=False, description="True 면 '나만 보는 AI 대화': 팀 채팅에 올리지 않고 AI 가 나에게만 답한다")
+    file: Optional[str] = Field(default=None, max_length=300, description="워크스페이스에서 지금 열어 둔 파일 — '여기에 메모' 같은 말을 AI 가 알아듣게")
+    line: Optional[int] = Field(default=None, ge=1, le=99999, description="그 파일에서 커서가 있는 줄")
 
 class ChatMessageResponse(BaseModel):
     id: int

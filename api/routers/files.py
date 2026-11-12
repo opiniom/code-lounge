@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
-from models import User, ProjectFile
+from models import User, ProjectFile, CodeMemo
 from schemas import FileSave, FileBulk, FileRename, FileResponse_
 from services.auth_service import get_current_user
 from services.access import get_member_project
@@ -125,6 +125,7 @@ async def rename_file(project_id: int, data: FileRename, current_user: User = De
     if exists is not None and dst != src:
         raise HTTPException(status_code=400, detail="같은 이름의 파일이 이미 있어요.")
     row.path = dst
+    await db.execute(update(CodeMemo).where(CodeMemo.project_id == project_id, CodeMemo.path == src).values(path=dst))      # 이름을 바꿔도 코드 줄 메모는 따라간다
     row.updated_by = current_user.id
     row.updated_at = datetime.utcnow()
     await db.commit()
@@ -145,6 +146,7 @@ async def delete_file(project_id: int, path: str, current_user: User = Depends(g
         ProjectFile.project_id == project_id,
         (ProjectFile.path == p) | (ProjectFile.path.like(p + "/%")),
     ))
+    await db.execute(delete(CodeMemo).where(CodeMemo.project_id == project_id, (CodeMemo.path == p) | (CodeMemo.path.like(p + "/%"))))     # 파일을 지우면 그 파일의 줄 메모도 함께
     await db.commit()
     await livedoc.external_change(project_id, p, prefix=True)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -86,7 +86,7 @@ function renderAiGuide(){
   h('AI 부르기');
   ul(['메시지 맨 앞에 이름을 붙이면 돼요: <code>' + esc(n) + '야 …</code> 또는 <code>@' + esc(n) + ' …</code>', '명령어는 외울 필요 없어요. <b>평소 말투</b>로 시키면 AI가 알아서 판단해요.']);
   h('이런 것을 시킬 수 있어요 (눌러서 입력)');
-  chips([n + '야 이번 주 마감이 뭐야?', n + '야 내가 맡은 일 알려줘', n + '야 어제 회의 내용 요약해줘', n + '야 다음 주 화요일 3시에 중간발표 일정 잡아줘', n + '야 그 일정 4시로 바꿔줘', n + '야 오늘 대화 정리해서 회의록 만들어줘', n + '야 내 프로필에 맞는 커뮤니티 글 추려줘', n + '야 마감 임박한 공모전 알려줘', n + '야 main.py 가 무슨 파일인지 설명해줘', n + '야 (팀원 이름)님께 main.py 19번 줄 수정 부탁한다고 전해줘', n + '야 내 모든 프로젝트 이번 주 일정 정리해줘']);
+  chips([n + '야 이번 주 마감이 뭐야?', n + '야 내가 맡은 일 알려줘', n + '야 어제 회의 내용 요약해줘', n + '야 다음 주 화요일 3시에 중간발표 일정 잡아줘', n + '야 그 일정 4시로 바꿔줘', n + '야 오늘 대화 정리해서 회의록 만들어줘', n + '야 내 프로필에 맞는 커뮤니티 글 추려줘', n + '야 마감 임박한 공모전 알려줘', n + '야 main.py 가 무슨 파일인지 설명해줘', n + '야 (팀원 이름)님께 main.py 19번 줄 수정 부탁한다고 전해줘', n + '야 main.py 19번 줄에 (팀원 이름)님이 수정해야 한다고 메모 남겨줘', n + '야 내 모든 프로젝트 이번 주 일정 정리해줘']);
   h('안전장치');
   ul(['일정 추가·수정·회의록 생성은 <b>바로 실행</b>하고, <b>되돌리기</b> 버튼이 나와요.', '<b>삭제</b>는 항상 확인 카드로 한 번 더 물어봐요. (부른 사람만 누를 수 있어요)', '이름을 붙이지 않은 평소 대화에는 AI가 아무것도 바꾸지 않아요.']);
   h('자동으로 해줘요');
@@ -250,7 +250,7 @@ function renderAiText(el, text){
   });
 }
 /* AI 가 한 일: 되돌리기 / 삭제 확인 카드 (AI 를 부른 사람에게만 버튼이 보인다) */
-var AI_ACT_LABEL = {event_added:'일정 추가', event_updated:'일정 수정', note_added:'회의록 생성', request_sent:'요청 전달'};
+var AI_ACT_LABEL = {event_added:'일정 추가', event_updated:'일정 수정', note_added:'회의록 생성', request_sent:'요청 전달', memo_added:'코드 메모'};
 function appendAiActions(col, m){
   var meta = m.meta || {};
   var mine = !!(currentUser && meta.requester_id === currentUser.id);
@@ -573,6 +573,16 @@ function appendSystemBubble(icon, label, text, withBtn){
   }
   chatLocal.push(div); renderChat();
 }
+/* 워크스페이스에서 보내는 말이면 '지금 열어 둔 파일과 커서 줄'을 함께 보낸다 → 두레가 "여기에 메모 남겨줘", "이 줄" 같은 말을 알아듣는다 */
+function chatCtxBody(body){
+  try{
+    if(document.querySelector('.view.active[data-view="workspace"]') && typeof wsMemoPath === 'function' && wsMemoPath() && wsServerId() === chatServerId()){
+      body.file = wsMemoPath();
+      if(window.monaco && monacoEditor){ var p = monacoEditor.getPosition(); if(p) body.line = p.lineNumber; }
+    }
+  }catch(e){}
+  return body;
+}
 function sendChatMsg(){
   var input = document.getElementById('chatMsgInput');
   var val = input.value.trim();
@@ -584,7 +594,7 @@ function sendChatMsg(){
   var sid = chatServerId();
   if(chatMode === 'ai'){          // 나만 보는 AI 대화: 팀 채팅에는 올리지 않고, 입력 중 신호도 보내지 않는다
     if(!calApiMode || !sid){ pushToast('🔒','로그인 후 AI 와 대화할 수 있어요',''); input.value = val; return; }
-    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val, private:true})}).then(function(msg){
+    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify(chatCtxBody({text:val, private:true}))}).then(function(msg){
       try{
         aiMsgs.push(msg); aiSig += (aiSig ? ',' : '')+msg.id;
         chatAiWait = {after: msg.id, since: Date.now(), priv: true};
@@ -595,7 +605,7 @@ function sendChatMsg(){
     return;
   }
   if(calApiMode && sid){
-    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify({text:val})}).then(function(msg){
+    apiFetch('/api/projects/'+sid+'/messages', {method:'POST', body:JSON.stringify(chatCtxBody({text:val}))}).then(function(msg){
       try{
       chatMsgs.push(msg); chatSig += (chatSig ? ',' : '')+msg.id;
       var waitAi = isAiRequest(val);

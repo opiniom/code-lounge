@@ -1,0 +1,90 @@
+/* ================= 워크스페이스 코드 줄 메모 · 단축키 안내 (js/pages/workspace-memo.js · workspace-keys.js) ================= */
+
+/* ---- 에디터 안: 메모가 있는 줄 — 코드를 가리지 않게 가늘고 흐리게 (주석처럼 자연스럽게) ---- */
+.monaco-editor .ws-memo-bar{width:2px !important; margin-left:5px; border-radius:2px; background:rgba(139,92,246,.55); cursor:pointer;}
+.monaco-editor .ws-memo-bar.lost{background:rgba(245,158,11,.55);}
+.monaco-editor .ws-memo-inline{color:rgba(109,40,217,.62); font-style:italic; font-family:var(--font-body, inherit); font-size:.82em; letter-spacing:-.01em; cursor:pointer;}
+.monaco-editor .ws-memo-inline:hover{color:rgba(109,40,217,.95);}
+.monaco-editor.vs-dark .ws-memo-inline{color:rgba(196,181,253,.62);} .monaco-editor.vs-dark .ws-memo-inline:hover{color:#DDD6FE;}
+.monaco-editor .ws-memo-inline.lost{color:rgba(180,83,9,.7);} .monaco-editor.vs-dark .ws-memo-inline.lost{color:rgba(252,211,77,.7);}
+
+/* ---- 도구막대 버튼 · 파일 트리 개수 ---- */
+.ws-memo-btn{position:relative;} .ws-memo-btn .pv-btn-lbl{display:none;}
+.ws-memo-cnt{font-style:normal; font-family:var(--font-mono); font-size:9.5px; font-weight:700; min-width:14px; height:14px; padding:0 3px; border-radius:999px; background:rgba(139,92,246,.85); color:#fff; display:inline-flex; align-items:center; justify-content:center; margin-left:1px;}
+.ws-memo-cnt[hidden]{display:none;}
+.ftree-node .fmemo{flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px; font-weight:700; min-width:15px; height:15px; padding:0 4px; border-radius:999px; background:color-mix(in srgb, #8B5CF6 18%, transparent); color:#7C3AED; display:inline-flex; align-items:center; justify-content:center;}
+:root[data-theme="dark"] .ftree-node .fmemo{color:#C4B5FD;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ftree-node .fmemo{color:#C4B5FD;} }
+
+/* ---- 메모 창: 줄 옆에 작게 — 한 줄 입력 + 이미 달린 메모(있으면) ---- */
+.ws-memo-pop{
+  position:absolute; z-index:40; width:300px; max-width:calc(100% - 16px); max-height:min(260px, calc(100% - 16px)); overflow:auto;
+  background:var(--surface); color:var(--text); border:1px solid var(--border-strong); border-radius:12px; box-shadow:var(--shadow-lg);
+  padding:6px; display:flex; flex-direction:column; gap:4px; font-family:var(--font-body); font-size:12.5px; line-height:1.45;
+}
+.ws-memo-pop[hidden]{display:none;}
+.wmp-list{display:flex; flex-direction:column; gap:2px; max-height:170px; overflow:auto;}
+.wmp-item{display:flex; align-items:flex-start; gap:6px; padding:5px 6px 5px 8px; border-radius:8px; border-left:2px solid rgba(139,92,246,.6);}
+.wmp-item:hover{background:var(--surface-2);}
+.wmp-item.done{border-left-color:rgba(16,185,129,.6); opacity:.65;} .wmp-item.done .wmp-tx{text-decoration:line-through;}
+.wmp-body{flex:1 1 auto; min-width:0;}
+.wmp-tx{word-break:break-word; white-space:pre-wrap;}
+.wmp-meta{font-size:10.8px; color:var(--text-muted); margin-top:1px;} .wmp-meta.warn{color:#B45309;}
+.wmp-act{display:flex; gap:0; flex:0 0 auto; opacity:0; transition:opacity .12s;}
+.wmp-item:hover .wmp-act, .wmp-item:focus-within .wmp-act{opacity:1;}
+.wmp-act button{border:none; background:none; color:var(--text-faint); cursor:pointer; padding:4px; border-radius:6px; display:inline-flex;}
+.wmp-act button:hover{background:var(--surface-3); color:var(--text);} .wmp-act button.danger:hover{color:#EF4444;}
+.wmp-edit{width:100%; border:1px solid var(--accent); background:var(--surface-2); color:var(--text); border-radius:7px; padding:4px 7px; font:inherit; outline:none;}
+.wmp-row{display:flex; align-items:center; gap:6px; padding:0 2px 0 6px;}
+.wmp-ic{display:inline-flex; color:rgba(139,92,246,.85); flex:0 0 auto;}
+.wmp-in{flex:1 1 auto; min-width:0; border:none; outline:none; background:transparent; color:var(--text); font:inherit; padding:7px 2px;}
+.wmp-in::placeholder{color:var(--text-faint);}
+.wmp-go{flex:0 0 auto; border:none; background:none; color:var(--text-faint); cursor:pointer; padding:6px; border-radius:8px; display:inline-flex;}
+.wmp-go:hover{background:var(--surface-2); color:#7C3AED;} .wmp-go:disabled{opacity:.4; cursor:default;}
+
+/* ---- 아래쪽 '메모' 탭 (터미널과 같은 어두운 바탕) ---- */
+.ws-memo-tabcnt{font-style:normal; font-family:var(--font-mono); font-size:10px; font-weight:700; background:#8B5CF6; color:#fff; border-radius:999px; padding:0 6px; margin-left:3px;}
+.ws-term-body.ws-memo-body{padding:0; display:flex; flex-direction:column; font-family:var(--font-body); height:calc(100% - 34px);}
+.ws-memo-filters{display:flex; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,.08); flex:0 0 auto; flex-wrap:wrap;}
+.ws-mf{border:1px solid rgba(255,255,255,.14); background:none; color:#A8B1C0; border-radius:999px; padding:3px 11px; font-size:11.5px; cursor:pointer; font-family:inherit;}
+.ws-mf:hover{color:#fff;} .ws-mf.on{background:#8B5CF6; border-color:#8B5CF6; color:#fff; font-weight:700;}
+.ws-mf-only{margin-left:auto; font-size:11.5px; color:#A8B1C0; display:inline-flex; align-items:center; gap:4px; cursor:pointer;}
+.ws-memo-list{flex:1 1 auto; overflow:auto; padding:6px 10px 12px;}
+.ws-memo-empty{color:#8A93A3; font-size:12.5px; line-height:1.7; padding:18px 8px;} .ws-memo-empty b{color:#C4B5FD;}
+.ws-memo-file{font-family:var(--font-mono); font-size:11px; color:#8A93A3; padding:10px 4px 4px; text-transform:none;}
+.ws-memo-row{display:flex; align-items:flex-start; gap:10px; padding:7px 8px; border-radius:10px;} .ws-memo-row:hover{background:rgba(255,255,255,.05);}
+.ws-memo-ln{flex:0 0 auto; min-width:34px; height:24px; border-radius:7px; border:1px solid rgba(139,92,246,.5); background:rgba(139,92,246,.14); color:#C4B5FD; font-family:var(--font-mono); font-size:11.5px; font-weight:700; cursor:pointer;}
+.ws-memo-ln:hover{background:rgba(139,92,246,.3);}
+.ws-memo-mid{flex:1 1 auto; min-width:0;}
+.ws-memo-tx{color:#E6EDF3; font-size:12.8px; word-break:break-word; white-space:pre-wrap; cursor:pointer;}
+.ws-memo-row.done .ws-memo-tx{text-decoration:line-through; color:#8A93A3;}
+.ws-memo-meta{font-size:11px; color:#8A93A3; margin-top:2px; display:flex; flex-wrap:wrap; gap:4px 8px;}
+.ws-memo-as{color:#C4B5FD;} .ws-memo-rs{color:#6EE7B7;}
+.ws-memo-act{display:flex; gap:2px; flex:0 0 auto;}
+.ws-memo-act button{border:none; background:none; color:#8A93A3; cursor:pointer; padding:5px; border-radius:7px; display:inline-flex;} .ws-memo-act button:hover{background:rgba(255,255,255,.1); color:#fff;} .ws-memo-act .ws-memo-del:hover{color:#FF6B6B;}
+
+/* ---- 단축키 안내 창 ---- */
+.ws-keys-pop{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:380px; max-width:calc(100vw - 24px); max-height:min(80dvh, 580px); overflow:auto; background:var(--surface); color:var(--text); border:1px solid var(--border-strong); border-radius:14px; box-shadow:var(--shadow-lg); font-family:var(--font-body); font-size:12.5px;}
+.ws-keys-pop[hidden]{display:none;}
+.wk-head{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface);}
+.wk-x{border:none; background:none; color:var(--text-faint); cursor:pointer; padding:4px; border-radius:8px; display:inline-flex;} .wk-x:hover{background:var(--surface-2);}
+.wk-body{padding:6px 14px 12px;}
+.wk-grp{padding:8px 0 4px;} .wk-gt{font-size:11px; font-weight:700; color:var(--text-faint); letter-spacing:.03em; margin-bottom:4px;}
+.wk-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 0;}
+.wk-keys{display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;}
+.wk-keys i{font-style:normal; font-size:10px; color:var(--text-faint);}
+.ws-keys-pop kbd{font-family:var(--font-mono); font-size:11px; font-weight:600; background:var(--surface-2); border:1px solid var(--border-strong); border-bottom-width:2px; border-radius:6px; padding:1px 7px; color:var(--text);}
+.wk-note{font-size:11px; color:var(--text-faint); margin:8px 0 0; line-height:1.55;}
+
+/* ---- 폰·좁은 화면 · 높이가 낮은 화면(가로로 눕힌 폰): 메모 창은 아래에서 올라오는 얇은 시트 ---- */
+@media (max-width:820px), (max-height:560px){
+  .ws-memo-pop{position:fixed; left:0; right:0; bottom:0; top:auto !important; width:auto; max-width:none; border-radius:16px 16px 0 0; max-height:46dvh; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); z-index:96; box-shadow:0 -14px 32px -16px rgba(0,0,0,.4);}
+  .wmp-in, .wmp-edit{font-size:16px;}      /* iOS 가 입력칸을 확대하지 않게 */
+  .wmp-in{padding:11px 2px;} .wmp-go{padding:10px;}
+  .wmp-act{opacity:1;} .wmp-act button{padding:9px;}
+  .ws-mf{padding:7px 13px;} .ws-memo-ln{min-width:40px; height:32px;} .ws-memo-act button{padding:9px;}
+}
+@media (max-width:820px){ .ws-keys-btn{display:none !important;} }      /* 키보드가 없는 폰에서는 숨긴다 */
+@media (pointer:coarse){ .ws-keys-btn{display:none !important;} }
+@media (max-width:340px){ .ws-memo-btn{display:none !important;} }      /* 아주 좁은 폰(320): 도구막대에 실행·터미널이 다 들어가도록 숨기고, 아래 '메모' 탭의 '현재 줄에 메모' 버튼을 쓴다 */
+.ws-mf-add{display:inline-flex; align-items:center; gap:4px; border-color:rgba(139,92,246,.55) !important; color:#C4B5FD !important;} .ws-mf-add:hover{background:rgba(139,92,246,.2) !important; color:#fff !important;}

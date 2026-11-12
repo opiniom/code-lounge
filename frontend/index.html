@@ -609,6 +609,13 @@ window.dureGreetIcon = function(n){
               <span class="pv-btn-lbl">내 PC</span><i class="ws-runner-dot"></i>
             </button>
             <select class="ws-rt-sel" id="wsRuntimeSel" onchange="wsRtChange()" hidden aria-label="실행 위치와 언어 버전"></select>
+            <button class="btn ghost ws-memo-btn" id="wsMemoBtn" onclick="wsMemoAddAtCursor()" title="이 줄에 메모 남기기" style="padding:5px 9px; font-size:11.5px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>
+              <span class="pv-btn-lbl">메모</span><i class="ws-memo-cnt" id="wsMemoCnt" hidden>0</i>
+            </button>
+            <button class="btn ghost ws-keys-btn" id="wsKeysBtn" onclick="wsKeysToggle(event)" title="단축키 보기" aria-label="단축키 보기" style="padding:5px 8px; font-size:11.5px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
+            </button>
             <button class="ws-run-btn ws-dbg-btn" id="wsDbgBtn" onclick="wsDbgStart()" title="디버그 — 줄 번호 왼쪽을 눌러 빨간 점(중단점)을 걸고 시작하면, 프로그램이 거기서 멈추고 변수를 보면서 한 줄씩 실행할 수 있어요 (F9: 중단점)">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 7.5V6a3 3 0 0 1 6 0v1.5M7 10a5 5 0 0 1 10 0v5a5 5 0 0 1-10 0zM12 10v10M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 20l3-2.5M20 20l-3-2.5"/></svg>
               <span>디버그</span>
@@ -661,7 +668,7 @@ window.dureGreetIcon = function(n){
           </div>
           <div class="sb-right">
             <span class="sb-badge" id="sbLangBadge">Python 3</span>
-            <span style="color:#666;">Ctrl+Enter 실행</span>
+            <span style="color:#666;" id="sbKeyHint">Ctrl+Enter · F5 실행</span>
           </div>
         </div>
 
@@ -674,6 +681,7 @@ window.dureGreetIcon = function(n){
             <div class="ws-term-tabs">
               <button class="ws-term-tab active" id="termTabInteractive" onclick="setTerminalTab('interactive')">실행 콘솔</button>
               <button class="ws-term-tab" id="termTabHistory" onclick="setTerminalTab('history')">실행 이력</button>
+              <button class="ws-term-tab" id="termTabMemo" onclick="setTerminalTab('memo')">메모</button>
             </div>
             <div class="ws-term-meta">
               <span class="term-status-chip" id="termStatusChip" style="display:none;">Ready</span>
@@ -707,6 +715,12 @@ window.dureGreetIcon = function(n){
             </form>
             <!-- 디버그 중에만 보이는 변수·호출 순서 패널 -->
             <div class="ws-dbg-pane" id="wsDbgPane" hidden></div>
+          </div>
+
+          <!-- 터미널 탭 본문: 코드 줄 메모 목록 -->
+          <div class="ws-term-body ws-memo-body" id="termBodyMemo" style="display:none;">
+            <div class="ws-memo-filters" id="wsMemoFilters"></div>
+            <div class="ws-memo-list" id="wsMemoList"></div>
           </div>
 
           <!-- 터미널 탭 본문 3: 실행 이력(submissions) -->

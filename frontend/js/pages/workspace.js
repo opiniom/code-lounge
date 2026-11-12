@@ -276,6 +276,7 @@ function renderFileTree() {
   treeEl.appendChild(buildBranch(root));
   treeEl.onclick = function(e){ if (e.target === treeEl) { wsSelDir = ''; wsPaintSel(); } };       // 빈 곳을 누르면 맨 위(루트)가 선택된다
   if (typeof wsPresPaint === 'function') wsPresPaint();
+  if (typeof wsMemoPaintTree === 'function') wsMemoPaintTree();      // 메모가 달린 파일에 개수 표시
 }
 
 /* ---- 워크스페이스: 파일 데이터 / 새 프로젝트 시작 파일 ---- */
@@ -431,6 +432,7 @@ function initMonacoEditor() {
     monacoLoaded = true;
     wsRegisterSnippets(); wsQuickKeysInit();
     if (typeof wsDbgInit === 'function') wsDbgInit();
+    if (typeof wsMemoInit === 'function') wsMemoInit();
     if (typeof wsPresHookEditor === 'function') wsPresHookEditor();
 
     // 실시간 코드 변경 동기화
@@ -590,6 +592,7 @@ function renderFileContent(key, keepCursor) {
     if (pos) monacoEditor.setPosition(pos);
   }
   if (typeof wsDbgRender === 'function') wsDbgRender();                    // 이 파일의 중단점을 다시 그린다
+  if (typeof wsMemoRender === 'function') wsMemoRender();                  // 이 파일의 코드 줄 메모를 다시 그린다
   updateEditorStatusBar();
   wsUpdateSaveStatus();
   wsRenderConflict();
@@ -990,6 +993,7 @@ function loadWorkspace(id){
     renderWsEmpty(); renderFileTree();
     if (openKey) wsOpenKey(openKey); else renderTabs();
     wsApplyJump();
+    if (typeof wsMemoLoad === 'function') wsMemoLoad();            // 이 프로젝트의 코드 줄 메모
     wsStartPolling();
     if (typeof wsPresStart === 'function') wsPresStart();
   }).catch(function(e){ wsLoading = false; renderWsEmpty(); pushToast('⚠️', '파일을 불러오지 못했어요', e.message); });
@@ -1249,7 +1253,7 @@ function clearTerminal() {
 }
 
 function setTerminalTab(tab) {
-  ['interactive', 'history'].forEach(function(t) {
+  ['interactive', 'history', 'memo'].forEach(function(t) {
     var btn = document.getElementById('termTab' + t.charAt(0).toUpperCase() + t.slice(1));
     var body = document.getElementById('termBody' + t.charAt(0).toUpperCase() + t.slice(1));
     if (btn) btn.classList.toggle('active', t === tab);
@@ -1265,6 +1269,7 @@ function setTerminalTab(tab) {
     focusLiveInput();
   }
   if (tab === 'history') loadSubmissions();
+  if (tab === 'memo' && typeof wsMemoRenderList === 'function') { wsMemoRenderList(); if (typeof wsMemoLoad === 'function' && !WSMEMO.loaded) wsMemoLoad(); }
   if (window.monaco && monacoEditor) setTimeout(function() { monacoEditor.layout(); }, 60);
 }
 

@@ -81,6 +81,7 @@ function liveHandle(m){
     case 'calendar': refreshTeamEvents(); break;
     case 'notes': liveNotes(m); break;
     case 'files': wsPollSoon(); break;
+    case 'memos': if(typeof wsMemoLive === 'function') wsMemoLive(m); break;                  // 팀원이 워크스페이스 코드 줄 메모를 달거나 바꿈
     case 'docsync': case 'docop': case 'docsaved': case 'docreset': case 'docerr': if(typeof wsLiveHandle === 'function') wsLiveHandle(m); break;
     case 'wspres': case 'wssnap': if(typeof wsPresHandle === 'function') wsPresHandle(m); break;
     case 'projects':

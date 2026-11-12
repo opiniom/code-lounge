@@ -406,3 +406,23 @@ class UserPref(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     data = Column(Text, nullable=False, default="{}")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class CodeMemo(Base):
+    """워크스페이스 코드 줄 메모: '이 파일 몇 번째 줄은 ○○님이 고쳐야 해요' 같은 짧은 메모.
+    anchor 는 메모를 단 줄의 글자(앞뒤 공백 제외) — 코드가 고쳐져 줄 번호가 밀려도 같은 줄을 다시 찾는 데 쓴다."""
+    __tablename__ = "code_memos"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    path = Column(String(300), nullable=False, index=True)
+    line = Column(Integer, nullable=False)
+    anchor = Column(String(200), nullable=True)
+    text = Column(Text, nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)   # 이 메모를 보고 고쳐야 하는 팀원 (알림을 받는다)
+    resolved = Column(Boolean, default=False, nullable=False)
+    resolved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    source = Column(String(10), default="manual", nullable=False)    # manual | ai
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

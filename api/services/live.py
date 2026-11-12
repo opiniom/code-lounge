@@ -5,7 +5,7 @@
   · notification  새 알림           · chat      프로젝트 채팅에 새 글/변경
   · calendar      일정 추가·수정·삭제 · notes     회의록 추가·수정·삭제
   · projects      프로젝트/팀원 변화   · presence  팀원의 온라인·자리비움·방해금지·오프라인
-  · prefs         내 설정이 다른 기기(웹/앱)에서 바뀜
+  · prefs         내 설정이 다른 기기(웹/앱)에서 바뀜 · memos  워크스페이스 코드 줄 메모
 DB 에 커밋된 뒤에만 보내므로(SQLAlchemy 이벤트), 라우터 코드를 일일이 고치지 않아도 모든 저장 경로가 포함된다.
 연결이 끊기면 화면은 예전처럼 폴링으로 돌아간다.
 """
@@ -130,11 +130,13 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, UserPref
+    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, UserPref, CodeMemo
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
             bag.add(("notification", obj.user_id, None, None))
+        elif isinstance(obj, CodeMemo):                    # 코드 줄 메모가 달리거나 바뀜: 프로젝트 팀원 화면에 알린다
+            bag.add(("memos", None, obj.project_id, None))
         elif isinstance(obj, UserPref):                    # 다른 기기에서 내 설정이 바뀜: 내 화면들에만 알린다
             bag.add(("prefs", obj.user_id, None, None))
         elif isinstance(obj, ChatMessage):

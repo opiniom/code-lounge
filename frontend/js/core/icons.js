@@ -14,6 +14,10 @@ var UI_ICON = {
   screen:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   bulb:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  send:'<path d="M4 12 20 4l-4 16-4.5-6.5z"/><path d="m11.5 13.5 3-3"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  keyboard:'<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
   strike:'<path d="M5 12h14"/><path d="M16.5 7.2A4.5 3.2 0 0 0 12 5c-2.5 0-4.5 1.2-4.5 3s1.6 2.3 4.5 3M7.5 16.8A4.5 3.2 0 0 0 12 19c2.5 0 4.5-1.2 4.5-3"/>'
 };
 function uiIc(name, size, cls){

@@ -148,6 +148,12 @@ async def analyze_message(project_id: int, message_id: int):
         return
 
 
+def _ctx(data) -> Optional[dict]:
+    """워크스페이스에서 보낸 말이면 '지금 열어 둔 파일·커서 줄'을 AI 에게 함께 알린다 (없으면 None)"""
+    f = (getattr(data, "file", None) or "").strip()
+    return {"file": f, "line": getattr(data, "line", None)} if f else None
+
+
 async def notify_member_requests(project_id: int, user_id: int, text: str):
     """평범한 팀 대화에서 '○○님 파일 N번 줄 수정 부탁' 을 알아채 그 팀원에게 알림 (규칙 기반, AI 호출 없음)"""
     from services.chat_ai import catch_member_requests
@@ -163,7 +169,7 @@ async def notify_member_requests(project_id: int, user_id: int, text: str):
         logger.exception("팀원 요청 알림 실패 (project=%s)", project_id)
 
 
-async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None, private: bool = False):
+async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, trigger_id: int = None, private: bool = False, ctx: dict = None):
     """AI 요청을 처리해 답변(과 실행 결과)을 AI 메시지로 저장 (백그라운드). 일정·회의록 변경도 여기서 일어난다."""
     from services.chat_ai import run_agent
     try:
@@ -172,7 +178,7 @@ async def post_ai_reply(project_id: int, text: str, user_id: int, ai_name=None, 
             if user is None:
                 return
             try:
-                reply, meta = await run_agent(db, project_id, user, text, ai_name, trigger_id, private)
+                reply, meta = await run_agent(db, project_id, user, text, ai_name, trigger_id, private, ctx)
                 db.add(ChatMessage(project_id=project_id, user_id=None, kind="ai", text=reply, private_to=user_id if private else None,
                                    meta=json.dumps(meta, ensure_ascii=False)))
                 await db.commit()
@@ -204,13 +210,13 @@ async def send_message(
     await db.refresh(msg)
 
     if private:      # 나만 보는 AI 대화: 이름을 부르지 않아도 AI 가 답하고, 팀 채팅·일정 감지에는 쓰이지 않는다
-        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id, True)
+        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id, True, _ctx(data))
         return _to_response(msg, current_user.username)
 
     # AI 이름을 불러 건 말("뚜비야 …", "@뚜비 …")은 백그라운드에서 AI가 처리해 채팅에 올린다 (응답을 기다리지 않음)
     from services.chat_ai import is_ai_request
     if is_ai_request(data.text, current_user.ai_name):
-        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id)
+        background.add_task(post_ai_reply, project_id, data.text.strip(), current_user.id, current_user.ai_name, msg.id, False, _ctx(data))
     else:
         background.add_task(analyze_message, project_id, msg.id)
         background.add_task(notify_member_requests, project_id, current_user.id, data.text.strip())
