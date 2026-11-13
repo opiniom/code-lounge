@@ -602,7 +602,7 @@ async def decide_application(app_id: int, decision: str, user: User = Depends(ge
         await _notify(db, a.user_id, "지원 결과를 알려드려요", f"'{p.title[:40]}' 모집에는 함께하지 못하게 됐어요", f"community:{p.id}")
         await db.commit()
         return {"status": "declined"}
-    project = (await db.execute(select(Project).where(Project.id == p.project_id))).scalar_one_or_none() if p.project_id else None
+    project = (await db.execute(select(Project).where(Project.id == p.project_id, Project.deleted_at.is_(None)))).scalar_one_or_none() if p.project_id else None
     if project is None or project.owner_id != user.id:
         raise HTTPException(status_code=400, detail="연결된 프로젝트가 없어서 수락할 수 없어요.")
     accepted = (await db.execute(select(func.count()).select_from(CommunityApplication).where(

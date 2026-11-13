@@ -408,7 +408,7 @@ function saProjects(main){
   var st = SA.state.projects; main.innerHTML = '';
   var list = saH('div', { id:'saProjList' });
   var seg = saH('div', { id:'saProjSeg' });
-  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '프로젝트 이름 검색', function(v){ st.q = v; st.page = 1; saProjectsLoad(); }), seg, saH('span', { class:'sa-faint', text:'개인정보 보호를 위해 프로젝트 안의 파일·채팅 내용은 볼 수 없어요.' })]));
+  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '프로젝트 이름 검색', function(v){ st.q = v; st.page = 1; saProjectsLoad(); }), seg, saH('span', { class:'sa-faint', text:'개인정보 보호를 위해 프로젝트 안의 파일·채팅 내용은 볼 수 없어요. 사용자나 관리자가 지운 프로젝트는 휴지통에 14일 보관된 뒤 자동으로 영구 삭제돼요.' })]));
   main.appendChild(list); saProjectsLoad();
 }
 function saProjSeg(counts){
@@ -424,13 +424,14 @@ function saProjectsLoad(){
     var rows = r.items.map(function(p){
       var acts = saH('div', { class:'sa-rowact' });
       if(!p.deleted){
-        acts.appendChild(saH('button', { class:'btn sa-danger', type:'button', text:'삭제', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 삭제할까요?', msg:'팀원 화면에서 바로 사라지고(목록·채팅·파일·캘린더·통화), 통화 중인 사람은 통화방에서 나가요. 내용은 휴지통에 그대로 보관돼서 언제든 복구할 수 있어요. 팀장에게 알림이 가요.', input:{ placeholder:'삭제 사유 (선택, 팀장에게 보여요)', max:150 }, ok:'휴지통으로 보내기', danger:true }, function(reason){ saPost('/projects/' + p.id + '/delete', { reason:reason || null }).then(function(){ pushToast('🗑️', '프로젝트를 삭제했어요', '"' + p.title + '" — 휴지통에서 복구할 수 있어요.'); saProjectsLoad(); }).catch(saErr); }); } }));
+        acts.appendChild(saH('button', { class:'btn sa-danger', type:'button', text:'삭제', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 삭제할까요?', msg:'팀원 화면에서 바로 사라지고(목록·채팅·파일·캘린더·통화), 통화 중인 사람은 통화방에서 나가요. 내용은 휴지통에 14일 동안 그대로 보관돼서 그 안에는 복구할 수 있고, 기간이 지나면 자동으로 영구 삭제돼요. 팀장에게 알림이 가요.', input:{ placeholder:'삭제 사유 (선택, 팀장에게 보여요)', max:150 }, ok:'휴지통으로 보내기', danger:true }, function(reason){ saPost('/projects/' + p.id + '/delete', { reason:reason || null }).then(function(){ pushToast('🗑️', '프로젝트를 삭제했어요', '"' + p.title + '" — 14일 안에는 휴지통에서 복구할 수 있어요.'); saProjectsLoad(); }).catch(saErr); }); } }));
       } else {
         acts.appendChild(saH('button', { class:'btn primary', type:'button', text:'복구', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 복구할까요?', msg:'팀원 화면에 파일·채팅·일정이 그대로 다시 나타나요. 팀장에게 알림이 가요.', ok:'복구하기' }, function(){ saPost('/projects/' + p.id + '/restore').then(function(){ pushToast('♻️', '프로젝트를 복구했어요', '"' + p.title + '"'); saProjectsLoad(); }).catch(saErr); }); } }));
         if(saIsSuper()) acts.appendChild(saH('button', { class:'btn sa-danger', type:'button', text:'영구 삭제', onclick:function(e){ e.stopPropagation(); saConfirm({ title:'"' + p.title + '" 프로젝트를 영구 삭제할까요?', msg:'파일 ' + saN(p.files) + '개·채팅 ' + saN(p.chat) + '건을 포함한 모든 내용이 지워지고 복구할 수 없어요. 이 조치는 감사 로그에 남아요.', ok:'영구 삭제', danger:true }, function(){ saPost('/projects/' + p.id + '/purge').then(function(){ pushToast('🗑️', '영구 삭제했어요', '"' + p.title + '"'); saProjectsLoad(); }).catch(saErr); }); } }));
       }
       var title = saH('div', { class:'sa-who' }, [saH('div', {}, [saH('b', { text:p.title }), saH('span', { text:'팀장 ' + p.owner + ' · ' + p.owner_email })])]);
-      var stat = p.deleted ? saH('div', { class:'sa-stat-cell' }, [saChip('휴지통', 'bad'), saH('span', { class:'sa-faint', text:(p.deleted_by || '관리자') + ' · ' + saAgo(p.deleted_at) + (p.delete_reason ? ' · ' + p.delete_reason : '') })]) : saChip('운영 중', 'ok');
+      var left = p.purge_at ? Math.max(0, Math.ceil((new Date(p.purge_at.indexOf('Z') < 0 && p.purge_at.indexOf('+') < 0 ? p.purge_at + 'Z' : p.purge_at).getTime() - Date.now()) / 86400000)) : null;
+      var stat = p.deleted ? saH('div', { class:'sa-stat-cell' }, [saChip('휴지통', 'bad'), saH('span', { class:'sa-faint', text:(p.deleted_by || '관리자') + ' · ' + saAgo(p.deleted_at) + (p.delete_reason ? ' · ' + p.delete_reason : '') }), saH('span', { class:'sa-faint', text:left === null ? '' : (left <= 0 ? '곧 자동 삭제돼요' : left + '일 뒤 자동 삭제') })]) : saChip('운영 중', 'ok');
       return { cls:p.deleted ? 'sa-row-deleted' : '', cells:{ t:title, s:stat, m:p.members + '명', f:p.files + '개', c:saN(p.chat) + '건', last:p.last_chat_at ? saAgo(p.last_chat_at) : '—', at:saWhen(p.created_at), act:acts } };
     });
     box.appendChild(saTable([{ k:'t', t:'프로젝트' }, { k:'s', t:'상태' }, { k:'m', t:'팀원', cls:'num' }, { k:'f', t:'파일', cls:'num' }, { k:'c', t:'채팅', cls:'num' }, { k:'last', t:'마지막 채팅' }, { k:'at', t:'생성' }, { k:'act', t:'' }], rows, st.state === 'deleted' ? '휴지통이 비어 있어요.' : '프로젝트가 없어요.'));

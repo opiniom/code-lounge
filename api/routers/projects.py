@@ -163,18 +163,14 @@ async def delete_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """프로젝트 삭제 (소유자만). 프로젝트의 채팅·일정·파일·멤버가 함께 삭제되고, 회의록은 '프로젝트 없음'으로 남는다."""
+    """프로젝트 삭제 (소유자만). 팀원 화면에서는 바로 사라지지만, 실수로 지웠을 때를 위해 내용은 휴지통에 PROJECT_TRASH_DAYS 일 동안 보관했다가 자동으로 영구 삭제한다.
+    (복구는 관리자가 한다. 회의록은 예전처럼 '프로젝트 없음'으로 남고, 커뮤니티 모집 글은 닫힌다.)"""
     project = await get_member_project(db, project_id, current_user)
     if project.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="프로젝트 소유자만 삭제할 수 있어요.")
-    await db.execute(delete(ChatMessage).where(ChatMessage.project_id == project_id))
-    await db.execute(delete(CalendarEvent).where(CalendarEvent.project_id == project_id))
-    await db.execute(delete(ProjectFile).where(ProjectFile.project_id == project_id))
-    await db.execute(delete(ProjectMember).where(ProjectMember.project_id == project_id))
-    await db.execute(delete(CallRoom).where(CallRoom.project_id == project_id))
     await db.execute(update(CommunityPost).where(CommunityPost.project_id == project_id).values(project_id=None, status="closed"))   # 커뮤니티 글은 남기고 프로젝트 연결만 끊는다
     await db.execute(update(MeetingDoc).where(MeetingDoc.project_id == project_id).values(project_id=None))
-    await db.execute(delete(Project).where(Project.id == project_id))
+    project.deleted_at = datetime.utcnow(); project.deleted_by = current_user.id; project.delete_reason = "사용자가 직접 삭제"
     await db.commit()
     from routers.call import close_project_rooms
     await close_project_rooms(project_id)   # 통화 중이던 팀원은 통화방에서 내보낸다

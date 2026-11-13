@@ -452,10 +452,11 @@ async def list_projects(q: str = "", state: str = "active", page: int = 1, size:
     chat = {pid: (c, last) for pid, c, last in chat_rows}
     by_ids = {p.deleted_by for p, _, _ in rows if p.deleted_by}
     by = {u.id: (u.username or u.email) for u in (await db.execute(select(User).where(User.id.in_(by_ids)))).scalars().all()} if by_ids else {}
-    return {"total": total, "page": page, "size": size, "counts": counts, "items": [
+    days = max(1, int(settings.PROJECT_TRASH_DAYS or 14))
+    return {"total": total, "page": page, "size": size, "counts": counts, "trash_days": days, "items": [
         {"id": p.id, "title": p.title, "owner": name, "owner_email": email, "members": 1 + mem.get(p.id, 0), "files": files.get(p.id, 0),
          "chat": chat.get(p.id, (0, None))[0], "last_chat_at": _iso(chat.get(p.id, (0, None))[1]), "created_at": _iso(p.created_at),
-         "deleted": p.deleted_at is not None, "deleted_at": _iso(p.deleted_at), "deleted_by": by.get(p.deleted_by), "delete_reason": p.delete_reason} for p, name, email in rows]}
+         "deleted": p.deleted_at is not None, "deleted_at": _iso(p.deleted_at), "purge_at": _iso(p.deleted_at + timedelta(days=days)) if p.deleted_at else None, "deleted_by": by.get(p.deleted_by), "delete_reason": p.delete_reason} for p, name, email in rows]}
 
 
 async def _project_or_404(db: AsyncSession, project_id: int) -> Project:
@@ -502,7 +503,7 @@ async def restore_project(project_id: int, admin: User = Depends(require_admin),
 
 @router.post("/projects/{project_id}/purge")
 async def purge_project(project_id: int, admin: User = Depends(require_super), db: AsyncSession = Depends(get_db)):
-    """휴지통의 프로젝트를 영구 삭제 (되돌릴 수 없다). 휴지통에 있는 것만, 최고관리자만."""
+    """휴지통의 프로젝트를 영구 삭제 (되돌릴 수 없다). 휴지통에 있는 것만, 최고관리자만. 따로 하지 않아도 보관 기간(PROJECT_TRASH_DAYS)이 지나면 자동으로 영구 삭제된다."""
     p = await _project_or_404(db, project_id)
     if p.deleted_at is None:
         raise HTTPException(status_code=400, detail="먼저 삭제(휴지통)한 프로젝트만 영구 삭제할 수 있어요.")

@@ -200,8 +200,19 @@ async def purge_withdrawal_logs(db: AsyncSession) -> int:
     return res.rowcount or 0
 
 
+async def purge_trashed_projects(db: AsyncSession) -> int:
+    """휴지통에 PROJECT_TRASH_DAYS 일이 넘게 있던 프로젝트를 영구 삭제한다 (사용자·관리자가 지운 것 모두)"""
+    from config import settings
+    cutoff = datetime.utcnow() - timedelta(days=max(1, int(settings.PROJECT_TRASH_DAYS or 14)))
+    ids = (await db.execute(select(Project.id).where(Project.deleted_at.is_not(None), Project.deleted_at < cutoff).limit(50))).scalars().all()
+    for pid in ids:
+        await _delete_project(db, pid)
+        await db.commit()
+    return len(ids)
+
+
 async def purge_loop() -> None:
-    """서버가 켜져 있는 동안 한 시간마다 만료된 탈퇴 기록을 지운다 (관리자 페이지를 열지 않아도 7일 뒤엔 사라진다)"""
+    """서버가 켜져 있는 동안 한 시간마다 만료된 탈퇴 기록과 휴지통의 프로젝트를 지운다 (관리자 페이지를 열지 않아도 기간이 지나면 사라진다)"""
     from database import async_session_maker
     while True:
         try:
@@ -209,8 +220,11 @@ async def purge_loop() -> None:
                 n = await purge_withdrawal_logs(db)
                 if n:
                     logger.info("만료된 탈퇴 기록 %d건 삭제", n)
+                m = await purge_trashed_projects(db)
+                if m:
+                    logger.info("휴지통 보관 기간이 지난 프로젝트 %d개 영구 삭제", m)
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.exception("탈퇴 기록 정리 실패")
+            logger.exception("탈퇴 기록·휴지통 정리 실패")
         await asyncio.sleep(3600)

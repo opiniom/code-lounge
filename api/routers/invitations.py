@@ -83,7 +83,7 @@ async def get_invite_info(
         is_expired = True
 
     project = (await db.execute(
-        select(Project).where(Project.id == inv.project_id)
+        select(Project).where(Project.id == inv.project_id, Project.deleted_at.is_(None))
     )).scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="해당 프로젝트를 찾을 수 없습니다.")
@@ -137,7 +137,7 @@ async def join_by_invite(
         raise HTTPException(status_code=400, detail="초대 링크의 최대 사용 횟수를 초과했습니다.")
 
     project = (await db.execute(
-        select(Project).where(Project.id == inv.project_id)
+        select(Project).where(Project.id == inv.project_id, Project.deleted_at.is_(None))
     )).scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
@@ -212,7 +212,7 @@ async def guest_join_by_invite(
     if not name:
         raise HTTPException(status_code=400, detail="팀에서 쓸 이름을 입력해 주세요.")
 
-    project = (await db.execute(select(Project).where(Project.id == inv.project_id))).scalar_one_or_none()
+    project = (await db.execute(select(Project).where(Project.id == inv.project_id, Project.deleted_at.is_(None)))).scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
 

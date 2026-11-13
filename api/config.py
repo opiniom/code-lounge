@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # 대화형 터미널(/ws/terminal) 한 번 실행의 최대 시간(초). 이 시간이 지나면 강제로 끝낸다 (무한 반복 방지)
     TERMINAL_MAX_SECONDS: int = 300
 
+    PROJECT_TRASH_DAYS: int = 14   # 삭제한 프로젝트를 휴지통에 보관하는 기간(일). 지나면 자동으로 영구 삭제된다
     # 팀 통화방(WebRTC) 연결 서버. 같은 네트워크 밖(다른 집·카페 등)에서 연결하려면 TURN 중계 서버가 필요하다.
     #  - STUN: 내 공인 주소를 알아내는 용도 (무료 공용 서버)
     #  - TURN: 직접 연결이 막힌 경우 음성을 대신 전달 (직접 운영하는 coturn, Metered, Cloudflare Calls 등) — 계정/서버가 필요
