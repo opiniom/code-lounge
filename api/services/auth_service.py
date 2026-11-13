@@ -2,7 +2,7 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -56,7 +56,8 @@ def is_admin_user(user) -> bool:
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    request: Request = None,
 ) -> User:
     """인증이 필수인 엔드포인트용 종속성"""
     if not credentials:
@@ -91,6 +92,8 @@ async def get_current_user(
             detail="존재하지 않거나 비활성화된 사용자입니다.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    from services.access_log import log_access
+    log_access(request, user, "visit")              # 새 IP 에서 처음 들어왔을 때만 기록된다 (사용자 접속 기록)
     return user
 
 async def get_current_user_optional(

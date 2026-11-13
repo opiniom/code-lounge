@@ -220,6 +220,10 @@ async def purge_loop() -> None:
                 n = await purge_withdrawal_logs(db)
                 if n:
                     logger.info("만료된 탈퇴 기록 %d건 삭제", n)
+                from services.access_log import purge_access_logs
+                k = await purge_access_logs(db)
+                if k:
+                    logger.info("보관 기간이 지난 접속 기록 %d건 삭제", k)
                 m = await purge_trashed_projects(db)
                 if m:
                     logger.info("휴지통 보관 기간이 지난 프로젝트 %d개 영구 삭제", m)

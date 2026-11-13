@@ -3,7 +3,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
@@ -13,6 +13,7 @@ from schemas import (
     GuestJoinRequest, GuestJoinResponse, UserResponse,
 )
 from services.auth_service import get_current_user, get_current_user_optional, create_access_token
+from services.access_log import log_access
 from services.access import get_member_project
 
 router = APIRouter(tags=["Invitations"])
@@ -189,6 +190,7 @@ def _clean_name(raw: str) -> str:
 async def guest_join_by_invite(
     token: str,
     data: GuestJoinRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """초대 링크를 받은 사람이 별도 가입·로그인 없이 이름만 정해 참여한다 (링크 자체가 초대장 역할).
@@ -237,6 +239,7 @@ async def guest_join_by_invite(
         ))
     await db.commit()
     await db.refresh(user)
+    log_access(request, user, "login")
 
     return GuestJoinResponse(
         access_token=create_access_token(data={"sub": str(user.id), "email": user.email}),

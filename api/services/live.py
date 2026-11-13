@@ -131,7 +131,7 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import (AuditLog, CalendarEvent, ChatMessage, CommunityPost, CommunityReport, Follow, MeetingDoc, Notification, Project, ProjectFile,
+    from models import (AccessLog, AuditLog, CalendarEvent, ChatMessage, CommunityPost, CommunityReport, Follow, MeetingDoc, Notification, Project, ProjectFile,
                         ProjectMember, User, UserPref, CodeMemo, WithdrawalLog)
     bag = session.info.setdefault("live", set())
     for obj in list(session.new) + list(session.deleted):             # 관리자 페이지 실시간 갱신용 (바뀐 목록 이름만 알린다). 사용자 정보의 잦은 수정(접속 시각 등)은 제외
@@ -139,6 +139,8 @@ def _collect(session: Session, flush_context=None) -> None:
             bag.add(("admin", None, None, "users"))
         elif isinstance(obj, AuditLog):
             bag.add(("admin", None, None, "audit"))
+        elif isinstance(obj, AccessLog):
+            bag.add(("admin", None, None, "access"))
         elif isinstance(obj, CommunityReport):
             bag.add(("admin", None, None, "reports"))
         elif isinstance(obj, CommunityPost):

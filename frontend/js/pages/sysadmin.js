@@ -1,7 +1,7 @@
 /* ---- 관리자 페이지 (/app/admin) ----
    서버가 권한을 직접 확인한다(/api/admin/*). 여기서 메뉴를 숨기는 건 편의일 뿐이다.
    화면: 대시보드 · 사용자 · 신고/콘텐츠 · 프로젝트 · 크롤러 · 공지 · 감사 로그 · 시스템 */
-var SA = { tab:'dash', inited:false, timers:{}, state:{ users:{ q:'', state:'all', page:1 }, posts:{ q:'', state:'all', page:1 }, projects:{ q:'', state:'active', page:1 }, events:{ q:'', page:1 }, audit:{ q:'', page:1 }, reports:{ status:'open' } }, todo:0 };
+var SA = { tab:'dash', inited:false, timers:{}, state:{ users:{ q:'', state:'all', page:1 }, posts:{ q:'', state:'all', page:1 }, projects:{ q:'', state:'active', page:1 }, events:{ q:'', page:1 }, audit:{ q:'', page:1, view:'access', aq:'', apage:1 }, reports:{ status:'open' } }, todo:0 };
 var SA_TABS = [
   { k:'dash', t:'대시보드', i:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>' },
   { k:'users', t:'사용자', i:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.8M18 14.4c1.7.6 2.7 2.1 3 4.6"/>' },
@@ -213,7 +213,7 @@ function saShow(k){
   window.scrollTo(0, 0);
 }
 /* ----- 실시간 갱신: 서버가 '바뀐 목록 이름'을 알려 주면(웹·앱 어디서 바꿨든) 지금 보고 있는 탭만 조용히 다시 불러온다 ----- */
-var SA_LIVE_TABS = { projects:['projects', 'dash'], users:['users', 'dash', 'withdrawals'], audit:['audit', 'dash'], reports:['reports', 'dash', 'posts'], posts:['posts', 'dash'], withdrawals:['withdrawals', 'dash', 'users'] };
+var SA_LIVE_TABS = { projects:['projects', 'dash'], users:['users', 'dash', 'withdrawals'], audit:['audit', 'dash'], access:['audit'], reports:['reports', 'dash', 'posts'], posts:['posts', 'dash'], withdrawals:['withdrawals', 'dash', 'users'] };
 var SA_TAB_FN = function(){ return { dash:saDash, users:saUsers, withdrawals:saWithdrawals, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, audit:saAudit }; };
 function saLive(kinds){
   var v = document.querySelector('.view.active');
@@ -322,6 +322,8 @@ function saOpenUser(id){
     card.appendChild(u.projects.length ? saH('ul', { class:'sa-list tight' }, u.projects.map(function(p){ return saH('li', {}, [saH('div', {}, [saH('b', { text:p.title }), saH('span', { text:p.role })])]); })) : saEmpty('참여 중인 프로젝트가 없어요.'));
     card.appendChild(saH('h4', { text:'최근 글' }));
     card.appendChild(u.posts.length ? saH('ul', { class:'sa-list tight' }, u.posts.map(function(p){ return saH('li', {}, [saH('div', {}, [saH('b', { text:p.title }), saH('span', { text:(SA_CATS[p.category] || p.category) + ' · ' + saWhen(p.created_at) })]), p.deleted ? saChip('삭제됨', 'bad') : p.hidden ? saChip('숨김', 'warn') : null]); })) : saEmpty('작성한 글이 없어요.'));
+    card.appendChild(saH('h4', { text:'최근 접속 IP' }));
+    card.appendChild((u.recent_ips || []).length ? saH('ul', { class:'sa-list tight' }, u.recent_ips.map(function(x){ return saH('li', {}, [saH('div', {}, [saH('button', { class:'sa-ip', type:'button', title:'이 IP의 접속 기록 보기', text:x.ip, onclick:function(){ var st = SA.state.audit; st.view = 'access'; st.aq = x.ip; st.apage = 1; saShow('audit'); } }), saH('span', { text:'마지막 ' + saWhen(x.last_at) + ' · ' + x.count + '회' })])]); })) : saEmpty('아직 접속 기록이 없어요.'));
     if(u.audit.length){ card.appendChild(saH('h4', { text:'이 계정에 대한 조치' })); card.appendChild(saH('ul', { class:'sa-list tight' }, u.audit.map(function(a){ return saH('li', {}, [saH('div', {}, [saH('b', { text:SA_ACTIONS[a.action] || a.action }), saH('span', { text:a.admin + ' · ' + saWhen(a.created_at) + (a.detail ? ' · ' + a.detail : '') })])]); }))); }
     var act = saH('div', { class:'sa-ud-act' });
     var me = currentUser && currentUser.id === u.id, locked = u.role === 'super' || me || (u.role === 'admin' && !saIsSuper());
@@ -529,11 +531,32 @@ function saAnnounce(main){
 /* ----- 감사 로그 ----- */
 function saAudit(main){
   var st = SA.state.audit; main.innerHTML = '';
+  st.view = st.view || 'access';
+  var access = st.view === 'access';
+  var seg = saSeg([['access', '사용자 접속'], ['admin', '관리자 조치']], st.view, function(v){ st.view = v; saAudit(document.getElementById('saMain') || main); });
   var list = saH('div', { id:'saAuditList' });
-  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(st.q, '작업·관리자·내용·IP 검색', function(v){ st.q = v; st.page = 1; saAuditLoad(); }), saH('span', { class:'sa-faint', text:'관리자가 한 모든 조치가 접속 IP와 함께 기록돼요. IP를 누르면 그 IP의 조치만 모아 봐요. 이 기록은 고치거나 지울 수 없어요.' })]));
+  var hint = access ? '사용자가 로그인하거나 새로운 IP로 접속한 기록이에요(같은 IP는 30분에 한 번). IP를 누르면 그 IP만 모아 보고, 계정 N개 표시는 같은 IP를 여러 계정이 썼다는 뜻이에요. 90일 보관 후 자동 삭제돼요.' : '관리자가 한 모든 조치가 접속 IP와 함께 기록돼요. IP를 누르면 그 IP의 조치만 모아 봐요. 이 기록은 고치거나 지울 수 없어요.';
+  main.appendChild(saH('div', { class:'sa-tools' }, [saSearch(access ? st.aq : st.q, access ? '이름·IP·기기 검색' : '작업·관리자·내용·IP 검색', function(v){ if(access){ st.aq = v; st.apage = 1; } else { st.q = v; st.page = 1; } saAuditLoad(); }), seg, saH('span', { class:'sa-faint', text:hint })]));
   main.appendChild(list); saAuditLoad();
 }
-function saAuditLoad(){
+function saAuditLoad(){ return SA.state.audit.view === 'access' ? saAccessLoad() : saAuditAdminLoad(); }
+function saAccessLoad(){
+  var st = SA.state.audit, box = document.getElementById('saAuditList'); if(!box) return;
+  saApi('/access?q=' + encodeURIComponent(st.aq) + '&page=' + st.apage).then(function(r){
+    box.innerHTML = '';
+    var rows = r.items.map(function(a){
+      var ipBtn = saH('button', { class:'sa-ip', type:'button', title:'이 IP의 접속만 보기', text:a.ip, onclick:function(){ st.aq = a.ip; st.apage = 1; saAudit(document.getElementById('saMain') || document.querySelector('.sa-main')); } });
+      var ip = saH('div', { class:'sa-stat-cell' }, [ipBtn, a.shared > 1 ? saChip('계정 ' + a.shared + '개', 'bad') : null]);
+      var who = saH('div', { class:'sa-who' }, [saAvatar(a.username, 24), saH('b', { text:a.username })]);
+      if(a.user_id){ who.classList.add('click'); who.onclick = function(){ saOpenUser(a.user_id); }; }
+      var kind = saH('div', { class:'sa-stat-cell' }, [saChip(a.event === 'login' ? '로그인' : '접속', a.event === 'login' ? 'ok' : ''), saH('span', { class:'sa-faint', text:a.client === 'app' ? '설치한 앱' : '웹' })]);
+      return { cells:{ at:saWhen(a.created_at), who:who, ip:ip, ev:kind, dev:a.device || '—' } };
+    });
+    box.appendChild(saTable([{ k:'at', t:'시간' }, { k:'who', t:'사용자' }, { k:'ip', t:'접속 IP' }, { k:'ev', t:'구분' }, { k:'dev', t:'기기' }], rows, '아직 접속 기록이 없어요. 사용자가 들어오면 여기에 쌓여요.'));
+    box.appendChild(saPager(r.total, r.page, r.size, function(p){ st.apage = p; saAccessLoad(); }));
+  }).catch(function(e){ box.innerHTML = ''; box.appendChild(saEmpty(e.message)); });
+}
+function saAuditAdminLoad(){
   var st = SA.state.audit, box = document.getElementById('saAuditList'); if(!box) return;
   saApi('/audit?q=' + encodeURIComponent(st.q) + '&page=' + st.page).then(function(r){
     box.innerHTML = '';
@@ -542,7 +565,7 @@ function saAuditLoad(){
       return { cells:{ at:saWhen(a.created_at), who:saH('div', { class:'sa-who' }, [saAvatar(a.admin, 24), saH('b', { text:a.admin })]), act:saChip(SA_ACTIONS[a.action] || a.action, ''), d:a.detail || (a.target_type ? a.target_type + ' #' + a.target_id : ''), ip:ip } };
     });
     box.appendChild(saTable([{ k:'at', t:'시간' }, { k:'who', t:'관리자' }, { k:'ip', t:'접속 IP' }, { k:'act', t:'작업' }, { k:'d', t:'내용' }], rows, '기록이 없어요.'));
-    box.appendChild(saPager(r.total, r.page, r.size, function(p){ st.page = p; saAuditLoad(); }));
+    box.appendChild(saPager(r.total, r.page, r.size, function(p){ st.page = p; saAuditAdminLoad(); }));
   }).catch(function(e){ box.innerHTML = ''; box.appendChild(saEmpty(e.message)); });
 }
 
@@ -556,7 +579,7 @@ function saSystem(main){
     ]));
     main.querySelectorAll('.sa-stat-v')[0].textContent = saDur(s.uptime_seconds); main.querySelectorAll('.sa-stat-v')[2].textContent = saBytes(s.db_size_bytes);
     var max = Math.max.apply(null, Object.keys(s.tables).map(function(k){ return s.tables[k]; }).concat([1]));
-    var labels = { users:'사용자', projects:'프로젝트', chat_messages:'채팅 메시지', project_files:'워크스페이스 파일', meeting_docs:'회의록', calendar_events:'일정', notifications:'알림', community_posts:'커뮤니티 글', crawled_events:'수집된 행사', audit_logs:'감사 로그' };
+    var labels = { users:'사용자', projects:'프로젝트', chat_messages:'채팅 메시지', project_files:'워크스페이스 파일', meeting_docs:'회의록', calendar_events:'일정', notifications:'알림', community_posts:'커뮤니티 글', crawled_events:'수집된 행사', audit_logs:'감사 로그', access_logs:'접속 기록' };
     main.appendChild(saPanel('데이터 규모', '테이블별 행 수', [saH('div', { class:'sa-bar-list' }, Object.keys(s.tables).map(function(k){ var f = saH('i'); f.style.width = Math.max(2, s.tables[k] / max * 100) + '%'; return saH('div', {}, [saH('span', { text:labels[k] || k }), saH('div', { class:'sa-bar' }, [f]), saH('b', { text:saN(s.tables[k]) })]); }))]));
     if(saIsSuper()){
       var cur = saH('input', { class:'sa-input', type:'password', inputmode:'numeric', maxlength:'6', placeholder:'현재 코드 6자리', autocomplete:'off' });

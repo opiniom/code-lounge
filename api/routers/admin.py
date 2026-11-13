@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import engine, get_db
-from models import (WithdrawalLog, Announcement, AuditLog, CalendarEvent, ChatMessage, CommunityComment, CommunityPost, CommunityReport,
+from models import (AccessLog, WithdrawalLog, Announcement, AuditLog, CalendarEvent, ChatMessage, CommunityComment, CommunityPost, CommunityReport,
                     CrawledEvent, EventCrawlRun, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, User)
 from services import event_crawler as ec
 from services import live
@@ -206,8 +206,10 @@ async def user_detail(user_id: int, admin: User = Depends(require_admin), db: As
     posts = (await db.execute(select(CommunityPost).where(CommunityPost.user_id == u.id).order_by(CommunityPost.id.desc()).limit(8))).scalars().all()
     reported = await _n(db, select(func.count()).select_from(CommunityReport).join(CommunityPost, (CommunityReport.target_type == "post") & (CommunityPost.id == CommunityReport.target_id)).where(CommunityPost.user_id == u.id))
     logs = (await db.execute(select(AuditLog).where(AuditLog.target_type == "user", AuditLog.target_id == u.id).order_by(AuditLog.id.desc()).limit(8))).scalars().all()
+    ips = (await db.execute(select(AccessLog.ip, func.max(AccessLog.created_at), func.count()).where(AccessLog.user_id == u.id).group_by(AccessLog.ip).order_by(func.max(AccessLog.created_at).desc()).limit(6))).all()
     r = _user_row(u)
-    r.update({"projects": [{"id": p.id, "title": p.title, "role": "팀장"} for p in owned] + [{"id": p.id, "title": p.title, "role": "팀원"} for p in member if p.owner_id != u.id],
+    r.update({"recent_ips": [{"ip": ip, "last_at": _iso(at), "count": n} for ip, at, n in ips],
+              "projects": [{"id": p.id, "title": p.title, "role": "팀장"} for p in owned] + [{"id": p.id, "title": p.title, "role": "팀원"} for p in member if p.owner_id != u.id],
               "posts": [{"id": p.id, "title": p.title, "category": p.category, "hidden": p.is_hidden, "deleted": p.is_deleted, "created_at": _iso(p.created_at)} for p in posts],
               "reports_received": reported, "audit": [_audit_row(a) for a in logs]})
     return r
@@ -514,6 +516,31 @@ async def purge_project(project_id: int, admin: User = Depends(require_super), d
     return {"ok": True, "files": n_files}
 
 
+# ---------------------------------------------------------------- 사용자 접속 기록 (IP)
+@router.get("/access")
+async def access_log(q: str = "", user_id: Optional[int] = None, event: str = "", page: int = 1, size: int = 30,
+                     admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """사용자가 언제·어느 IP 로 접속했는지. q 는 IP·이름·기기에서 찾고, 같은 IP 를 쓴 계정이 여러 개면 shared 로 알려 준다."""
+    size = min(max(size, 1), 100); page = max(page, 1); off = (page - 1) * size
+    conds = []
+    q = (q or "").strip()
+    if q:
+        like = f"%{q.lower()}%"
+        conds.append(or_(func.lower(AccessLog.ip).like(like), func.lower(AccessLog.username).like(like), func.lower(func.coalesce(AccessLog.device, "")).like(like)))
+    if user_id is not None:
+        conds.append(AccessLog.user_id == user_id)
+    if event in ("login", "visit"):
+        conds.append(AccessLog.event == event)
+    total = await _n(db, select(func.count()).select_from(AccessLog).where(*conds))
+    rows = (await db.execute(select(AccessLog).where(*conds).order_by(AccessLog.id.desc()).limit(size).offset(off))).scalars().all()
+    ips = list({r.ip for r in rows})
+    shared = dict((await db.execute(select(AccessLog.ip, func.count(func.distinct(AccessLog.user_id))).where(AccessLog.ip.in_(ips)).group_by(AccessLog.ip))).all()) if ips else {}
+    emails = {u.id: u.email for u in (await db.execute(select(User).where(User.id.in_({r.user_id for r in rows if r.user_id})))).scalars().all()} if rows else {}
+    return {"total": total, "page": page, "size": size, "days": max(1, int(settings.ACCESS_LOG_DAYS or 90)),
+            "items": [{"id": r.id, "user_id": r.user_id, "username": r.username, "email": emails.get(r.user_id), "ip": r.ip, "event": r.event, "client": r.client,
+                       "device": r.device, "created_at": _iso(r.created_at), "shared": shared.get(r.ip, 1)} for r in rows]}
+
+
 # ---------------------------------------------------------------- 이벤트 크롤러
 @router.get("/crawler")
 async def crawler_info(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
@@ -623,7 +650,7 @@ async def system_info(admin: User = Depends(require_admin), db: AsyncSession = D
             pass
     tables = {}
     for label, model in (("users", User), ("projects", Project), ("chat_messages", ChatMessage), ("project_files", ProjectFile), ("meeting_docs", MeetingDoc),
-                         ("calendar_events", CalendarEvent), ("notifications", Notification), ("community_posts", CommunityPost), ("crawled_events", CrawledEvent), ("audit_logs", AuditLog)):
+                         ("calendar_events", CalendarEvent), ("notifications", Notification), ("community_posts", CommunityPost), ("crawled_events", CrawledEvent), ("audit_logs", AuditLog), ("access_logs", AccessLog)):
         tables[label] = await _n(db, select(func.count()).select_from(model))
     return {"uptime_seconds": int(time.time() - STARTED_AT), "db_engine": engine.dialect.name, "db_size_bytes": db_size,
             "ws_users": len(live.hub.conns), "ws_connections": sum(len(s) for s in live.hub.conns.values()),

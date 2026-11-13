@@ -324,6 +324,21 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
+class AccessLog(Base):
+    """사용자 접속 기록 — 누가·언제·어느 IP 로 들어왔는지. 로그인할 때와, 새로운 IP 로 처음 접속할 때(같은 IP 는 30분에 한 번)만 남겨서
+    양이 불어나지 않게 하고, ACCESS_LOG_DAYS(기본 90일)가 지나면 자동으로 지운다. 관리자 페이지에서만 볼 수 있다."""
+    __tablename__ = "access_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    username = Column(String(100), nullable=False)
+    ip = Column(String(64), nullable=False, index=True)
+    event = Column(String(10), nullable=False, default="visit", server_default="visit")      # login | visit
+    client = Column(String(6), nullable=False, default="web", server_default="web")          # web | app(설치한 앱)
+    device = Column(String(60), nullable=True)                                               # 예: 'iOS · Safari' (원본 User-Agent 는 저장하지 않는다)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
 class SiteSetting(Base):
     """서버 전체 설정 값 (예: 관리자 코드의 해시). 평문 비밀번호는 저장하지 않는다."""
     __tablename__ = "site_settings"

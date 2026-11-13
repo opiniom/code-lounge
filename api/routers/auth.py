@@ -15,6 +15,7 @@ from models import User
 from schemas import AiNameUpdate, UserLogin, UserResponse, TokenResponse, SocialLoginRequest
 from services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from config import settings
+from services.access_log import log_access
 
 logger = logging.getLogger("oauth")
 
@@ -72,7 +73,7 @@ async def _once(provider: str, code: Optional[str], work):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(credentials: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
     """이메일과 비밀번호로 로그인 및 JWT 토큰 발급"""
     result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
@@ -91,6 +92,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         )
 
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    log_access(request, user, "login")
 
     return TokenResponse(
         access_token=token,
@@ -149,6 +151,7 @@ async def dev_auto_login(request: Request, db: AsyncSession = Depends(get_db)):
     if not user or not user.is_active:
         raise HTTPException(status_code=404, detail="DEV_AUTO_LOGIN_EMAIL 계정이 아직 없어요. 한 번 정상 로그인해 계정을 만든 뒤 쓰세요.")
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    log_access(request, user, "login")
     return TokenResponse(access_token=token, token_type="bearer", user=UserResponse.model_validate(user))
 
 
@@ -185,13 +188,14 @@ async def google_login():
 async def google_callback(
     code: Optional[str] = None, 
     error: Optional[str] = None, 
+    request: Request = None,
     db: AsyncSession = Depends(get_db)
 ):
     """Google OAuth 2.0 콜백 처리 및 JWT 발급 (같은 코드가 두 번 와도 구글은 한 번만 호출)"""
-    return await _once("google", None if error else code, lambda: _google_callback(code, error, db))
+    return await _once("google", None if error else code, lambda: _google_callback(code, error, db, request))
 
 
-async def _google_callback(code: Optional[str], error: Optional[str], db: AsyncSession):
+async def _google_callback(code: Optional[str], error: Optional[str], db: AsyncSession, request: Request = None):
     if error or not code:
         return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={error or 'cancelled'}")
     
@@ -252,6 +256,7 @@ async def _google_callback(code: Optional[str], error: Optional[str], db: AsyncS
             await db.commit()
 
         jwt_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+        log_access(request, user, "login")
         safe_name = urllib.parse.quote(user.username)
         return RedirectResponse(f"{settings.FRONTEND_URL}?token={jwt_token}&provider=google&name={safe_name}")
     except Exception as e:
@@ -279,13 +284,14 @@ async def naver_callback(
     code: Optional[str] = None, 
     state: Optional[str] = None, 
     error: Optional[str] = None, 
+    request: Request = None,
     db: AsyncSession = Depends(get_db)
 ):
     """Naver 로그인 콜백 처리 및 JWT 발급 (같은 코드가 두 번 와도 네이버는 한 번만 호출)"""
-    return await _once("naver", None if error else code, lambda: _naver_callback(code, state, error, db))
+    return await _once("naver", None if error else code, lambda: _naver_callback(code, state, error, db, request))
 
 
-async def _naver_callback(code: Optional[str], state: Optional[str], error: Optional[str], db: AsyncSession):
+async def _naver_callback(code: Optional[str], state: Optional[str], error: Optional[str], db: AsyncSession, request: Request = None):
     if error or not code:
         return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={error or 'cancelled'}")
     
@@ -344,13 +350,14 @@ async def _naver_callback(code: Optional[str], state: Optional[str], error: Opti
             await db.commit()
 
         jwt_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+        log_access(request, user, "login")
         safe_name = urllib.parse.quote(user.username)
         return RedirectResponse(f"{settings.FRONTEND_URL}?token={jwt_token}&provider=naver&name={safe_name}")
     except Exception as e:
         return RedirectResponse(f"{settings.FRONTEND_URL}?social_error={urllib.parse.quote(str(e))}")
 
 @router.post("/social", response_model=TokenResponse, tags=["OAuth"])
-async def social_login(payload: SocialLoginRequest, db: AsyncSession = Depends(get_db)):
+async def social_login(payload: SocialLoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """개발/테스트 전용 로그인 (이메일만으로 로그인). 기본 꺼짐 — 외부에 열린 서버에서 켜면 누구나 타인 계정으로 로그인할 수 있다."""
     if not settings.ALLOW_DEV_LOGIN or settings.PUBLIC_MODE:
         raise HTTPException(status_code=404, detail="Not Found")
@@ -378,6 +385,7 @@ async def social_login(payload: SocialLoginRequest, db: AsyncSession = Depends(g
         await db.commit()
 
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    log_access(request, user, "login")
     return TokenResponse(
         access_token=token,
         token_type="bearer",

@@ -7,7 +7,7 @@ function setToken(t){
 }
 function apiFetch(path, opts){
   opts = opts || {};
-  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {}, {Authorization:'Bearer '+getToken()});
+  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {}, {Authorization:'Bearer '+getToken(), 'X-Client-Mode': (typeof pwaStandalone === 'function' && pwaStandalone()) ? 'app' : 'web'});
   return fetch(API_BASE+path, opts).then(function(r){
     var expired = r.status===401 && !!getToken();
     if(r.status===401){ if(calApiMode && authToken) expireSession(); else setToken(null); }
