@@ -44,6 +44,7 @@ function liveResync(){
   if(chatServerId()) loadChat(false);
   if(typeof wsPresStart === 'function' && wsPresInWorkspace()) wsPresStart();      // 재연결되면 내 작업 위치를 다시 알린다
   if(typeof wsLiveRejoin === 'function') wsLiveRejoin();                           // 실시간 편집도 다시 붙는다
+  if(typeof saLive === 'function') saLive(['*']);                                  // 관리자 페이지가 열려 있었다면 끊긴 사이 바뀐 것도 맞춘다
 }
 /* 팀원이 회의록을 만들면 목록에 바로 올리고, 새 글이면 한 번만 조용히 알려준다 */
 var liveSeenDocs = null;
@@ -84,6 +85,7 @@ function liveHandle(m){
     case 'memos': if(typeof wsMemoLive === 'function') wsMemoLive(m); break;                  // 팀원이 워크스페이스 코드 줄 메모를 달거나 바꿈
     case 'docsync': case 'docop': case 'docsaved': case 'docreset': case 'docerr': if(typeof wsLiveHandle === 'function') wsLiveHandle(m); break;
     case 'wspres': case 'wssnap': if(typeof wsPresHandle === 'function') wsPresHandle(m); break;
+    case 'admin': if(typeof saLive === 'function') saLive(m.k); break;                        // (관리자에게만 옴) 가입·프로젝트·감사 로그 등이 바뀜 → 열려 있는 관리자 페이지 갱신
     case 'projects':
       if(typeof loadCalProjects === 'function') loadCalProjects().then(function(){ renderProjRow(); renderChatHeader(); pstLoadTeam(); tmRefresh(); }).catch(function(){});
       break;

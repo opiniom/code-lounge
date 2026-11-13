@@ -212,6 +212,28 @@ function saShow(k){
   fn(main);
   window.scrollTo(0, 0);
 }
+/* ----- 실시간 갱신: 서버가 '바뀐 목록 이름'을 알려 주면(웹·앱 어디서 바꿨든) 지금 보고 있는 탭만 조용히 다시 불러온다 ----- */
+var SA_LIVE_TABS = { projects:['projects', 'dash'], users:['users', 'dash', 'withdrawals'], audit:['audit', 'dash'], reports:['reports', 'dash', 'posts'], posts:['posts', 'dash'], withdrawals:['withdrawals', 'dash', 'users'] };
+var SA_TAB_FN = function(){ return { dash:saDash, users:saUsers, withdrawals:saWithdrawals, reports:saReports, posts:saPosts, projects:saProjects, crawler:saCrawler, audit:saAudit }; };
+function saLive(kinds){
+  var v = document.querySelector('.view.active');
+  if(!SA.inited || !saToken() || !v || v.dataset.view !== 'sysadmin') return;
+  SA.liveKinds = (SA.liveKinds || {}); (kinds || []).forEach(function(k){ SA.liveKinds[k] = 1; });
+  clearTimeout(SA.liveTimer); SA.liveTimer = setTimeout(saLiveRun, 700);               // 한꺼번에 여러 개가 바뀌어도 한 번만
+}
+function saLiveRun(){
+  var kinds = Object.keys(SA.liveKinds || {}); SA.liveKinds = {};
+  var v = document.querySelector('.view.active'), main = document.getElementById('saMain');
+  if(!SA.inited || !main || !v || v.dataset.view !== 'sysadmin') return;
+  var all = kinds.indexOf('*') >= 0;
+  var hit = all || kinds.some(function(k){ return (SA_LIVE_TABS[k] || []).indexOf(SA.tab) >= 0; });
+  if(kinds.indexOf('reports') >= 0 || all) saApi('/overview').then(function(o){ saSetReportBadge(o.todo.reports); }).catch(function(){});   // 신고 숫자 표시는 어느 탭에서나
+  if(!hit) return;
+  var a = document.activeElement;
+  var busy = (a && main.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || document.querySelector('.modal-backdrop.open') || document.querySelector('#saDrawer.open');
+  if(busy){ kinds.forEach(function(k){ SA.liveKinds[k] = 1; }); clearTimeout(SA.liveTimer); SA.liveTimer = setTimeout(saLiveRun, 4000); return; }   // 입력·확인창을 쓰는 중엔 건드리지 않고 잠시 뒤에 다시
+  var fn = SA_TAB_FN()[SA.tab]; if(fn) fn(main);
+}
 function saSetReportBadge(n){ SA.todo = n; var b = document.getElementById('saReportBadge'); if(b){ b.hidden = !n; b.textContent = n > 99 ? '99+' : n; } }
 function saPanel(title, sub, kids, cls){
   return saH('section', { class:'sa-panel ' + (cls || '') }, [saH('div', { class:'sa-panel-h' }, [saH('h3', { text:title }), sub ? saH('span', { class:'sa-sub', text:sub }) : null])].concat(kids || []));

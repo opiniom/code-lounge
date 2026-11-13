@@ -6,6 +6,7 @@
   · calendar      일정 추가·수정·삭제 · notes     회의록 추가·수정·삭제
   · projects      프로젝트/팀원 변화   · presence  팀원의 온라인·자리비움·방해금지·오프라인
   · prefs         내 설정이 다른 기기(웹/앱)에서 바뀜 · memos  워크스페이스 코드 줄 메모
+  · admin         (관리자에게만) 가입·프로젝트·감사 로그·신고·커뮤니티 글·탈퇴 기록이 바뀜 → 열려 있는 관리자 페이지가 그 목록을 다시 불러온다
 DB 에 커밋된 뒤에만 보내므로(SQLAlchemy 이벤트), 라우터 코드를 일일이 고치지 않아도 모든 저장 경로가 포함된다.
 연결이 끊기면 화면은 예전처럼 폴링으로 돌아간다.
 """
@@ -130,8 +131,23 @@ async def publish_presence(db, user_id: int, status: Optional[str] = None) -> No
 
 # ---------- 커밋 후 푸시 (SQLAlchemy 이벤트) ----------
 def _collect(session: Session, flush_context=None) -> None:
-    from models import CalendarEvent, ChatMessage, Follow, MeetingDoc, Notification, Project, ProjectFile, ProjectMember, UserPref, CodeMemo
+    from models import (AuditLog, CalendarEvent, ChatMessage, CommunityPost, CommunityReport, Follow, MeetingDoc, Notification, Project, ProjectFile,
+                        ProjectMember, User, UserPref, CodeMemo, WithdrawalLog)
     bag = session.info.setdefault("live", set())
+    for obj in list(session.new) + list(session.deleted):             # 관리자 페이지 실시간 갱신용 (바뀐 목록 이름만 알린다). 사용자 정보의 잦은 수정(접속 시각 등)은 제외
+        if isinstance(obj, User):
+            bag.add(("admin", None, None, "users"))
+        elif isinstance(obj, AuditLog):
+            bag.add(("admin", None, None, "audit"))
+        elif isinstance(obj, CommunityReport):
+            bag.add(("admin", None, None, "reports"))
+        elif isinstance(obj, CommunityPost):
+            bag.add(("admin", None, None, "posts"))
+        elif isinstance(obj, WithdrawalLog):
+            bag.add(("admin", None, None, "withdrawals"))
+    for obj in list(session.dirty):
+        if isinstance(obj, (CommunityReport, CommunityPost)) and session.is_modified(obj):
+            bag.add(("admin", None, None, "reports" if isinstance(obj, CommunityReport) else "posts"))
     for obj in list(session.new) + list(session.dirty) + list(session.deleted):
         if isinstance(obj, Notification):
             bag.add(("notification", obj.user_id, None, None))
@@ -159,6 +175,7 @@ def _collect(session: Session, flush_context=None) -> None:
             bag.add(("projects", obj.user_id, obj.project_id, None))
         elif isinstance(obj, Project):
             bag.add(("projects", None, obj.id, None))
+            bag.add(("admin", None, None, "projects"))
 
 
 def _publish(session: Session) -> None:
@@ -180,7 +197,14 @@ async def _deliver(bag: set) -> None:
     from database import async_session_maker
     try:
         async with async_session_maker() as db:
+            admin_kinds = sorted(k[3] for k in bag if k[0] == "admin")
+            if admin_kinds:                                              # 지금 접속해 있는 관리자에게만, 바뀐 목록 이름을 한 번에 알린다
+                aud = await _admin_audience(db)
+                if aud:
+                    await hub.send(aud, {"t": "admin", "k": admin_kinds})
             for kind, user_id, project_id, sender in bag:
+                if kind == "admin":
+                    continue
                 targets: Set[int] = set()
                 if user_id:
                     targets.add(user_id)
@@ -194,6 +218,17 @@ async def _deliver(bag: set) -> None:
                 await hub.send(targets, payload)
     except Exception:
         logger.exception("live deliver failed")
+
+
+async def _admin_audience(db) -> Set[int]:
+    """실시간으로 연결돼 있는 사람 중 관리자(운영자·최고관리자)인 사람"""
+    from models import User
+    from services.auth_service import is_admin_user
+    ids = [uid for uid, conns in hub.conns.items() if conns]
+    if not ids:
+        return set()
+    users = (await db.execute(select(User).where(User.id.in_(ids)))).scalars().all()
+    return {u.id for u in users if is_admin_user(u)}
 
 
 def install() -> None:
