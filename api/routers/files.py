@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, delete, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
-from models import User, ProjectFile, CodeMemo
+from models import User, Project, ProjectFile, CodeMemo
 from schemas import FileSave, FileBulk, FileRename, FileResponse_
 from services.auth_service import get_current_user
 from services.access import get_member_project
@@ -14,7 +14,9 @@ from services import livedoc
 
 router = APIRouter(prefix="/api/projects/{project_id}/files", tags=["Workspace Files"])
 
-MAX_FILES = 300
+MAX_FILES = 500                        # 프로젝트당 파일 수 (예전 300개)
+MAX_PROJECT_CHARS = 3_000_000          # 프로젝트 전체 글자 수. 워크스페이스를 열 때 서버가 파일 내용을 전부 읽어 보내서, 작은 서버(메모리 1GB)가 버틸 수 있게 낮게 둔다
+MAX_USER_CHARS = 20_000_000            # 한 사용자가 만든 모든 프로젝트의 글자 수 합계 (한 사람이 서버 디스크를 채우지 못하게)
 _BAD_CHARS = re.compile(r'[\x00-\x1f\\:*?"<>|]')
 
 
@@ -63,10 +65,26 @@ async def list_files(project_id: int, current_user: User = Depends(get_current_u
     return [_out(r, names) for r in rows]
 
 
-async def _save_one(db: AsyncSession, project_id: int, user: User, data: FileSave):
+async def _check_room(db: AsyncSession, project_id: int, add_chars: int) -> None:
+    """내용이 add_chars 글자만큼 늘어날 때 프로젝트·사용자 용량 한도를 넘는지 확인한다 (줄이거나 같은 크기로 고치는 건 언제나 허용)"""
+    if add_chars <= 0:
+        return
+    own = project_id and (await db.execute(select(Project.owner_id).where(Project.id == project_id))).scalar_one_or_none()
+    proj = (await db.execute(select(func.coalesce(func.sum(func.length(ProjectFile.content)), 0)).where(ProjectFile.project_id == project_id))).scalar_one()
+    if proj + add_chars > MAX_PROJECT_CHARS:
+        raise HTTPException(status_code=400, detail=f"프로젝트 전체 용량이 너무 커요. 지금 약 {proj / 1_000_000:.1f}MB에 {add_chars / 1_000_000:.1f}MB를 더하면 최대 {MAX_PROJECT_CHARS // 1_000_000}MB를 넘어요. 큰 데이터 파일은 빼고 저장해 주세요.")
+    if own:
+        mine = (await db.execute(select(func.coalesce(func.sum(func.length(ProjectFile.content)), 0)).join(Project, Project.id == ProjectFile.project_id).where(Project.owner_id == own))).scalar_one()
+        if mine + add_chars > MAX_USER_CHARS:
+            raise HTTPException(status_code=400, detail=f"이 계정이 만든 프로젝트 전체 용량이 한도({MAX_USER_CHARS // 1_000_000}MB)에 가까워요. 안 쓰는 프로젝트나 파일을 정리한 뒤 다시 시도해 주세요.")
+
+
+async def _save_one(db: AsyncSession, project_id: int, user: User, data: FileSave, check_room: bool = True):
     """(file, conflict_row) 반환. 충돌이면 file 은 None"""
     path = _clean_path(data.path)
     row = (await db.execute(select(ProjectFile).where(ProjectFile.project_id == project_id, ProjectFile.path == path))).scalar_one_or_none()
+    if check_room:
+        await _check_room(db, project_id, len(data.content) - (len(row.content or "") if row is not None else 0))
     if row is None:
         count = (await db.execute(select(func.count(ProjectFile.id)).where(ProjectFile.project_id == project_id))).scalar_one()
         if count >= MAX_FILES:
@@ -101,10 +119,17 @@ async def save_file(project_id: int, data: FileSave, current_user: User = Depend
 async def save_bulk(project_id: int, data: FileBulk, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """폴더 가져오기 등: 여러 파일을 한 번에 저장 (같은 경로는 덮어쓰기)"""
     await get_member_project(db, project_id, current_user)
+    # 하나라도 한도를 넘으면 하나도 저장하지 않고(반만 가져와지지 않게) 얼마나 줄여야 하는지 알려 준다
+    paths = {_clean_path(i.path): len(i.content) for i in data.files}
+    have = dict((await db.execute(select(ProjectFile.path, func.length(ProjectFile.content)).where(ProjectFile.project_id == project_id))).all())
+    new_count = sum(1 for pth in paths if pth not in have)
+    if len(have) + new_count > MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"파일이 너무 많아요. 지금 {len(have)}개 + 새로 가져올 {new_count}개 = {len(have) + new_count}개인데, 프로젝트당 최대 {MAX_FILES}개까지예요. {len(have) + new_count - MAX_FILES}개 이상 줄여 주세요.")
+    await _check_room(db, project_id, sum(paths.values()) - sum(have.get(pth, 0) or 0 for pth in paths))
     saved = []
     for item in data.files:
         item.force = True
-        row, _ = await _save_one(db, project_id, current_user, item)
+        row, _ = await _save_one(db, project_id, current_user, item, check_room=False)       # 한도는 위에서 한 번에 확인했다
         saved.append(row)
         await db.flush()
     await db.commit()

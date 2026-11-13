@@ -34,12 +34,13 @@ function triggerOpenFolder() {
   }
 }
 
+var WS_MAX_FILES = 500, WS_MAX_CHARS = 3000000, WS_FILE_MAX = 300000;        // 서버(files.py)와 같은 한도: 프로젝트당 파일 수·전체 글자 수·파일 하나의 글자 수
 var WS_BINARY_EXT = ['png','jpg','jpeg','gif','ico','webp','pdf','zip','tar','gz','exe','dll','so','dylib','class','pyc','woff','woff2','ttf'];
 function handleFolderSelect(event) {
   var fileList = event.target.files;
   if (!fileList || fileList.length === 0) return;
   var entries = [];
-  var skipped = 0;
+  var skipped = 0, skippedBig = 0;
   var reads = [];
   var rootFolderName = '';
   for (var i = 0; i < fileList.length; i++) {
@@ -48,9 +49,10 @@ function handleFolderSelect(event) {
       var parts = relPath.split('/');
       if (parts.length > 1 && !rootFolderName) rootFolderName = parts[0];
       var displayPath = parts.length > 1 ? parts.slice(1).join('/') : file.name;
-      if (/(^|\/)(node_modules|\.git|__pycache__|\.venv|dist|build)(\/|$)/.test(displayPath) || !wsValidatePath(displayPath).ok) { skipped++; return; }
+      if (/(^|\/)(node_modules|\.git|__pycache__|\.venv|venv|\.idea|\.next|\.gradle|\.pytest_cache|\.mypy_cache|coverage|dist|build)(\/|$)/.test(displayPath) || /(^|\/)(\.DS_Store|Thumbs\.db)$/.test(displayPath) || !wsValidatePath(displayPath).ok) { skipped++; return; }
       var ext = (file.name.split('.').pop() || '').toLowerCase();
-      if (WS_BINARY_EXT.indexOf(ext) >= 0 || file.size > 300000) { skipped++; return; }
+      if (WS_BINARY_EXT.indexOf(ext) >= 0) { skipped++; return; }
+      if (file.size > WS_FILE_MAX) { skipped++; skippedBig++; return; }          // 파일 하나는 30만 글자까지만 저장할 수 있다
       reads.push(new Promise(function(resolve) {
         var reader = new FileReader();
         reader.onload = function(e) { entries.push({ path: displayPath, content: String(e.target.result || '') }); resolve(); };
@@ -61,7 +63,14 @@ function handleFolderSelect(event) {
   }
   Promise.all(reads).then(function() {
     if (!entries.length) { pushToast('📁', '가져올 파일이 없어요', '이미지·대용량·node_modules 같은 파일은 건너뛰어요'); return; }
-    if (wsUseServer()) { wsImportEntries(entries, skipped, rootFolderName); return; }
+    if (wsUseServer()) {
+      // 올리기 전에 한도를 한 번에 확인한다: 넘으면 하나도 올리지 않고 얼마나 줄여야 하는지 알려 준다 (예전엔 300개째에서 멈춰 반만 가져와졌다)
+      var have = Object.keys(files).length, newN = entries.filter(function(en){ return !files[wsKey(en.path)]; }).length;
+      if (have + newN > WS_MAX_FILES) { pushToast('⚠️', '파일이 너무 많아요', '지금 ' + have + '개 + 새로 ' + newN + '개 = ' + (have + newN) + '개예요. 프로젝트당 최대 ' + WS_MAX_FILES + '개라서 ' + (have + newN - WS_MAX_FILES) + '개 이상 줄여야 해요. (아무것도 가져오지 않았어요)', { duration: 9000 }); return; }
+      var chars = entries.reduce(function(n, en){ return n + en.content.length; }, 0);
+      if (chars > WS_MAX_CHARS) { pushToast('⚠️', '용량이 너무 커요', '합쳐서 약 ' + (chars / 1000000).toFixed(1) + 'MB예요. 프로젝트당 최대 ' + Math.round(WS_MAX_CHARS / 1000000) + 'MB라서 큰 데이터 파일은 빼고 가져와 주세요. (아무것도 가져오지 않았어요)', { duration: 9000 }); return; }
+      wsImportEntries(entries, skipped, rootFolderName, skippedBig); return;
+    }
     // 로그인 전(데모): 이 화면에서만 사용
     files = {}; openedTabs = [];
     entries.forEach(function(en){
@@ -876,20 +885,24 @@ function wsDeleteDir(dir){
       .catch(function(e){ pushToast('⚠️', '삭제하지 못했어요', e.message); renderFileTree(); });
   } else { wsDropLocal(keys); }
 }
-function wsImportEntries(entries, skipped, rootName){
+function wsImportEntries(entries, skipped, rootName, skippedBig){
   var sid = wsServerId(), pid = wsProject;
   var chunks = [];
   for (var i = 0; i < entries.length; i += 50) chunks.push(entries.slice(i, i + 50));
   pushToast('📂', '폴더를 가져오는 중이에요', entries.length + '개 파일');
+  var doneFiles = 0;
   chunks.reduce(function(chain, chunk){
-    return chain.then(function(){ return apiFetch('/api/projects/' + sid + '/files/bulk', { method: 'PUT', body: JSON.stringify({ files: chunk }) }); });
+    return chain.then(function(){ return apiFetch('/api/projects/' + sid + '/files/bulk', { method: 'PUT', body: JSON.stringify({ files: chunk }) }).then(function(){ doneFiles += chunk.length; }); });
   }, Promise.resolve()).then(function(){
-    pushToast('✅', '폴더를 가져왔어요', (rootName || '선택한 폴더') + ' · ' + entries.length + '개 파일' + (skipped ? ' (' + skipped + '개 건너뜀)' : ''));
+    pushToast('✅', '폴더를 가져왔어요', (rootName || '선택한 폴더') + ' · ' + entries.length + '개 파일' + (skipped ? ' (' + skipped + '개 건너뜀' + (skippedBig ? ' · 30만 글자 넘는 큰 파일 ' + skippedBig + '개 포함' : '') + ')' : ''));
     // 가져온 그 프로젝트를 다시 불러온다. (예전에는 enterWorkspaceView() 가 캘린더에서 고른 프로젝트나 기본 프로젝트로 화면을 옮겨서,
     //  가져온 폴더가 안 보이고 채팅·통화방도 다른 프로젝트로 바뀌어 통화에서 나가지곤 했다)
     if (wsProject === pid && pid && calProjectById(pid)) { wsLoaded = false; loadWorkspace(pid); }
     else if (wsProject === pid) { wsProject = null; wsLoaded = false; enterWorkspaceView(); }
-  }).catch(function(e){ pushToast('⚠️', '가져오지 못했어요', e.message); });
+  }).catch(function(e){
+    pushToast('⚠️', doneFiles ? '일부만 가져왔어요 (' + doneFiles + '개)' : '가져오지 못했어요', e.message, { duration: 9000 });
+    if (doneFiles && wsProject === pid && pid && calProjectById(pid)) { wsLoaded = false; loadWorkspace(pid); }          // 이미 올라간 파일은 화면에 보이게 한다
+  });
 }
 
 /* ---- 프로젝트 선택 / 로드 / 팀 변경 감지 ---- */

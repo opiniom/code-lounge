@@ -5,6 +5,15 @@ function setToken(t){
   authToken = t;
   if(!t){ try{ localStorage.removeItem('sync_auth_token'); localStorage.removeItem('sync_auth_user'); }catch(e){} }
 }
+/* 입력 검사(422) 에러를 '요청에 실패했어요 (422)' 대신 이유로 보여 준다 */
+function apiDetailText(d){
+  if(!Array.isArray(d) || !d.length || !d[0]) return '';
+  var e = d[0], ctx = e.ctx || {}, loc = (e.loc || []).join('.');
+  if(e.type === 'string_too_long') return (/content/.test(loc) ? '파일 하나는 ' : '글이 너무 길어요. ') + (ctx.max_length ? '최대 ' + Number(ctx.max_length).toLocaleString() + '글자까지만 저장할 수 있어요.' : '저장할 수 있는 길이를 넘었어요.');
+  if(e.type === 'too_long') return '한 번에 보낼 수 있는 개수(' + (ctx.max_length || '') + '개)를 넘었어요.';
+  if(e.type === 'string_too_short' || e.type === 'missing') return '비어 있는 항목이 있어요. 입력한 내용을 확인해 주세요.';
+  return '';
+}
 function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {}, {Authorization:'Bearer '+getToken(), 'X-Client-Mode': (typeof pwaStandalone === 'function' && pwaStandalone()) ? 'app' : 'web'});
@@ -13,7 +22,7 @@ function apiFetch(path, opts){
     if(r.status===401){ if(calApiMode && authToken) expireSession(); else setToken(null); }
     if(!r.ok){
       return r.json().catch(function(){ return {}; }).then(function(b){
-        var err = new Error(expired ? '로그인이 만료됐어요. 다시 로그인해 주세요.' : (typeof b.detail==='string' ? b.detail : '요청에 실패했어요 ('+r.status+')'));
+        var err = new Error(expired ? '로그인이 만료됐어요. 다시 로그인해 주세요.' : (typeof b.detail==='string' ? b.detail : (apiDetailText(b.detail) || '요청에 실패했어요 ('+r.status+')')));
         err.status = r.status; err.body = b; throw err;
       });
     }
