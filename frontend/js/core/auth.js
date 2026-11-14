@@ -90,7 +90,9 @@ function enterLanding(){
   isAdmin = false;
   document.getElementById('adminBadge').hidden = true;
   restoreLoggedOutState();
-  goView((getPendingInvite() || (typeof pwaStandalone === 'function' && pwaStandalone())) ? 'auth' : 'landing');
+  var bootView = (typeof BOOT_ROUTE !== 'undefined' && BOOT_ROUTE) ? BOOT_ROUTE.view : '';
+  if(!getPendingInvite() && !(typeof pwaStandalone === 'function' && pwaStandalone()) && (bootView === 'hub' || bootView === 'institution')) { /* 통합 홈·기관용 주소로 들어왔다: 소개 화면을 거치지 않고 routerBoot 가 바로 그 화면을 연다 */ }
+  else goView((getPendingInvite() || (typeof pwaStandalone === 'function' && pwaStandalone())) ? 'auth' : 'landing');
   routerBoot();
 }
 function openLogin(){ goView('auth'); applyAuthMode(); }

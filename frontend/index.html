@@ -8,6 +8,7 @@
 <!-- 앱으로 설치(PWA): 매니페스트·아이콘 주소는 아래 작은 스크립트와 js/core/pwa.js 가 '라이트/다크' 화면 모드에 맞게 바꿔 준다 -->
 <link rel="manifest" href="/manifest.webmanifest?theme=light" id="pwaManifest">
 <link rel="icon" type="image/png" sizes="64x64" href="/static/icons/favicon-light-64.png" id="pwaFavicon">
+<link rel="preload" as="image" href="/static/icons/mark-hd.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-light.png" id="pwaApple">
 <meta name="application-name" content="DureSync">
 <meta name="mobile-web-app-capable" content="yes">
@@ -38,6 +39,9 @@ window.dureGreetIcon = function(n){
   var sa = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   if(/[?&]pwa=1/.test(q)) window.__pwaPreview = true;        // 브라우저에서 '설치한 앱' 모습을 미리 보기
   if(sa || window.__pwaPreview || /[?&]splash=1/.test(q)) r.classList.add('is-standalone');
+  /* 주소가 통합 홈(/) 또는 기관용(/institution)이면, 소개·홈 화면이 잠깐 보였다 바뀌지 않게 처음부터 그 화면을 보여준다 (설치한 앱은 해당 없음) */
+  var pth = (location.pathname || '/').replace(/\/+$/, '') || '/';
+  if(!sa && !window.__pwaPreview && (pth === '/' || pth === '/institution')) r.setAttribute('data-route', pth === '/' ? 'hub' : 'institution');
 }catch(e){} })();
 </script>
 <script>
@@ -219,6 +223,7 @@ window.dureGreetIcon = function(n){
         <button type="button" class="ld-wm" onclick="ldScrollTop()" aria-label="두레 DureSync 소개 맨 위로"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="ld-wm-tx"><b>DureSync</b><small>두레<span class="r"> · AI 워크스페이스</span></small></span></button>
         <nav class="ld-menu" id="ldMenu" aria-label="주요 메뉴"></nav>
         <div class="ld-nav-act">
+          <a class="ld-hubln" href="/" onclick="return hbLink(event, 'hub')" title="비즈니스·기관용을 한눈에 보는 통합 홈">통합 홈</a>
           <button type="button" class="ld-ibtn" id="ldTheme" onclick="ldToggleTheme()" aria-label="화면 모드 바꾸기" title="라이트 / 다크"><svg class="i" viewBox="0 0 24 24"><use href="#ic-moon"/></svg></button>
           <button type="button" class="ld-login" onclick="openLogin()">로그인</button>
         </div>
@@ -348,9 +353,68 @@ window.dureGreetIcon = function(n){
     </main>
 
     <footer class="ld-foot">
-      <div class="ld-foot-in"><span class="ld-foot-brand"><span class="bm wm-mark" role="img" aria-hidden="true"></span>DureSync</span><span class="ld-foot-tag">함께 일하는 가장 오래된 방식, AI로 다시.</span></div>
+      <div class="ld-foot-in"><span class="ld-foot-brand"><span class="bm wm-mark" role="img" aria-hidden="true"></span>DureSync</span><span class="ld-foot-tag">함께 일하는 가장 오래된 방식, AI로 다시.</span><span class="ld-foot-links"><a href="/" onclick="return hbLink(event, 'hub')">통합 홈</a><a href="/institution" onclick="return hbLink(event, 'institution')">기관용</a></span></div>
     </footer>
   </section>
+
+  <!-- ============ 통합 홈 (/) : 비즈니스 · 기관용 ============ -->
+  <section class="view" data-view="hub" id="hub">
+    <header class="ld-nav hb-nav" id="hbNav">
+      <div class="ld-nav-in">
+        <button type="button" class="ld-wm" onclick="hbTop()" aria-label="두레 DureSync 통합 홈 맨 위로"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="ld-wm-tx"><b>DureSync</b></span></button>
+        <nav class="ld-menu" id="hbMenu" aria-label="주요 메뉴"></nav>
+        <div class="ld-nav-act">
+          <button type="button" class="ld-ibtn" id="hbTheme" onclick="ldToggleTheme()" aria-label="화면 모드 바꾸기" title="라이트 / 다크"><svg class="i" viewBox="0 0 24 24"><use href="#ic-moon"/></svg></button>
+          <button type="button" class="hb-txtbtn" id="hbLogin" onclick="hbLoginClick()">로그인</button>
+          <button type="button" class="hb-ghost" id="hbInquiry" onclick="hbNotice()">도입 문의</button>
+          <button type="button" class="ld-login" id="hbStart" onclick="hbStartBusiness()">무료로 시작하기</button>
+        </div>
+      </div>
+      <div class="ld-mega" id="hbMega" aria-hidden="true"></div>
+    </header>
+    <div class="ld-scrim" id="hbScrim" onclick="hbCloseMenus()"></div>
+    <div class="hb-amb" aria-hidden="true"><i class="b b1"></i><i class="b b2"></i><i class="b b3"></i><i class="rg rg1"></i><i class="rg rg2"></i></div>
+    <main class="ld-main" id="hbMain"></main>
+    <button type="button" class="hb-guide" id="hbGuide" onclick="hbGuideNext()" aria-label="두레가 안내해요: 다음 구역으로"><span class="hb-guide-ring"></span><span class="bm hb-guide-mark" role="img" aria-hidden="true"></span><span class="hb-guide-tip" id="hbGuideTip"></span></button>
+    <footer class="ld-foot hb-foot" id="hbFoot"></footer>
+  </section>
+
+  <!-- ============ 기관용 소개 (/institution) : 개발 중 ============ -->
+  <section class="view" data-view="institution" id="institution">
+    <header class="ld-nav hb-nav" id="inNav">
+      <div class="ld-nav-in">
+        <button type="button" class="ld-wm" onclick="hbLink(event, 'hub')" aria-label="DureSync 통합 홈으로"><span class="bm wm-mark" role="img" aria-hidden="true"></span><span class="ld-wm-tx"><b>DureSync</b></span></button>
+        <nav class="ld-menu" id="inMenu" aria-label="주요 메뉴"></nav>
+        <div class="ld-nav-act">
+          <button type="button" class="ld-ibtn" id="inTheme" onclick="ldToggleTheme()" aria-label="화면 모드 바꾸기" title="라이트 / 다크"><svg class="i" viewBox="0 0 24 24"><use href="#ic-moon"/></svg></button>
+          <a class="hb-txtbtn" href="/business" onclick="return hbLink(event, 'landing')">비즈니스</a>
+          <button type="button" class="ld-login" onclick="hbNotice()">도입 문의</button>
+        </div>
+      </div>
+      <div class="ld-mega" id="inMega" aria-hidden="true"></div>
+    </header>
+    <div class="ld-scrim" id="inScrim" onclick="hbCloseMenus()"></div>
+    <div class="hb-amb" aria-hidden="true"><i class="b b1"></i><i class="b b2"></i><i class="b b3"></i><i class="rg rg1"></i><i class="rg rg2"></i></div>
+    <main class="ld-main" id="inMain"></main>
+    <footer class="ld-foot hb-foot" id="inFoot"></footer>
+  </section>
+
+  <!-- 구독창(더미) · 개발 중 안내 -->
+  <div class="modal-backdrop" id="hbSubModal" onclick="if(event.target===this)hbCloseSub()">
+    <div class="share-modal hb-sub-modal" role="dialog" aria-modal="true" aria-labelledby="hbSubTitle">
+      <div class="mh"><h3 id="hbSubTitle">구독 · 요금</h3><button type="button" class="icon-btn" aria-label="닫기" onclick="hbCloseSub()"><svg class="i" viewBox="0 0 24 24"><use href="#ic-close"/></svg></button></div>
+      <p class="hb-sub-note">지금은 수요조사 기간이라, 비즈니스는 <b>Free &amp; Beta</b>로 모든 기능을 열어 두었어요.</p>
+      <div class="hb-plans" id="hbSubPlans"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="hbNotice" onclick="if(event.target===this)hbCloseNotice()">
+    <div class="share-modal hb-notice" role="alertdialog" aria-modal="true" aria-labelledby="hbNoticeTitle">
+      <span class="ld-ico lg" style="--c:#F59E0B"><svg class="i" viewBox="0 0 24 24"><use href="#ic-spark"/></svg></span>
+      <h3 id="hbNoticeTitle">기관용은 준비 중이에요</h3>
+      <p>현재 개발 중이니 양해 부탁드립니다.</p>
+      <button type="button" class="btn primary" onclick="hbCloseNotice()">확인</button>
+    </div>
+  </div>
 
   <!-- ============ AUTH ============ -->
   <section class="view" data-view="auth">

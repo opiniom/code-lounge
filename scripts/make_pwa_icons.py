@@ -1,4 +1,4 @@
-"""PWA(앱 설치) 아이콘을 브랜드 로고(docs/brand/mark-full.png)로 한 번에 만든다.  실행:  .venv/bin/python scripts/make_pwa_icons.py
+"""PWA(앱 설치) 아이콘을 브랜드 로고(docs/brand/mark-hd.png)로 한 번에 만든다. (마스터가 없거나 로고를 바꿨다면 먼저 python3 scripts/make_brand_assets.py)  실행:  .venv/bin/python scripts/make_pwa_icons.py
 (개발용 도구라서 Pillow 가 필요하다: .venv/bin/pip install pillow — 서버 requirements 에는 넣지 않는다)
 
 만드는 것 → frontend/icons/  (서버가 /static/icons/ 로 내려준다)
@@ -9,13 +9,13 @@
   favicon-{light,dark}-{32,64}.png      브라우저 탭용: 둥근 타일 + 로고
 
 라이트 = 흰 배경, 다크 = 브랜드 다크 배경(#0B1020, docs/brand/icon-dark-180.png 와 같은 색).
-원본 로고가 231x251px 라서 512px 아이콘은 약간 키워서 만든다(부드러운 확대 + 가장자리 선명화). 벡터(SVG) 로고가 생기면 이 스크립트의 SRC 만 바꾸면 된다.
+로고는 원본(231x251px)을 4배로 키워 가장자리를 곡선으로 다듬은 고해상도 마스터에서 줄여서 쓰므로 어떤 크기에서도 또렷하다. 벡터(SVG) 로고가 생기면 make_brand_assets.py 의 master() 만 바꾸면 된다.
 """
 import os
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "docs", "brand", "mark-full.png")
+SRC = os.path.join(ROOT, "docs", "brand", "mark-hd.png")          # 고해상도 마스터 (scripts/make_brand_assets.py 가 mark-full.png 로 만든다)
 OUT = os.path.join(ROOT, "frontend", "icons")
 BG = {"light": (255, 255, 255, 255), "dark": (11, 16, 32, 255)}
 os.makedirs(OUT, exist_ok=True)

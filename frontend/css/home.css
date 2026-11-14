@@ -91,7 +91,7 @@
 .dn-plus{cursor:pointer;}
 .dn-plus span{transition:box-shadow .2s ease, color .2s ease;}
 .dn-plus:hover span{color:var(--accent); box-shadow:0 0 0 1.5px var(--accent) inset, 0 0 0 3px var(--bg), 0 6px 14px rgba(59,130,246,.3);}
-.dure-core-mark{width:62%; height:62%; background-image:var(--mark-128); animation:markFloat 6s ease-in-out infinite;}
+.dure-core-mark{width:62%; height:62%; background-image:var(--mark-hd); animation:markFloat 6s ease-in-out infinite;}
 .dure-core b{font-family:var(--font-mono); font-weight:700; font-size:calc(var(--S) * .082); letter-spacing:-.03em; color:var(--text);}
 .dure-core em{font-style:normal; color:var(--accent);}
 .dure-chip{

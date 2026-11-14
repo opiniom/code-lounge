@@ -280,7 +280,7 @@ if os.path.isdir(UI_DIR):
     app.mount("/static", StaticFiles(directory=UI_DIR), name="ui-static")
 
 # 화면 주소: /app, /app/login, /app/workspace, /app/community/12 … 모두 같은 index.html 이 열리고,
-# 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ 와 /ui 는 예전 주소)
+# 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ = 통합 홈, /business = 비즈니스 소개, /institution = 기관용 소개, /ui 는 예전 주소)
 # ---- 내 PC 러너: 웹사이트가 사용자에게 내려주는 작은 프로그램 (내 컴퓨터에 설치한 언어로 코드를 실행)
 _RUNNER_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runner", "duresync_runner.py")
 
@@ -357,6 +357,8 @@ async def runner_install_ps1(request: Request):
 @app.get("/", tags=["UI"], include_in_schema=False)
 @app.get("/ui", tags=["UI"], include_in_schema=False)
 @app.get("/app", tags=["UI"], include_in_schema=False)
+@app.get("/business", tags=["UI"], include_in_schema=False)          # 비즈니스 소개 (로그인 전 첫 화면)
+@app.get("/institution", tags=["UI"], include_in_schema=False)       # 기관용 소개 (준비 중)
 @app.get("/app/{page:path}", tags=["UI"], include_in_schema=False)
 async def serve_ui(request: Request, page: str = ""):
     if "." in page.rsplit("/", 1)[-1]:      # /app/없는파일.js 같은 요청은 화면이 아니라 404
