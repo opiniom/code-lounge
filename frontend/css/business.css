@@ -1,0 +1,7 @@
+/* ================= 비즈니스 소개(/business) 아래쪽: 자주 묻는 질문 · 마무리 · 바닥글 =================
+   메인 홈 · 기관용과 같은 부품(hub.css 의 .hb-faq · .hb-fin · .hb-foot)을 그대로 쓴다. 여기에는 이 화면에만 필요한 보정만 둔다. */
+#landing .hb-faq, #landing .hb-fin, #landing .hb-foot{word-break:keep-all; overflow-wrap:break-word;}
+#landing .hb-faq{margin-top:34px;}
+#landing .hb-fin{margin-top:clamp(56px, 8vw, 104px);}
+#landing .hb-foot-brand .ld-foot-tag{max-width:280px;}
+@media (max-width: 560px){ #landing .hb-foot-cols{gap:26px 36px;} }

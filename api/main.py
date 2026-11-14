@@ -280,7 +280,7 @@ if os.path.isdir(UI_DIR):
     app.mount("/static", StaticFiles(directory=UI_DIR), name="ui-static")
 
 # 화면 주소: /app, /app/login, /app/workspace, /app/community/12 … 모두 같은 index.html 이 열리고,
-# 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ = 통합 홈, /business = 비즈니스 소개, /institution = 기관용 소개, /ui 는 예전 주소)
+# 어떤 화면을 보여줄지는 화면(JS)이 주소를 보고 정한다. (/ = 메인 홈, /business = 비즈니스 소개, /institution = 기관용 소개, /ui 는 예전 주소)
 # ---- 내 PC 러너: 웹사이트가 사용자에게 내려주는 작은 프로그램 (내 컴퓨터에 설치한 언어로 코드를 실행)
 _RUNNER_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runner", "duresync_runner.py")
 

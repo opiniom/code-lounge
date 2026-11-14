@@ -9,7 +9,7 @@
      · 채팅은 그대로, 통화는 뺀다. 팀장(교수 · 교사 · 기관 담당자)과의 1:1 톡방을 더한다
      · 커뮤니티: 학생에게는 학교 마크
      · 기관용 프로젝트를 만드는 팀장은 원하는 대로 편하게 커스텀할 수 있다
-   화면 구조·움직임은 통합 홈(hub.js · hub-demo.js)과 같은 부품을 쓰고, 화면 속 이름·학교·점수는 모두 꾸며낸 예시다. */
+   화면 구조·움직임은 메인 홈(hub.js · hub-demo.js)과 같은 부품을 쓰고, 화면 속 이름·학교·점수는 모두 꾸며낸 예시다. */
 
 function inIc(id){ return hbSvg(id); }
 var IN_AVS = [['민', '#3B82F6'], ['지', '#EC4899'], ['수', '#22C55E'], ['하', '#F59E0B']];
@@ -216,7 +216,7 @@ function inBuild(){
   var f = document.getElementById('inFoot');
   if(f && !f.children.length) f.innerHTML = '<div class="hb-foot-in"><div class="hb-foot-brand"><span class="ld-foot-brand"><span class="bm wm-mark" role="img" aria-hidden="true"></span>DureSync</span><span class="ld-foot-tag">함께 일하는 가장 오래된 방식, AI로 다시.</span></div>' +
     '<div class="hb-foot-cols"><div><h4>기관용</h4><button type="button" onclick="hbAct(\'hub|inShowFlat\')">기능</button><button type="button" onclick="hbAct(\'hub|inCmp\')">비즈니스와 다른 점</button><button type="button" onclick="hbNotice()">도입 문의</button></div>' +
-    '<div><h4>둘러보기</h4><a href="/" onclick="return hbLink(event, \'hub\')">통합 홈</a><a href="/business" onclick="return hbLink(event, \'landing\')">비즈니스</a><button type="button" onclick="hbAct(\'hub|inFaq\')">자주 묻는 질문</button></div></div></div>';
+    '<div><h4>둘러보기</h4><a href="/" onclick="return hbLink(event, \'hub\')">메인 홈</a><a href="/business" onclick="return hbLink(event, \'landing\')">비즈니스</a><button type="button" onclick="hbAct(\'hub|inFaq\')">자주 묻는 질문</button></div></div></div>';
 
   hbBindTabs(document.getElementById('inShowFlat'));
   inBindPeople();

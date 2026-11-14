@@ -1,4 +1,4 @@
-/* ================= 통합 홈(/) · 기관용 소개(/institution) (js/pages/hub.js) =================
+/* ================= 메인 홈(/) · 기관용 소개(/institution) (js/pages/hub.js) =================
    로그인 전 소개 화면(landing.css)의 상단 메뉴·펼침 메뉴·섹션·카드·아이콘 모양을 그대로 가져와 쓴다. 여기에는 그 화면에 없는 것
    (첫 화면의 제품 그림 · 기능 탭 · 요금 카드 · 질문 · 구독창 · 준비 중 안내)만 더한다. 웹사이트 전용 화면이다 (설치한 앱에서는 열리지 않는다). */
 
@@ -10,7 +10,7 @@ html[data-route="hub"] .view[data-view="hub"], html[data-route="institution"] .v
 
 .view[data-view="hub"], .view[data-view="institution"]{background:var(--bg); position:relative; overflow-x:clip;}
 #hub, #institution{--navh:58px; --lvh:calc(100dvh / var(--ui-zoom)); --lvw:calc(100vw / var(--ui-zoom)); word-break:keep-all; overflow-wrap:break-word;}
-#hub .hh-eyebrow, #institution .hh-eyebrow .hh-eyebrow{margin:0; font-size:12px;}
+#hub .hh-eyebrow, #institution .hh-eyebrow{margin:0; font-size:12px;}
 #institution .hh-brand{font-size:clamp(34px, min(calc(var(--lvh) * .08), calc(var(--lvw) * .12)), 88px);}
 #institution .home-brand{display:flex; flex-direction:column; align-items:center; gap:clamp(6px, calc(var(--lvh) * .016), 16px);}
 #institution .hh-tag{font-size:clamp(15px, calc(var(--lvh) * .026), 26px);}
@@ -28,6 +28,17 @@ html[data-route="hub"] .view[data-view="hub"], html[data-route="institution"] .v
 .hb-nav .ld-nav-in{max-width:1320px;}
 .ld-hubln{font-size:13px; font-weight:600; color:var(--text-muted); text-decoration:none; padding:8px 10px; border-radius:999px; white-space:nowrap;}
 .ld-hubln:hover{color:var(--text); background:var(--surface-2);}
+/* 메인 홈 · 비즈니스 · 기관용 페이지 이동 (비즈니스·기관용 위쪽에 같은 모양으로, 지금 보는 페이지는 강조) */
+.hb-pgs{display:inline-flex; align-items:center; gap:2px; padding:3px; border-radius:999px; background:var(--surface-2); border:1px solid var(--border);}
+.hb-pgs a, .hb-pgs span{font-size:12.5px; font-weight:600; line-height:1; padding:7px 12px; border-radius:999px; white-space:nowrap; text-decoration:none; color:var(--text-muted); transition:color .15s, background .15s;}
+.hb-pgs a:hover{color:var(--text); background:var(--bg-elevated);}
+.hb-pgs .on{color:var(--accent-ink); background:var(--bg-elevated); box-shadow:var(--shadow-sm); font-weight:700;}
+/* 좁은 화면에서는 이동 줄 대신 오른쪽 위에 '메인 홈' 단추 하나 */
+.hb-homebtn{display:none; align-items:center; height:34px; padding:0 13px; border-radius:999px; border:1px solid var(--border-strong); background:var(--bg-elevated); color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; text-decoration:none; flex:0 0 auto; transition:border-color .15s, background .15s;}
+.hb-homebtn:hover{border-color:var(--accent); background:var(--accent-soft);}
+@media (max-width: 1240px){ .hb-pgs{display:none;} .hb-homebtn{display:inline-flex;} }
+@media (min-width: 761px) and (max-width: 1000px){ #ldNav .ld-nav-in{grid-template-columns:1fr auto 1fr;} #ldNav .ld-nav-act{justify-self:end;} }          /* 비즈니스도 카테고리를 화면 가운데에 */
+@media (max-width: 360px){ #ldNav .ld-nav-in, #inNav .ld-nav-in{padding-left:10px; padding-right:10px;} #ldNav .ld-nav-act, #inNav .ld-nav-act{gap:4px;} #ldNav .hb-homebtn, #inNav .hb-homebtn{padding:0 9px; font-size:12.5px;} #ldNav .ld-login, #inNav .ld-login{padding:0 10px; font-size:12.5px;} #ldNav .ld-ibtn, #inNav .ld-ibtn{width:32px; height:32px;} }
 .ld-foot-links{display:flex; gap:16px;} .ld-foot-links a{font-size:12.5px; font-weight:600; color:var(--text-muted); text-decoration:none;} .ld-foot-links a:hover{color:var(--accent-ink); text-decoration:underline;}
 
 /* ---------- 첫 화면: 왼쪽 큰 글 · 오른쪽 움직이는 제품 그림 ---------- */
@@ -186,8 +197,8 @@ html[data-motion="reduce"] .hbm-ln, html[data-motion="reduce"] .hbm-out, html[da
 .hb-amb .rg{position:absolute; border-radius:50%; border:1.5px dashed var(--border-strong); opacity:.32; animation:dureSpin 120s linear infinite;}
 .hb-amb .rg1{width:min(980px, 96vw); height:min(980px, 96vw); left:50%; top:-14%; margin-left:calc(min(980px, 96vw) / -2);}
 .hb-amb .rg2{width:min(620px, 70vw); height:min(620px, 70vw); right:-6%; top:42%; animation-duration:160s; animation-direction:reverse; opacity:.22;}
-#hub .ld-main, #hub .ld-foot, #institution .ld-main, #institution .ld-foot .ld-main .ld-foot{position:relative; z-index:1;}
-#hub .ld-foot, #institution .ld-foot .ld-foot{background:color-mix(in srgb, var(--bg-elevated) 70%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);}
+#hub .ld-main, #hub .ld-foot, #institution .ld-main, #institution .ld-foot{position:relative; z-index:1;}
+#hub .ld-foot, #institution .ld-foot{background:color-mix(in srgb, var(--bg-elevated) 70%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);}
 
 /* 제목 속 핵심 단어에 색을 입힌다 */
 .hb-lead .kw{font-weight:700; color:color-mix(in srgb, var(--c) 82%, var(--text));}
@@ -224,8 +235,8 @@ html[data-motion="reduce"] .hbm-ln, html[data-motion="reduce"] .hbm-out, html[da
 #institution .hb-guide{display:none;}
 
 /* ---------- 위쪽 메뉴: 폭별로 알맞게 (글자가 줄바꿈·삐져나가지 않게 단계마다 덜 중요한 것부터 접는다) ---------- */
-.hb-nav .ld-nav-in{grid-template-columns:auto 1fr auto; grid-template-areas:'wm menu act'; gap:12px;}
-.hb-nav .ld-menu{justify-self:center; max-width:100%; min-width:0;}
+.hb-nav .ld-nav-in{grid-template-columns:1fr auto 1fr; grid-template-areas:'wm menu act'; gap:12px;}          /* 카테고리는 화면 가운데 */
+.hb-nav .ld-menu{justify-self:center; max-width:100%; min-width:0;} .hb-nav .ld-nav-act{justify-self:end;}
 .hb-nav .ld-mb{flex:0 0 auto;}
 .hb-nav .ld-login, .hb-ghost, .hb-txtbtn{flex:0 0 auto;}
 @media (max-width: 1239px){ #hbInquiry{display:none;} }
@@ -233,6 +244,7 @@ html[data-motion="reduce"] .hbm-ln, html[data-motion="reduce"] .hbm-out, html[da
 @media (max-width: 900px){
   .hb-nav .ld-nav-in{grid-template-columns:1fr auto; grid-template-areas:'wm act' 'menu menu'; height:auto; row-gap:8px; padding-top:9px; padding-bottom:9px;}
   .hb-nav .ld-menu{justify-self:stretch; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; background:none; padding:0; gap:6px; justify-content:flex-start;}
+  .hb-nav .ld-menu > :first-child{margin-left:auto;} .hb-nav .ld-menu > :last-child{margin-right:auto;}          /* 가운데 정렬하되 넘치면 옆으로 밀 수 있게 */
   .hb-nav .ld-menu::-webkit-scrollbar{display:none;}
   .hb-nav .ld-mb{background:var(--surface-2); padding:8px 14px;} .hb-nav .ld-mb > svg.i:first-child{display:inline-block;} .hb-nav .ld-mb.on{background:var(--bg-elevated); box-shadow:var(--shadow-sm);}
   #hbLogin{display:inline-flex; align-items:center;}
@@ -296,7 +308,7 @@ html[data-motion="reduce"] .hb-amb .rg, html[data-motion="reduce"] .hb-grad, htm
 .hb-fin{position:relative; --fp:1; overflow:clip; isolation:isolate;}
 .hb-fin-track{position:relative; --fp:1; height:auto;}
 .hb-fin-sticky{position:relative; display:flex; align-items:center; justify-content:center; padding:clamp(56px, 8vw, 100px) 24px;}
-#hub.hb-pin .hb-fin-track, #institution.hb-pin .hb-fin-track.hb-pin .hb-fin-track{height:calc(var(--lvh) * 2.1);}
+#hub.hb-pin .hb-fin-track, #institution.hb-pin .hb-fin-track{height:calc(var(--lvh) * 2.1);}
 :is(#hub, #institution).hb-pin .hb-fin-sticky{position:sticky; top:var(--navh); height:calc(var(--lvh) - var(--navh)); padding:0 24px; overflow:hidden;}
 .hb-fin .fr{position:absolute; left:50%; top:50%; border-radius:50%; border:1.5px dashed var(--border-strong); pointer-events:none; transform:translate(-50%, -50%) scale(calc(.35 + var(--fp, 1) * 1.05)); opacity:calc(.95 - var(--fp, 1) * .5);}
 .hb-fin .fr1{width:min(460px, 80vw); height:min(460px, 80vw);} .hb-fin .fr2{width:min(760px, 120vw); height:min(760px, 120vw); transform:translate(-50%, -50%) scale(calc(.3 + var(--fp, 1) * .9)) rotate(calc(var(--fp, 1) * 80deg));} .hb-fin .fr3{width:min(1080px, 160vw); height:min(1080px, 160vw); opacity:calc(.7 - var(--fp, 1) * .45); transform:translate(-50%, -50%) scale(calc(.3 + var(--fp, 1) * .8)) rotate(calc(var(--fp, 1) * -60deg));}

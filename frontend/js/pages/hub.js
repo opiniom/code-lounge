@@ -1,4 +1,4 @@
-/* ---- 통합 홈 (/) · 기관용 소개 (/institution) ----
+/* ---- 메인 홈 (/) · 기관용 소개 (/institution) ----
    두레싱크를 '비즈니스'와 '기관용' 두 모델로 나눠 소개하는 웹사이트 첫 화면 (설치한 앱(PWA)에서는 보이지 않는다).
    · 비즈니스  = 지금 만든 서비스(자세한 소개 화면은 /business). 지금은 수요조사 기간이라 'Free & Beta' 하나로 풀어 둔다.
    · 기관용    = 학교·교수용. 아직 개발 중이라 뼈대와 '준비 중' 안내만 있다.
@@ -25,6 +25,11 @@ var HB_MENU = [
         { ic: 'users', c: '#EC4899', t: '커뮤니티', d: '질문 · 팀원 구하기 · 스터디', act: 'biz|ldFeatures|ldf-community' },
         { ic: 'trophy', c: '#06B6D4', t: '공모전 · 해커톤', d: '마감 순으로 자동으로 모아요', act: 'biz|ldFeatures|ldf-contest' } ] } ],
     feat: { type: 'brand', t: '지금은 Free & Beta', d: '베타 기간 동안 모든 기능을 무료로 써 볼 수 있어요.', cta: '무료로 시작하기', act: 'start' } },
+  { k: 'edu', ic: 'school', label: '기관용', cols: [
+      { h: '기관용 · 준비 중', items: [
+        { ic: 'school', c: '#06B6D4', t: '학교 · 교수용', d: '수업과 팀 프로젝트를 기관 단위로', act: 'inst' },
+        { ic: 'chat', c: '#22C55E', t: '도입 문의', d: '현재 개발 중이에요', act: 'notice' } ] } ],
+    feat: { type: 'brand', t: '기관용은 준비 중이에요', d: '현재 개발 중이니 양해 부탁드립니다.', cta: '기관용 보기', act: 'inst' } },
   { k: 'who', ic: 'users', label: '대상별', cols: [
       { h: '배우는 사람', items: [
         { ic: 'sprout', c: '#22C55E', t: '코딩 입문자', d: '에러가 무서운 첫 코딩', act: 'biz|ldWho|ldp-beginner' },
@@ -36,11 +41,6 @@ var HB_MENU = [
       { h: '가르치는 사람', items: [
         { ic: 'board', c: '#EC4899', t: '선생님', d: '학생 코드를 함께 보며 도와요', act: 'biz|ldWho|ldp-teacher' } ] } ],
     feat: { type: 'chips', t: '누구나, 제한 없이', d: '전공도 경력도 목적도 묻지 않아요. 브라우저만 있으면 돼요.', chips: ['전공 무관', '경력 무관', '설치 없이', '무료 베타'] } },
-  { k: 'edu', ic: 'school', label: '기관용', cols: [
-      { h: '기관용 · 준비 중', items: [
-        { ic: 'school', c: '#06B6D4', t: '학교 · 교수용', d: '수업과 팀 프로젝트를 기관 단위로', act: 'inst' },
-        { ic: 'chat', c: '#22C55E', t: '도입 문의', d: '현재 개발 중이에요', act: 'notice' } ] } ],
-    feat: { type: 'brand', t: '기관용은 준비 중이에요', d: '현재 개발 중이니 양해 부탁드립니다.', cta: '기관용 보기', act: 'inst' } },
   { k: 'learn', ic: 'compass', label: '알아보기', cols: [
       { h: '두레 알아보기', items: [
         { ic: 'compass', c: '#3B82F6', t: '지향하는 방향', d: '쉽게 시작하고, 자연스럽게 함께', act: 'biz|ldMission' },
@@ -144,7 +144,7 @@ function hbPlansHtml(){
     '</article>';
 }
 
-/* ---------- 통합 홈 본문 ---------- */
+/* ---------- 메인 홈 본문 ---------- */
 var HB_FAQ = [
   ['정말 무료인가요?', '지금은 수요조사를 위한 <b>Free &amp; Beta</b> 기간이라 모든 기능을 무료로 써 볼 수 있어요. 결제 정보도 필요 없어요. 정식 요금제는 베타가 끝난 뒤에 따로 안내해 드릴게요.'],
   ['설치해야 하나요?', '아니요. <b>브라우저에서 바로</b> 쓸 수 있어요. 원하면 홈 화면에 앱(PWA)처럼 설치할 수도 있고, 웹과 앱은 같은 계정과 같은 데이터를 써요.'],
